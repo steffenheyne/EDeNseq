@@ -1,5 +1,5 @@
 /*
- * EDeN_threadpool.cc
+ * EDeNseq.cc
  *
  *  Created on: 26.02.2015
  *      Author: heyne
@@ -7,68 +7,55 @@
 
 #include <iostream>
 
-
 #include "BaseManager.h"
 #include "Data.h"
 #include "Parameters.h"
-//#include "NearestNeighbor.h"
-//#include "Utility.h"
-//#include "Kernel.h"
 #include "MinHashEncoder.h"
-#include "ClusterManager.h"
+#include "SeqClusterManager.h"
+#include "SeqClassifyManager.h"
 
 using namespace std;
 
-//FlagsService& The_FlagsService = FlagsService::get_instance();
+class Dispatcher {
+	protected:
+		Parameters mParameters;
+		Data mData;
 
-
-class MetaGenomeManager: public BaseManager {
-
-public:
-
-	MinHashEncoder mMinHashEncoder;
-
-	MetaGenomeManager(Parameters* apParameters, Data* apData):
-		BaseManager(apParameters, apData), mMinHashEncoder() {
-		Init(apParameters, apData);
-	}
-
-	void Init(Parameters* apParameters, Data* apData){
-		BaseManager::Init(apParameters, apData);
-		mMinHashEncoder.Init(apParameters, apData);
-	}
-
-	vector<SeqDataSet> LoadIndexDataList(string filename){
-
-		vector<SeqDataSet> myList;
-		bool valid_input = true;
-		igzstream fin;
-		string line;
-
-		fin.open(filename.c_str());
-		if (!fin)
-			throw range_error("ERROR LoadData: Cannot open index data file: " + filename);
-		while (!fin.eof() && valid_input) {
-			SeqDataSet mySet;
-			mySet.filetype=FASTA;
-			if (fin >> mySet.idx >> mySet.filename >> mySet.desc){
-				cout << "found file idx " << mySet.idx << "\t" << mySet.filename << "\t" << mySet.desc << endl;
-				myList.push_back(mySet);
-			}
-			getline(fin, line);
+	public:
+		Dispatcher() {
 		}
-		if (!myList.size())
-			throw range_error("ERROR LoadIndexData: No data found in " + filename + "!");
-		return myList;
-	}
 
-	void Exec() {
+		void Init(int argc, const char **argv) {
+			mParameters.Init(argc, argv);
+			srand(mParameters.mRandomSeed);
+			mData.Init(&mParameters);
+		}
 
-		vector<SeqDataSet> fileList = LoadIndexDataList(mpParameters->mIndexDataList.c_str());
-		mMinHashEncoder.LoadDataIntoIndexThreaded(fileList,false,NULL);
-	}
+		void Exec() {
+			ProgressBar pb;
 
+				cout << SEP << endl << PROG_NAME << endl << "Version: " << PROG_VERSION << endl << "Last Update: " << PROG_DATE << endl << PROG_CREDIT << endl << SEP << endl;
+
+			switch (mParameters.mActionCode) {
+				case CLASSIFY:{
+					SeqClassifyManager seq_classify_manager(&mParameters,&mData);
+					seq_classify_manager.Exec();
+				}
+					break;
+				case CLUSTER:{
+					SeqClusterManager cluster_manager(&mParameters, &mData);
+					cluster_manager.Exec();
+				}
+					break;
+				default:
+					throw range_error("ERROR2.2: Unknown action parameter: " + mParameters.mAction);
+			}
+			pb.Count();
+			cout << "Total run-time:" << endl;
+		}
 };
+
+
 
 int main(int argc, const char **argv) {
 
@@ -78,8 +65,6 @@ int main(int argc, const char **argv) {
 	srand(mParameters.mRandomSeed);
 	mData.Init(&mParameters);
 
-	MetaGenomeManager meta_genome_manager(&mParameters,&mData);
-	meta_genome_manager.Exec();
 
 	return 0;
 }

@@ -1,15 +1,12 @@
-#include "ClusterManager.h"
+#include "SeqClusterManager.h"
 #include <ostream>
-
-ClusterManager::ClusterManager(Parameters* apParameters, Data* apData) :
-BaseManager(apParameters, apData), mNearestNeighbor(apParameters, apData) {
-}
 
 
 //---------------------------------------------------------------------------------------------------
-// APPROX_DENSE_CENTERS
-ApproxDensityClusterManager::ApproxDensityClusterManager(Parameters* apParameters, Data* apData): ClusterManager(apParameters, apData)
-				 {
+// Sequence clustering via approximate neighborhood density
+SeqClusterManager::SeqClusterManager(Parameters* apParameters, Data* apData)
+	:BaseManager(apParameters, apData), mNearestNeighbor(apParameters, apData)
+{
 	SeqDataSet mySet;
 	vector<SeqDataSet> myList;
 	mySet.filename = mpParameters->mInputDataFileName.c_str();
@@ -23,7 +20,7 @@ ApproxDensityClusterManager::ApproxDensityClusterManager(Parameters* apParameter
 	mNearestNeighbor.CacheReset();
 }
 
-void ApproxDensityClusterManager::Exec() {
+void SeqClusterManager::Exec() {
 	ProgressBar pb;
 	OutputManager on("approx_dense_centers", mpParameters->mDirectoryPath);
 	OutputManager oc("approx_dense_cluster", mpParameters->mDirectoryPath);
@@ -36,7 +33,7 @@ void ApproxDensityClusterManager::Exec() {
 	cout << endl << "Total clustering time:" << endl;
 }
 
-void ApproxDensityClusterManager::DenseCluster(ostream& out_c, ostream& out_n) {
+void SeqClusterManager::DenseCluster(ostream& out_c, ostream& out_n) {
 	cout << endl << "Compute neighborhood and density for selected " << mpData->mRowIndexList.size() << " instances." << endl;
 	vector<pair<double, unsigned> > DensityList(mpData->mRowIndexList.size());
 

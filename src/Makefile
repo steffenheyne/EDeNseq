@@ -57,8 +57,6 @@ FeatureManager.o:FeatureManager.h MinHashEncoder.h Data.h BaseManager.cc
 
 MinHashEncoder.o:MinHashEncoder.h Data.h
 
-NSPDK_FeatureGenerator.o:NSPDK_FeatureGenerator.h GraphClass.cc 
-
 GraphClass.o:GraphClass.h BaseGraphClass.cc 
 
 BaseGraphClass.o:BaseGraphClass.h 

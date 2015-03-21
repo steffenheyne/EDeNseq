@@ -24,7 +24,6 @@ void MinHashEncoder::Init(Parameters* apParameters, Data* apData) {
 
 void MinHashEncoder::CacheReset() {
 	mMinHashCache.clear();
-	if (mpParameters->mNoMinHashCache == false)
 		if (mpData->Size() > 0)
 			mMinHashCache.resize(mpData->Size());
 
@@ -519,7 +518,6 @@ vector<unsigned> MinHashEncoder::ComputeHashSignatureSize(vector<unsigned>& aSig
 }
 
 vector<unsigned> MinHashEncoder::ComputeHashSignature(unsigned aID) {
-	if (mpParameters->mNoMinHashCache == false) {
 		if (mMinHashCache[aID].size() > 0)
 			return mMinHashCache[aID];
 		else {
@@ -528,9 +526,6 @@ vector<unsigned> MinHashEncoder::ComputeHashSignature(unsigned aID) {
 			mpData->mVectorList[aID].resize(0);
 			return signature;
 		}
-	} else{
-		return ComputeHashSignature(mpData->mVectorList[aID]);
-	}
 }
 
 vector<unsigned> MinHashEncoder::ComputeHashSignature(SVector& aX) {
@@ -677,12 +672,7 @@ pair<unsigned,unsigned> MinHashEncoder::ComputeApproximateSim(const unsigned& aI
 }
 
 vector<unsigned> MinHashEncoder::TrimNeighborhood(umap_uint_int& aNeighborhood, unsigned aNeighborhoodSize, unsigned collisions, double& density) {
-	unsigned neighborhood_size;
-	if (aNeighborhoodSize == 0)
-		neighborhood_size = mpParameters->mNumNearestNeighbors;
-	else
-		neighborhood_size = aNeighborhoodSize;
-	const int MIN_BINS_IN_COMMON = 2; //Minimum number of bins that two instances have to have in common in order to be considered similar
+	//const int MIN_BINS_IN_COMMON = 2; //Minimum number of bins that two instances have to have in common in order to be considered similar
 	//given a list of neighbors with an associated occurrences count, return only a fraction of the highest count ones
 	vector<unsigned> neighborhood_list;
 
@@ -700,25 +690,5 @@ vector<unsigned> MinHashEncoder::TrimNeighborhood(umap_uint_int& aNeighborhood, 
 
 		density = ( density / neighborhood_list.size() ) / (mpParameters->mNumHashFunctions - collisions);
 
-	}else	if (mpParameters->mEccessNeighborSizeFactor > 0) {
-		//sort by num occurrences
-		vector<pair<int, unsigned> > count_list;
-		for (umap_uint_int::const_iterator it = aNeighborhood.begin(); it != aNeighborhood.end(); ++it) {
-			unsigned id = it->first;
-			int count = it->second;
-			if (count >= MIN_BINS_IN_COMMON) //NOTE: consider instances that have at least MIN_BINS_IN_COMMON
-				count_list.push_back(make_pair(-count, id)); //NOTE:-count to sort from highest to lowest
-		}
-		sort(count_list.begin(), count_list.end());
-		unsigned effective_size = min((unsigned) count_list.size(), (unsigned) (mpParameters->mEccessNeighborSizeFactor * neighborhood_size));
-		for (unsigned i = 0; i < effective_size; ++i)
-			neighborhood_list.push_back(count_list[i].second);
-	} else { //if mEccessNeighborSizeFactor is negative then consider all instances in the approximate neighborhood that have a co-occurrence count higher than - mEccessNeighborSizeFactor
-		for (umap_uint_int::const_iterator it = aNeighborhood.begin(); it != aNeighborhood.end(); ++it) {
-			int count = it->second;
-			if (count >= (int) (-mpParameters->mEccessNeighborSizeFactor))
-				neighborhood_list.push_back(it->first);
-		}
-	}
-	return neighborhood_list;
+	}	return neighborhood_list;
 }
