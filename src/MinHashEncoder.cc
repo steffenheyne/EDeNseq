@@ -263,7 +263,6 @@ void MinHashEncoder::worker_Graph2Signature(int id){
 			for (unsigned j = 0; j < myGraphSet->gr.size(); j++) {
 				SVector x(pow(2, mpParameters->mHashBitSize));
 				generate_feature_vector(myGraphSet->gr.at(j), x);
-				//mpData->mKernel.GenerateFeatureVector(myGraphSet->gr.at(j), x, id);
 				sigSet.sigs[j] = ComputeHashSignature(x);
 			}
 
@@ -327,7 +326,7 @@ void MinHashEncoder::LoadDataIntoIndexThreaded(vector<SeqDataSet> myFiles, bool 
 		graphWorkers = mpParameters->mNumThreads;
 	cout << "Using " << graphWorkers << " worker threads and 2 helper threads..." << endl;
 
-	cout << "Computing MinHash signatures on the fly while reading " << myFiles.size() << " files..." << endl;
+	cout << "Computing MinHash signatures on the fly while reading " << myFiles.size() << " file(s)..." << endl;
 	bool updateIndex = true;
 	vector<vector<unsigned> >* myMinHashCache;
 	{

@@ -48,7 +48,7 @@ public:
 		}
 		break;
 		default:
-			throw range_error("ERROR2.2: Unknown action parameter: " + mParameters.mAction);
+			throw range_error("ERROR: Unknown action parameter: " + mParameters.mAction);
 		}
 		pb.Count();
 		cout << "Total run-time:" << endl;
