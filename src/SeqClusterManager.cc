@@ -34,7 +34,7 @@ void SeqClusterManager::Exec() {
 void SeqClusterManager::DenseCluster(ostream& out_c, ostream& out_n) {
 	cout << endl << "Compute neighborhood and density for selected " << mpData->Size() << " instances." << endl;
 	vector<pair<double, unsigned> > DensityList(mpData->Size());
-
+	unsigned fullCollisions = 0;
 	{
 		ProgressBar ppb(1000);
 #ifdef USEMULTITHREAD
@@ -50,10 +50,13 @@ void SeqClusterManager::DenseCluster(ostream& out_c, ostream& out_n) {
 
 			double score = density * neighborhood_list.size();
 			DensityList[i]= make_pair(-score,i);
+			if (collisions == mpParameters->mNumHashFunctions) fullCollisions++;
 			//cout << i << " dens " << density << " size " << neighborhood_list.size() << " coll " << collisions <<  endl;
 			ppb.Count();
 		}
 	}
+	cout << endl << " Instances with complete signature collision (MaxSizeBin): " << fullCollisions << endl;
+
 	cout << endl << " *** Approx-Density Clustering *** " << endl;
 	cout << "sort instances according to neighborhood density score..." << endl;
 
