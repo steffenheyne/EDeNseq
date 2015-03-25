@@ -117,24 +117,24 @@ unsigned APHash(const vector<unsigned>& aV);
 unsigned HashFunc(const string& str, unsigned aBitMask = 2147483647);
 unsigned HashFunc(const vector<unsigned>& aList, unsigned aBitMask = 2147483647);
 
-inline vector<unsigned> ComputeMinHashSignature(SVector& aX, unsigned aNumHashFunctions) {
-	const unsigned MAXUNSIGNED = 2147483647;
-	//prepare a vector containing the k min values
-	vector<unsigned> signature(aNumHashFunctions, MAXUNSIGNED);
-	for (SparseVector<double>::InnerIterator it(aX); it; ++it) {
-		//extract only the feature id (i.e. ignore the actual feature value)
-		unsigned hash_id = it.index();
-		if (hash_id == 0) {
-			hash_id = 1; //force collision between feature 0 and 1 to avoid features with ID=0
-		}
-		for (unsigned k = 0; k < aNumHashFunctions; ++k) { //for all k hashes
-			unsigned new_hash = IntHash(hash_id, MAXUNSIGNED, k); //rehash the feature id with a procedure that is aware of the index k
-			if (new_hash < signature[k])
-				signature[k] = new_hash; //keep the minimum value only
-		}
-	}
-	return signature;
-}
+//inline vector<unsigned> ComputeMinHashSignature(SVector& aX, unsigned aNumHashFunctions) {
+//	const unsigned MAXUNSIGNED = 2147483647;
+//	//prepare a vector containing the k min values
+//	vector<unsigned> signature(aNumHashFunctions, MAXUNSIGNED);
+//	for (SparseVector<double>::InnerIterator it(aX); it; ++it) {
+//		//extract only the feature id (i.e. ignore the actual feature value)
+//		unsigned hash_id = it.index();
+//		if (hash_id == 0) {
+//			hash_id = 1; //force collision between feature 0 and 1 to avoid features with ID=0
+//		}
+//		for (unsigned k = 0; k < aNumHashFunctions; ++k) { //for all k hashes
+//			unsigned new_hash = IntHash(hash_id, MAXUNSIGNED, k); //rehash the feature id with a procedure that is aware of the index k
+//			if (new_hash < signature[k])
+//				signature[k] = new_hash; //keep the minimum value only
+//		}
+//	}
+//	return signature;
+//}
 
 //------------------------------------------------------------------------------------------------------------------------
 ///Returns the time between the creation and destruction of an object of TimerClass
@@ -202,16 +202,6 @@ public:
 protected:
 	vector<double> mV;
 };
-
-//------------------------------------------------------------------------------------------------------------------------
-template<class ForwardIterator, class T>
-void iota(ForwardIterator first, ForwardIterator last, T val) {
-	while (first != last) {
-		*first = val;
-		++first;
-		++val;
-	}
-}
 
 //------------------------------------------------------------------------------------------------------------------------
 class OutputManager{

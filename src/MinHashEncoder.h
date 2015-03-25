@@ -4,7 +4,6 @@
 
 #include "Utility.h"
 #include "Parameters.h"
-//#include "Kernel.h"
 #include "Data.h"
 #include "BaseManager.h"
 #include <streambuf>
@@ -36,8 +35,17 @@ protected:
 	typedef std::shared_ptr<graphQueueS> graphQueueT;
 	typedef std::shared_ptr<sigQueueS> sigQueueT;
 
-	mutable std::mutex mut;
-	std::condition_variable cv;
+	mutable std::mutex mutm;
+	mutable std::mutex mut1;
+	mutable std::mutex mut2;
+	mutable std::mutex mut3;
+
+
+	std::condition_variable cvm;
+	std::condition_variable cv1;
+	std::condition_variable cv2;
+	std::condition_variable cv3;
+
 	vector<std::thread> threads;
 	threadsafe_queue<SeqDataSet> readFile_queue;
 	threadsafe_queue<graphQueueT > graph_queue;
@@ -48,37 +56,31 @@ protected:
 	std::atomic_int instance_counter;
 	std::atomic_int signature_counter;
 
+	unsigned mHashBitMask;
+
 	void worker_readFiles(int numWorkers);
 	void worker_Graph2Signature(int id);
 	void finisher(bool idxUpdate, vector<vector<unsigned> >* myCache);
-
 	void generate_feature_vector(const GraphClass& aG, SVector& x);
 	void InitFeatureCache(unsigned aSize, unsigned aRadius);
 	vector<unsigned> HashFuncNSPDK(const string& aString, unsigned aStart, unsigned aMaxRadius, unsigned aBitMask);
 	unsigned HashFuncNSPDK(const vector<unsigned>& aList, unsigned aBitMask);
 	bool SetGraphFromFASTAFile(istream& in, GraphClass& oG, string& currSeq);
-	unsigned mHashBitMask;
 
 public:
 	MinHashEncoder();
 	MinHashEncoder(Parameters* apParameters, Data* apData);
 	void Init(Parameters* apParameters, Data* apData);
-	void CacheReset();
-	void ComputeInverseIndex();
 	void UpdateInverseIndex(vector<unsigned>& aSignature, unsigned aIndex);
 	void CleanUpInverseIndex();
-	void LoadDataIntoIndex();
 	void LoadDataIntoIndexThreaded(vector<SeqDataSet> myFiles,bool useMinHashCache, vector<vector<unsigned> >* myCache);
 	vector<unsigned> ComputeHashSignature(unsigned aID);
 	vector<unsigned> ComputeHashSignature(SVector& aX);
 	vector<unsigned> ComputeHashSignatureSize(vector<unsigned>& aSignature);
 	void             ComputeApproximateNeighborhoodCore(const vector<unsigned>& aSignature, umap_uint_int& neighborhood, unsigned& collisions);
 	umap_uint_int    ComputeApproximateNeighborhoodExt(const vector<unsigned>& aSignature, unsigned& collisions, double& density);
-
 	vector<unsigned> ComputeApproximateNeighborhood(const vector<unsigned>& aSignature, unsigned& collisions, double& density);
-
-	vector<unsigned> TrimNeighborhood(umap_uint_int& aNeighborhood, unsigned aNeighborhoodSize, unsigned collisions, double& density);
-
+	vector<unsigned> TrimNeighborhood(umap_uint_int& aNeighborhood, unsigned collisions, double& density);
 	double           ComputeApproximateSim(const unsigned& aID, const unsigned& bID);
 	pair<unsigned,unsigned> ComputeApproximateSim(const unsigned& aID, const vector<unsigned>& bSignature);
 };

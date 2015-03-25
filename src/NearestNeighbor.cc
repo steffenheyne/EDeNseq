@@ -6,7 +6,7 @@ BaseManager(apParameters, apData) {
 }
 
 void NearestNeighbor::Init(Parameters* apParameters, Data* apData) {
-	BaseManager::Init(apParameters, apData);
+	//	BaseManager::Init(apParameters, apData);
 	mMinHashEncoder.Init(apParameters, apData);
 }
 
@@ -36,32 +36,33 @@ vector<unsigned> NearestNeighbor::ComputeNeighborhood(unsigned aID) {
 vector<unsigned> NearestNeighbor::ComputeNeighborhood(unsigned aID, unsigned& collisions, double& density) {
 	//cache neighborhoods (if opted for)
 	vector<unsigned> neighborhood_list;
+
 	if (mNeighborhoodCache[aID].size() != 0) {
-			neighborhood_list = mNeighborhoodCache[aID];
-			pair<unsigned, double> tmp = mNeighborhoodCacheInfo[aID];
-			collisions = tmp.first;
-			density = tmp.second;
-		} else {
-				neighborhood_list = ComputeApproximateNeighborhood(aID, collisions, density);
-				mNeighborhoodCacheInfo[aID] = make_pair(collisions,density);
-			mNeighborhoodCache[aID] = neighborhood_list;
-		}
+		neighborhood_list = mNeighborhoodCache[aID];
+		pair<unsigned, double> tmp = mNeighborhoodCacheInfo[aID];
+		collisions = tmp.first;
+		density = tmp.second;
+	} else {
+		neighborhood_list = ComputeApproximateNeighborhood(aID, collisions, density);
+		mNeighborhoodCacheInfo[aID] = make_pair(collisions,density);
+		mNeighborhoodCache[aID] = neighborhood_list;
+	}
 	return neighborhood_list;
 }
 
 umap_uint_int NearestNeighbor::ComputeNeighborhoodExt(unsigned aID, unsigned& collisions, double& density) {
 	//cache neighborhoods (if opted for)
 	umap_uint_int neighborhood_list;
-		if (mNeighborhoodCacheExt[aID].size() != 0) {
-			neighborhood_list = mNeighborhoodCacheExt[aID];
-			pair<unsigned, double> tmp = mNeighborhoodCacheInfo[aID];
-			collisions = tmp.first;
-			density = tmp.second;
-		} else {
-			neighborhood_list = ComputeApproximateNeighborhoodExt(aID,collisions,density);
-			mNeighborhoodCacheExt[aID] = neighborhood_list;
-			mNeighborhoodCacheInfo[aID] = make_pair(collisions,density);
-		}
+	if (mNeighborhoodCacheExt[aID].size() != 0) {
+		neighborhood_list = mNeighborhoodCacheExt[aID];
+		pair<unsigned, double> tmp = mNeighborhoodCacheInfo[aID];
+		collisions = tmp.first;
+		density = tmp.second;
+	} else {
+		neighborhood_list = ComputeApproximateNeighborhoodExt(aID,collisions,density);
+		mNeighborhoodCacheExt[aID] = neighborhood_list;
+		mNeighborhoodCacheInfo[aID] = make_pair(collisions,density);
+	}
 	return neighborhood_list;
 }
 
@@ -69,12 +70,7 @@ umap_uint_int NearestNeighbor::ComputeNeighborhoodExt(unsigned aID, unsigned& co
 vector<unsigned> NearestNeighbor::ComputeApproximateNeighborhood(unsigned aID, unsigned& collisions, double& density) {
 	vector<unsigned> signature = mMinHashEncoder.ComputeHashSignature(aID);
 	vector<unsigned> approximate_neighborhood = mMinHashEncoder.ComputeApproximateNeighborhood(signature, collisions, density);
-//	if (mpParameters->mPureApproximateSim==0){
-//		vector<unsigned> approximate_true_neighborhood = ComputeTrueSubNeighborhood(aID, approximate_neighborhood);
-//		return approximate_true_neighborhood;
-//	} else {
-		return approximate_neighborhood;
-//	}
+	return approximate_neighborhood;
 }
 
 umap_uint_int NearestNeighbor::ComputeApproximateNeighborhoodExt(unsigned aID, unsigned& collisions, double& density) {
@@ -143,7 +139,7 @@ void NearestNeighbor::ComputeSharedNeighborhoods() {
 
 vector<unsigned> NearestNeighbor::ComputeNeighborhood(SVector& aX) {
 	vector<unsigned> neighborhood_list;
-		neighborhood_list = ComputeApproximateNeighborhood(aX);
+	neighborhood_list = ComputeApproximateNeighborhood(aX);
 	return neighborhood_list;
 }
 

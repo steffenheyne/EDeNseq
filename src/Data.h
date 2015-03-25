@@ -21,12 +21,12 @@ struct SeqDataSet {
 class Data {
 	public:
 		Parameters* mpParameters;
-		vector<double> mTargetList;
-		vector<vector<double> > mMultilabelTargetList;
-		vector<SVector> mVectorList;
-		map<unsigned, SVector> mFeatureCorrelationMatrix;
-		vector<unsigned> mRowIndexList;
-		vector<unsigned> mColIndexList;
+		//vector<double> mTargetList;
+		//vector<vector<double> > mMultilabelTargetList;
+		//vector<SVector> mVectorList;
+		//map<unsigned, SVector> mFeatureCorrelationMatrix;
+		//vector<unsigned> mRowIndexList;
+		//vector<unsigned> mColIndexList;
 		bool mDataIsLoaded;
 	protected:
 		unsigned mDataSize;

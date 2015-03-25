@@ -129,7 +129,7 @@ void Data::LoadData(istream& fin) {
 }
 
 void Data::LoadData(bool aLoadIndex = false, bool aLoadTarget = false, bool aLoadMultilabelTarget = false) {
-	mVectorList.clear();
+	//mVectorList.clear();
 	//	mKernel.ParametersSetup();
 	igzstream fin;
 	fin.open(mpParameters->mInputDataFileName.c_str());

@@ -79,7 +79,7 @@ public:
 	double mMaxSizeBin;
 	double mFractionCenterScan;
 	string mClusterType;
-	unsigned mNumHashShinglets;
+	unsigned mNumHashShingles;
 	double mPureApproximateSim;
 
 	string mDirectoryPath;

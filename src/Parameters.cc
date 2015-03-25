@@ -442,7 +442,7 @@ void Parameters::SetupOptions() {
 		ParameterType param;
 		param.mShortSwitch = "";
 		param.mLongSwitch = "num_repeat_hash_functions";
-		param.mShortDescription = "In approximate neighborhood";
+		param.mShortDescription = "Further split up feature space and repeat MinHash <VALUE> times for each slot. 0 is normal MinHash, equal to max=NumHashFunctions*NumHashShingles";
 		param.mTypeCode = POSITIVE_INTEGER;
 		param.mValue = "10";
 		mOptionList.insert(make_pair(param.mLongSwitch, param));
@@ -507,7 +507,7 @@ void Parameters::SetupOptions() {
 	{
 		ParameterType param;
 		param.mShortSwitch = "";
-		param.mLongSwitch = "num_hash_shinglets";
+		param.mLongSwitch = "num_hash_shingles";
 		param.mShortDescription = "Additional compression of an instance signature. Number of signature hash values combined into one hash values. Useful to identify highly similar instances.";
 		param.mTypeCode = POSITIVE_INTEGER;
 		param.mValue = "1";
@@ -745,8 +745,8 @@ void Parameters::Init(int argc, const char** argv) {
 			mFractionCenterScan = stream_cast<double>(param.mValue);
 		if (param.mLongSwitch == "num_repeat_hash_functions")
 			mNumRepeatsHashFunction = stream_cast<unsigned>(param.mValue);
-		if (param.mLongSwitch == "num_hash_shinglets")
-			mNumHashShinglets = stream_cast<double>(param.mValue);
+		if (param.mLongSwitch == "num_hash_shingles")
+			mNumHashShingles = stream_cast<double>(param.mValue);
 		if (param.mLongSwitch == "cluster_type")
 			mClusterType = param.mValue;
 		if (param.mLongSwitch == "numThreads")
@@ -763,6 +763,8 @@ void Parameters::Init(int argc, const char** argv) {
 			mMinRadius = stream_cast<unsigned>(param.mValue);
 		if (param.mLongSwitch == "min_distance")
 			mMinDistance = stream_cast<unsigned>(param.mValue);
+		if (param.mLongSwitch == "pure_approximate_sim")
+			mPureApproximateSim = stream_cast<double>(param.mValue);
 
 	}
 

@@ -22,13 +22,6 @@ void MinHashEncoder::Init(Parameters* apParameters, Data* apData) {
 	mHashBitMask = (2 << (mpParameters->mHashBitSize - 1)) - 1;
 }
 
-void MinHashEncoder::CacheReset() {
-	mMinHashCache.clear();
-		if (mpData->Size() > 0)
-			mMinHashCache.resize(mpData->Size());
-
-}
-
 inline vector<unsigned> MinHashEncoder::HashFuncNSPDK(const string& aString, unsigned aStart, unsigned aMaxRadius, unsigned aBitMask) {
 	unsigned int hash = 0xAAAAAAAA;
 	unsigned effective_end = min((unsigned) aString.size() - 1, aStart + aMaxRadius);
@@ -180,12 +173,13 @@ bool MinHashEncoder::SetGraphFromFASTAFile(istream& in, GraphClass& oG, string& 
 void MinHashEncoder::worker_readFiles(int numWorkers){
 
 	while (!done){
-		SeqDataSet myData;
-		unique_lock<mutex> lk(mut);
-		cv.wait(lk,[&]{if ( (done) || (readFile_queue.try_pop( (myData) ))) return true; else return false;});
-		lk.unlock();
 
-		if (myData.filename != ""){
+		SeqDataSet myData;
+		myData.filename = "";
+		unique_lock<mutex> lk(mut1);
+		cv1.wait(lk,[&]{if ( (done) || (readFile_queue.try_pop(myData))) return true; else return false;});
+		lk.unlock();
+		if (!done && myData.filename != ""){
 			cout << endl << "read next file " << myData.filename << " index " << myData.idx << endl;
 			igzstream fin;
 			fin.open(myData.filename.c_str());
@@ -224,7 +218,9 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 						valid_input = false;
 					} else {
 						i++;
+						lk.lock();
 						instance_counter++;
+						lk.unlock();
 						file_instances++;
 					}
 				}
@@ -232,15 +228,16 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 
 				//cout << " instances read " << instance_counter << " buffer " << currBuff << " full..." << graph_queue.size() << endl;
 				if (graph_queue.size()>=numWorkers*5){
-					unique_lock<mutex> lk(mut);
-					cv.wait(lk,[&]{if ((done) || (graph_queue.size()<=numWorkers*2)) return true; else return false;});
+					unique_lock<mutex> lk(mut2);
+					cv2.wait(lk,[&]{if ((done) || (graph_queue.size()<=numWorkers*2)) return true; else return false;});
 					lk.unlock();
 				}
 				graph_queue.push(std::make_shared<graphQueueS>(grSet));
+				cv2.notify_all();
 			}
-			cout << " instances produced from file " << file_instances << endl;
+			fin.close();
 			files_done++;
-			cv.notify_all();
+			cout << " instances produced from file " << file_instances << endl;
 		}
 	}
 }
@@ -248,10 +245,14 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 void MinHashEncoder::worker_Graph2Signature(int id){
 
 	while (!done){
+
 		graphQueueT myGraphSet;
+		unique_lock<mutex> lk(mut2);
+		cv2.wait(lk,[&]{if ( (done) || (graph_queue.try_pop( (myGraphSet) ))) return true; else return false;});
+		lk.unlock();
 
-		if (graph_queue.try_pop(myGraphSet)) {
-
+		if (!done && myGraphSet->gr.size()>0) {
+			cv2.notify_all();
 			sigQueueS sigSet;
 			sigSet.sigs.resize(myGraphSet->gr.size());
 			sigSet.offset = myGraphSet->offset;
@@ -267,7 +268,7 @@ void MinHashEncoder::worker_Graph2Signature(int id){
 			}
 
 			sig_queue.push(std::make_shared<sigQueueS>(sigSet));
-			cv.notify_all();
+			cv3.notify_all();
 		}
 	}
 }
@@ -275,12 +276,13 @@ void MinHashEncoder::worker_Graph2Signature(int id){
 void MinHashEncoder::finisher(bool idxUpdate, vector<vector<unsigned> >* myC){
 	ProgressBar progress_bar(1000);
 	while (!done){
+
 		sigQueueT mySigSet;
-		unique_lock<mutex> lk(mut);
-		cv.wait(lk,[&]{if ( (done) || (sig_queue.try_pop( (mySigSet) ))) return true; else return false;});
+		unique_lock<mutex> lk(mut3);
+		cv3.wait(lk,[&]{if ( (done) || (sig_queue.try_pop( (mySigSet) ))) return true; else return false;});
 		lk.unlock();
 
-		if (mySigSet->sigs.size()>0) {
+		if (!done && mySigSet->sigs.size()>0) {
 
 			if (idxUpdate){
 				for (unsigned j = 0; j < mySigSet->sigs.size(); j++) {
@@ -295,23 +297,25 @@ void MinHashEncoder::finisher(bool idxUpdate, vector<vector<unsigned> >* myC){
 					myC->at(mySigSet->offset+j) = mySigSet->sigs[j];
 				}
 			}
-
 			signature_counter += mySigSet->sigs.size();
+			cvm.notify_all();
 			//cout << "    finisher updated index with " << mySigSet->sigs.size() << " signatures all_sigs=" <<  signature_counter << " inst=" << instance_counter << endl;
 		}
 		progress_bar.Count(signature_counter);
-		cv.notify_all();
 	}
 }
 
 void MinHashEncoder::LoadDataIntoIndexThreaded(vector<SeqDataSet> myFiles, bool useMinHashCache, vector<vector<unsigned> >* myCache){
 
+	if (mpParameters->mNumRepeatsHashFunction == 0 || mpParameters->mNumRepeatsHashFunction > mpParameters->mNumHashShingles * mpParameters->mNumHashFunctions){
+		mpParameters->mNumRepeatsHashFunction = mpParameters->mNumHashShingles * mpParameters->mNumHashFunctions;
+	}
+
 	cout << "Using " << mpParameters->mNumHashFunctions << " hash functions (with factor " << mpParameters->mNumRepeatsHashFunction << " for single minhash)" << endl;
-	cout << "Using " << mpParameters->mNumHashShinglets << " as hash shinglet factor" << endl;
+	cout << "Using " << mpParameters->mNumHashShingles << " as hash shingle factor" << endl;
 	cout << "Using Feature radius   " << mpParameters->mMinRadius<<".."<<mpParameters->mRadius << endl;
 	cout << "Using Feature distance " << mpParameters->mMinDistance<<".."<<mpParameters->mDistance << endl;
 	cout << "Using FASTA win " << mpParameters->mSeqWindow<<" shift"<<mpParameters->mSeqShift << endl;
-
 
 	done = false;
 	files_done=0;
@@ -324,21 +328,24 @@ void MinHashEncoder::LoadDataIntoIndexThreaded(vector<SeqDataSet> myFiles, bool 
 	cout << "Using " << graphWorkers << " worker threads and 2 helper threads..." << endl;
 
 	cout << "Computing MinHash signatures on the fly while reading " << myFiles.size() << " files..." << endl;
-	for (unsigned i=0;i<myFiles.size(); i++){
-		readFile_queue.push(myFiles[i]);
-	}
-
 	bool updateIndex = true;
 	vector<vector<unsigned> >* myMinHashCache;
-	// use external MinHash cache
-	if ( (useMinHashCache) && (myCache != NULL)) {
-		myMinHashCache = myCache;
-	} else if (useMinHashCache){
-		// use standard cache
-		myMinHashCache = &mMinHashCache;
-	} else
-		// no cache at all, eg. when only index building
-		myMinHashCache = NULL;
+	{
+		unique_lock<mutex> lk(mutm);
+
+		for (unsigned i=0;i<myFiles.size(); i++){
+			readFile_queue.push(myFiles[i]);
+		}
+		// use external MinHash cache
+		if ( (useMinHashCache) && (myCache != NULL)) {
+			myMinHashCache = myCache;
+		} else if (useMinHashCache){
+			// use standard cache
+			myMinHashCache = &mMinHashCache;
+		} else
+			// no cache at all, eg. when only index building
+			myMinHashCache = NULL;
+	}
 
 	//create all threads
 	threads.push_back( std::thread(&MinHashEncoder::finisher,this,updateIndex,myMinHashCache));
@@ -350,55 +357,24 @@ void MinHashEncoder::LoadDataIntoIndexThreaded(vector<SeqDataSet> myFiles, bool 
 	{
 		join_threads joiner(threads);
 
-		unique_lock<mutex> lk(mut);
-		cv.notify_all();
+		unique_lock<mutex> lk(mutm);
+		cv1.notify_all();
 		while(!done){
-			cv.wait(lk,[&]{if ( (files_done<(int)myFiles.size()) || (signature_counter < instance_counter)) return false; else return true;});
+			cvm.wait(lk,[&]{if ( (files_done<(int)myFiles.size()) || (signature_counter < instance_counter)) return false; else return true;});
 			done=true;
-			cv.notify_all();
+			cv1.notify_all();
+			cv2.notify_all();
+			cv3.notify_all();
 		};
 	}
+
 	cout << endl << "Inverse index ratio of overfull bins (maxSizeBin): " << ((double)numFullBins)/((double)numKeys) << endl;
 
-	if (instance_counter > 0)
+	if (instance_counter > 0){
+		mpData->SetDataSize(instance_counter);
 		mpData->mDataIsLoaded = true;
-	else
+	} else
 		throw range_error("ERROR Data::LoadData: something went wrong: data file was expected but no data is available");
-
-	for (int i = 0; i < instance_counter; ++i)
-		mpData->mRowIndexList.push_back(i);
-	for (int i = 0; i < instance_counter; ++i)
-		mpData->mColIndexList.push_back(i);
-
-	mpData->SetDataSize(instance_counter);
-}
-
-void MinHashEncoder::ComputeInverseIndex() {
-	CacheReset();
-	cout << "Computing Inverse Index on " << mpData->mColIndexList.size() << " instances." << endl;
-	cout << "Using " << mpParameters->mNumHashFunctions << " hash functions (with factor " << mpParameters->mNumRepeatsHashFunction << " for single minhash)" << endl;
-	cout << "Using " << mpParameters->mNumHashShinglets << " as hash shinglet factor" << endl;
-	ProgressBar progress_bar;
-	numKeys=0;
-	numFullBins=0;
-#ifdef USEMULTITHREAD
-#pragma omp parallel for schedule(dynamic,100)
-#endif
-	for (unsigned ii = 0; ii < mpData->mColIndexList.size(); ++ii) {
-		//for every instance
-		unsigned i = mpData->mColIndexList[ii];
-		vector<unsigned> signature = ComputeHashSignature(i); //compute the signature
-
-#ifdef USEMULTITHREAD
-#pragma omp critical
-#endif
-		{
-			UpdateInverseIndex(signature, i);
-		}
-		progress_bar.Count();
-	}
-	cout << endl << "Inverse index ratio of overfull bins (maxSizeBin): " << ((double)numFullBins)/((double)numKeys) << endl;
-	//	CleanUpInverseIndex();
 }
 
 void MinHashEncoder::UpdateInverseIndex(vector<unsigned>& aSignature, unsigned aIndex) {
@@ -406,7 +382,7 @@ void MinHashEncoder::UpdateInverseIndex(vector<unsigned>& aSignature, unsigned a
 		unsigned key = aSignature[k];
 		if (key != MAXUNSIGNED && key != 0) { //if key is equal to markers for empty bins then skip insertion instance in data structure
 			if (mInverseIndex[k].count(key) == 0) { //if this is the first time that an instance exhibits that specific value for that hash function, then store for the first time the reference to that instance
-				vector<unsigned> tmp(10,0);
+				vector<unsigned> tmp;
 				tmp.push_back(aIndex);
 				mInverseIndex[k].insert(make_pair(key, tmp));
 				numKeys++; // just for bin statistics
@@ -439,74 +415,6 @@ void MinHashEncoder::CleanUpInverseIndex() {
 	}
 }
 
-void MinHashEncoder::LoadDataIntoIndex(){
-	ProgressBar pb;
-	mpData->mVectorList.clear();
-	//mpData->mKernel.ParametersSetup();
-	igzstream fin;
-	fin.open(mpParameters->mInputDataFileName.c_str());
-	if (!fin)
-		throw range_error("ERROR Data::LoadData: Cannot open file: " + mpParameters->mInputDataFileName);
-
-	cout << "Computing MinHash signatures on the fly while reading file " << mpParameters->mInputDataFileName << endl;
-	cout << "Using " << mpParameters->mNumHashFunctions << " hash functions (with factor " << mpParameters->mNumRepeatsHashFunction << " for single minhash)" << endl;
-	cout << "Using " << mpParameters->mNumHashShinglets << " as hash shinglet factor" << endl;
-
-	bool valid_input = true;
-	unsigned instance_counter = 0;
-	while (!fin.eof() && valid_input) {
-
-		vector<GraphClass> g_list(BUFFER_SIZE);
-		unsigned i = 0;
-		while (i < BUFFER_SIZE && !fin.eof() && valid_input) {
-			mpData->SetGraphFromFile(fin, g_list[i]);
-			if (g_list[i].IsEmpty()) {
-				valid_input = false;
-			} else {
-				i++;
-				instance_counter++;
-			}
-		}
-
-		mMinHashCache.resize(instance_counter);
-
-#ifdef USEMULTITHREAD
-#pragma omp parallel for schedule(dynamic)
-#endif
-		for (unsigned j = 0; j < i; j++) {
-			SVector x(pow(2, mpParameters->mHashBitSize));
-			//mpData->mKernel.GenerateFeatureVector(g_list[j], x);
-			pb.Count();
-
-			unsigned aID = instance_counter-i+j;
-			vector<unsigned> signature = ComputeHashSignature(x);
-			mMinHashCache[aID] = signature;
-		}
-	}
-
-	cout << endl << "Computing InverseIndex from cached signatures " <<  endl;
-	pb.Begin();
-	for (unsigned j = 0; j < instance_counter; j++) {
-		vector<unsigned> signature = mMinHashCache[j];
-		UpdateInverseIndex(signature, j);
-		pb.Count();
-	}
-
-	cout << endl << "Inverse index ratio of overfull bins (maxSizeBin): " << ((double)numFullBins)/((double)numKeys) << endl;
-
-	if (instance_counter > 0)
-		mpData->mDataIsLoaded = true;
-	else
-		throw range_error("ERROR Data::LoadData: something went wrong: data file was expected but no data is available");
-
-	for (unsigned i = 0; i < instance_counter; ++i)
-		mpData->mRowIndexList.push_back(i);
-	for (unsigned i = 0; i < instance_counter; ++i)
-		mpData->mColIndexList.push_back(i);
-
-	mpData->SetDataSize(instance_counter);
-}
-
 vector<unsigned> MinHashEncoder::ComputeHashSignatureSize(vector<unsigned>& aSignature) {
 	vector<unsigned> signature_size(mpParameters->mNumHashFunctions);
 	assert(aSignature.size()==mpParameters->mNumHashFunctions);
@@ -518,19 +426,16 @@ vector<unsigned> MinHashEncoder::ComputeHashSignatureSize(vector<unsigned>& aSig
 }
 
 vector<unsigned> MinHashEncoder::ComputeHashSignature(unsigned aID) {
-		if (mMinHashCache[aID].size() > 0)
-			return mMinHashCache[aID];
-		else {
-			vector<unsigned> signature = ComputeHashSignature(mpData->mVectorList[aID]);
-			mMinHashCache[aID] = signature;
-			mpData->mVectorList[aID].resize(0);
-			return signature;
-		}
+	if (mMinHashCache[aID].size() > 0)
+		return mMinHashCache[aID];
+	else {
+		throw range_error("ERROR cache should be filled!");
+	}
 }
 
 vector<unsigned> MinHashEncoder::ComputeHashSignature(SVector& aX) {
 
-	unsigned numHashFunctionsFull = mpParameters->mNumHashFunctions * mpParameters->mNumHashShinglets;
+	unsigned numHashFunctionsFull = mpParameters->mNumHashFunctions * mpParameters->mNumHashShingles;
 	unsigned sub_hash_range = numHashFunctionsFull / mpParameters->mNumRepeatsHashFunction;
 
 	vector<unsigned> signature(numHashFunctionsFull);
@@ -548,7 +453,8 @@ vector<unsigned> MinHashEncoder::ComputeHashSignature(SVector& aX) {
 			for (unsigned kk = 0; kk < sub_hash_range; ++kk) { //for all k values
 				unsigned lower_bound = MAXUNSIGNED / sub_hash_range * kk;
 				unsigned upper_bound = MAXUNSIGNED / sub_hash_range * (kk + 1);
-
+				// upper bound can be different from MAXUNSIGNED due to rounding effects, correct this
+				if (kk+1==sub_hash_range) upper_bound=MAXUNSIGNED;
 				if (key >= lower_bound && key < upper_bound) { //if we are in the k-th slot
 					unsigned signature_feature = kk + (l - 1) * sub_hash_range;
 					if (key < signature[signature_feature]) //keep the min hash within the slot
@@ -560,13 +466,13 @@ vector<unsigned> MinHashEncoder::ComputeHashSignature(SVector& aX) {
 
 	// compute shingles, i.e. rehash mNumHashShingles hash values into one hash value
 
-	if (mpParameters->mNumHashShinglets == 1 ) {
+	if (mpParameters->mNumHashShingles == 1 ) {
 		return signature;
 	} else {
 		vector<unsigned> signatureFinal(mpParameters->mNumHashFunctions);
 		for (unsigned i=0;i<mpParameters->mNumHashFunctions;i++){
 			vector<unsigned> sigShinglet;
-			for (unsigned j=i*mpParameters->mNumHashShinglets;j<=i*mpParameters->mNumHashShinglets+mpParameters->mNumHashShinglets-1; j++){
+			for (unsigned j=i*mpParameters->mNumHashShingles;j<=i*mpParameters->mNumHashShingles+mpParameters->mNumHashShingles-1; j++){
 				sigShinglet.push_back(signature[j]);
 			}
 			signatureFinal[i] = HashFunc(sigShinglet);
@@ -581,23 +487,23 @@ void  MinHashEncoder::ComputeApproximateNeighborhoodCore(const vector<unsigned>&
 	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k) {
 
 		unsigned hash_id = aSignature[k];
-
+		//cout << "hash func " << k << " id " << hash_id << endl;
 		if (hash_id != 0 && hash_id != MAXUNSIGNED && mInverseIndex[k][hash_id].front() != MAXUNSIGNED) {
 
 			//fill neighborhood set counting number of occurrences
 			for (vector<unsigned>::iterator it = mInverseIndex[k][hash_id].begin(); it != mInverseIndex[k][hash_id].end(); ++it) {
 				unsigned instance_id = *it;
+				//cout << "inst "<< instance_id << endl;
 				if (neighborhood.count(instance_id) > 0)
 					neighborhood[instance_id]++;
 				else
 					neighborhood[instance_id] = 1;
 			}
-
 		} else {
 			collisions++;
 		}
 	}
-
+	//cout << " coll " << collisions << endl;
 }
 
 vector<unsigned> MinHashEncoder::ComputeApproximateNeighborhood(const vector<unsigned>& aSignature, unsigned& collisions, double& density) {
@@ -605,11 +511,9 @@ vector<unsigned> MinHashEncoder::ComputeApproximateNeighborhood(const vector<uns
 	umap_uint_int neighborhood;
 	collisions = 0;
 	density = 0;
-	unsigned aNeighborhoodSize = 0;
-
 	ComputeApproximateNeighborhoodCore(aSignature,neighborhood,collisions);
-
-	return TrimNeighborhood(neighborhood, aNeighborhoodSize, collisions, density);
+	//	cout <<"here "<< aSignature.size() << " " << collisions << " " << mpParameters->mMaxSizeBin << endl;
+	return TrimNeighborhood(neighborhood, collisions, density);
 }
 
 
@@ -617,26 +521,38 @@ umap_uint_int MinHashEncoder::ComputeApproximateNeighborhoodExt(const vector<uns
 
 	umap_uint_int neighborhood;
 	collisions = 0;
-	density = 0;
 
 	ComputeApproximateNeighborhoodCore(aSignature,neighborhood,collisions);
-
-	double myC = (mpParameters->mPureApproximateSim * (mpParameters->mNumHashFunctions - collisions));
-
-	for (umap_uint_int::const_iterator it = neighborhood.begin(); it != neighborhood.end();) {
-		if ( (double)it->second < myC ) {
-			it=neighborhood.erase(it);
-		}	else {
-			density += it->second;
-			it++;
-		}
-	}
-
-	density = ( density / neighborhood.size() ) / (mpParameters->mNumHashFunctions - collisions);
+	vector<unsigned> myN = TrimNeighborhood(neighborhood, collisions, density);
 
 	return neighborhood;
 }
 
+vector<unsigned> MinHashEncoder::TrimNeighborhood(umap_uint_int& aNeighborhood, unsigned collisions, double& density) {
+	vector<unsigned> neighborhood_list;
+	const int MIN_BINS_IN_COMMON = 1; //Minimum number of bins that two instances have to have in common in order to be considered similar
+	//given a list of neighbors with an associated occurrences count, return only a fraction of the highest count ones
+
+	density = 0;
+	double myC = (mpParameters->mPureApproximateSim * (mpParameters->mNumHashFunctions - collisions));
+	//if (myC<MIN_BINS_IN_COMMON) myC=MIN_BINS_IN_COMMON;
+	//cout << "here 2 myC "<< myC << " nsize " << aNeighborhood.size() << " coll " << collisions << endl;
+	for (umap_uint_int::const_iterator it = aNeighborhood.begin(); it != aNeighborhood.end();) {
+		if ( (double)it->second >= myC ) {
+			neighborhood_list.push_back(it->first);
+			density += it->second;
+			it++;
+		} else {
+			it=aNeighborhood.erase(it);
+		}
+	}
+	if (collisions < mpParameters->mNumHashFunctions && neighborhood_list.size()!=0){
+		density = ( density / neighborhood_list.size() ) / (mpParameters->mNumHashFunctions - collisions);
+	} else
+		density = 0;
+
+	return neighborhood_list;
+}
 
 double MinHashEncoder::ComputeApproximateSim(const unsigned& aID, const unsigned& bID) {
 
@@ -669,26 +585,4 @@ pair<unsigned,unsigned> MinHashEncoder::ComputeApproximateSim(const unsigned& aI
 	}
 	pair<unsigned,unsigned> tmp=make_pair(counts_aID,collisions);
 	return tmp;
-}
-
-vector<unsigned> MinHashEncoder::TrimNeighborhood(umap_uint_int& aNeighborhood, unsigned aNeighborhoodSize, unsigned collisions, double& density) {
-	//const int MIN_BINS_IN_COMMON = 2; //Minimum number of bins that two instances have to have in common in order to be considered similar
-	//given a list of neighbors with an associated occurrences count, return only a fraction of the highest count ones
-	vector<unsigned> neighborhood_list;
-
-	if (mpParameters->mPureApproximateSim > 0) {
-
-		density = 0;
-		double myC = (mpParameters->mPureApproximateSim * (mpParameters->mNumHashFunctions - collisions));
-
-		for (umap_uint_int::const_iterator it = aNeighborhood.begin(); it != aNeighborhood.end();it++) {
-			if ( (double)it->second >= myC ) {
-				neighborhood_list.push_back(it->first);
-				density += it->second;
-			}
-		}
-
-		density = ( density / neighborhood_list.size() ) / (mpParameters->mNumHashFunctions - collisions);
-
-	}	return neighborhood_list;
 }

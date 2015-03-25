@@ -23,13 +23,14 @@
 #CHECKLIMITS activates the limit check for graph operations
 
 CXX=g++
-OPTS=-g -O3 -Wno-deprecated -DLOSS=1 -std=c++11 -static -pthread -fopenmp -DUSEMULTITHREAD -DEIGEN_DONT_PARALLELIZE # -DDEBUGON # -DCHECKLIMITS
+OPTS=-g -O3 -Wno-deprecated -DLOSS=1 -std=c++11 -pthread -fopenmp -DUSEMULTITHREAD -DEIGEN_DONT_PARALLELIZE # -DDEBUGON # -DCHECKLIMITS
 #OPTS=-g -Wno-deprecated -DLOSS=1 -static -DEIGEN_DONT_PARALLELIZE # -DDEBUGON # -DCHECKLIMITS
 #OPTS=-g -Wno-deprecated -DLOSS=1 #-DDEBUGON
 #OPTS=-g -Wno-deprecated -static -pg
 CXXFLAGS=${OPTS} -Wall -I eigen-eigen-3.20 # -mtune=native -march=native 
 #CXXFLAGS= ${OPTS} 
-LIBS=-lm -lz -Wl,--whole-archive -lpthread -Wl,--no-whole-archive
+#LIBS=-lm -lz -Wl,--whole-archive -lpthread -Wl,--no-whole-archive
+LIBS=-lm -lz -lpthread
 
 PROGRAMS=EDeNseq	
 

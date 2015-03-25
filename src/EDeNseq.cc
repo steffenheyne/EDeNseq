@@ -17,54 +17,55 @@
 using namespace std;
 
 class Dispatcher {
-	protected:
-		Parameters mParameters;
-		Data mData;
+protected:
+	Parameters mParameters;
+	Data mData;
 
-	public:
-		Dispatcher() {
+public:
+	Dispatcher() {
+	}
+
+	void Init(int argc, const char **argv) {
+		mParameters.Init(argc, argv);
+		srand(mParameters.mRandomSeed);
+		mData.Init(&mParameters);
+	}
+
+	void Exec() {
+		ProgressBar pb;
+
+		cout << SEP << endl << PROG_NAME << endl << "Version: " << PROG_VERSION << endl << "Last Update: " << PROG_DATE << endl << PROG_CREDIT << endl << SEP << endl;
+
+		switch (mParameters.mActionCode) {
+		case CLASSIFY:{
+			SeqClassifyManager seq_classify_manager(&mParameters,&mData);
+			seq_classify_manager.Exec();
 		}
-
-		void Init(int argc, const char **argv) {
-			mParameters.Init(argc, argv);
-			srand(mParameters.mRandomSeed);
-			mData.Init(&mParameters);
+		break;
+		case CLUSTER:{
+			SeqClusterManager cluster_manager(&mParameters, &mData);
+			cluster_manager.Exec();
 		}
-
-		void Exec() {
-			ProgressBar pb;
-
-				cout << SEP << endl << PROG_NAME << endl << "Version: " << PROG_VERSION << endl << "Last Update: " << PROG_DATE << endl << PROG_CREDIT << endl << SEP << endl;
-
-			switch (mParameters.mActionCode) {
-				case CLASSIFY:{
-					SeqClassifyManager seq_classify_manager(&mParameters,&mData);
-					seq_classify_manager.Exec();
-				}
-					break;
-				case CLUSTER:{
-					SeqClusterManager cluster_manager(&mParameters, &mData);
-					cluster_manager.Exec();
-				}
-					break;
-				default:
-					throw range_error("ERROR2.2: Unknown action parameter: " + mParameters.mAction);
-			}
-			pb.Count();
-			cout << "Total run-time:" << endl;
+		break;
+		default:
+			throw range_error("ERROR2.2: Unknown action parameter: " + mParameters.mAction);
 		}
+		pb.Count();
+		cout << "Total run-time:" << endl;
+	}
 };
 
 
 
 int main(int argc, const char **argv) {
-
-	Parameters mParameters;
-	Data mData;
-	mParameters.Init(argc, argv);
-	srand(mParameters.mRandomSeed);
-	mData.Init(&mParameters);
-
+	try {
+		Eigen::initParallel();
+		Dispatcher myDispatcher;
+		myDispatcher.Init(argc,argv);
+		myDispatcher.Exec();
+	} catch (exception& e) {
+		cerr << e.what() << endl;
+	}
 
 	return 0;
 }
