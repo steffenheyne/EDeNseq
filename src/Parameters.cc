@@ -315,7 +315,7 @@ void Parameters::SetupOptions() {
 		param.mLongSwitch = "hash_bit_size";
 		param.mShortDescription = "Kernel parameter.";
 		param.mTypeCode = POSITIVE_INTEGER;
-		param.mValue = "15";
+		param.mValue = "30";
 		mOptionList.insert(make_pair(param.mLongSwitch, param));
 		{
 			vector<ParameterType*>& vec = mActionOptionList[CLUSTER];
@@ -404,9 +404,9 @@ void Parameters::SetupOptions() {
 		ParameterType param;
 		param.mShortSwitch = "F";
 		param.mLongSwitch = "num_hash_functions";
-		param.mShortDescription = "In CLUSTER";
+		param.mShortDescription = "Number of random hash functions and length of signature";
 		param.mTypeCode = POSITIVE_INTEGER;
-		param.mValue = "400";
+		param.mValue = "100";
 		mOptionList.insert(make_pair(param.mLongSwitch, param));
 		{
 			vector<ParameterType*>& vec = mActionOptionList[CLUSTER];
@@ -423,17 +423,12 @@ void Parameters::SetupOptions() {
 			ParameterType param;
 			param.mShortSwitch = "";
 			param.mLongSwitch = "pure_approximate_sim";
-			param.mShortDescription = "In CLUSTER. Calculation of the approximate neighborhood of an instance is only based on minHash signatures. Parameter value is between ]0..1] and determines the minimal fraction of common min-hash bins/hashes (similarity) of elements in the approximate neighborhood. 0=OFF and higher values also turn off e.g. -x etc.";
+			param.mShortDescription = "Calculation of the approximate neighborhood of an instance is only based on minHash signatures. Parameter value is between ]0..1] and determines the minimal fraction of common min-hash bins/hashes (similarity) of elements in the approximate neighborhood. 0=OFF and higher values also turn off e.g. -x etc.";
 			param.mTypeCode = REAL;
-			param.mValue = "0";
+			param.mValue = "0.5";
 			mOptionList.insert(make_pair(param.mLongSwitch, param));
 			{
 				vector<ParameterType*>& vec = mActionOptionList[CLUSTER];
-				ParameterType& p = mOptionList[param.mLongSwitch];
-				vec.push_back(&p);
-			}
-			{
-				vector<ParameterType*>& vec = mActionOptionList[CLASSIFY];
 				ParameterType& p = mOptionList[param.mLongSwitch];
 				vec.push_back(&p);
 			}
@@ -444,7 +439,7 @@ void Parameters::SetupOptions() {
 		param.mLongSwitch = "num_repeat_hash_functions";
 		param.mShortDescription = "Further split up feature space and repeat MinHash <VALUE> times for each slot. 0 is normal MinHash, equal to max=NumHashFunctions*NumHashShingles";
 		param.mTypeCode = POSITIVE_INTEGER;
-		param.mValue = "10";
+		param.mValue = "0";
 		mOptionList.insert(make_pair(param.mLongSwitch, param));
 		{
 			vector<ParameterType*>& vec = mActionOptionList[CLUSTER];
@@ -461,42 +456,9 @@ void Parameters::SetupOptions() {
 		ParameterType param;
 		param.mShortSwitch = "z";
 		param.mLongSwitch = "max_size_bin";
-		param.mShortDescription = "In CLUSTER.  Expressed as the maximum number of instances per bin. When a bin contains references to more instances than this quantity, then the bin is erased. The ratio is that in these case the corresponding feature is common to too many instances and it is therefore not informative. Moreover the run-times become non sub-linear if each approximate neighborhood query implies to check a significant fraction of the data set.";
+		param.mShortDescription = "Maximum number of instances per bin in reverse index. When a bin contains references to more instances than this quantity, then the bin is erased. The ratio is that in these case the corresponding feature is common to too many instances and it is therefore not informative. Moreover the run-times become non sub-linear if each approximate neighborhood query implies to check a significant fraction of the data set.";
 		param.mTypeCode = REAL;
 		param.mValue = "1000";
-		mOptionList.insert(make_pair(param.mLongSwitch, param));
-		{
-			vector<ParameterType*>& vec = mActionOptionList[CLUSTER];
-			ParameterType& p = mOptionList[param.mLongSwitch];
-			vec.push_back(&p);
-		}
-		{
-			vector<ParameterType*>& vec = mActionOptionList[CLASSIFY];
-			ParameterType& p = mOptionList[param.mLongSwitch];
-			vec.push_back(&p);
-		}
-	}
-	{
-		ParameterType param;
-		param.mShortSwitch = "";
-		param.mLongSwitch = "fraction_center_scan";
-		param.mShortDescription = "In CLUSTER";
-		param.mTypeCode = REAL;
-		param.mValue = "0.5";
-		mOptionList.insert(make_pair(param.mLongSwitch, param));
-		{
-			vector<ParameterType*>& vec = mActionOptionList[CLUSTER];
-			ParameterType& p = mOptionList[param.mLongSwitch];
-			vec.push_back(&p);
-		}
-	}
-	{
-		ParameterType param;
-		param.mShortSwitch = "w";
-		param.mLongSwitch = "neighborhood_intersection_size";
-		param.mShortDescription = "";
-		param.mTypeCode = POSITIVE_INTEGER;
-		param.mValue = "3";
 		mOptionList.insert(make_pair(param.mLongSwitch, param));
 		{
 			vector<ParameterType*>& vec = mActionOptionList[CLUSTER];
@@ -568,14 +530,9 @@ void Parameters::SetupOptions() {
 		param.mLongSwitch = "seq_window";
 		param.mShortDescription = "For FASTA files only! Defines the fragment length of sequences used for encoding! 0 = use full always the full length sequence.";
 		param.mTypeCode = POSITIVE_INTEGER;
-		param.mValue = "0";
 		mOptionList.insert(make_pair(param.mLongSwitch, param));
 		{
-			vector<ParameterType*>& vec = mActionOptionList[CLUSTER];
-			ParameterType& p = mOptionList[param.mLongSwitch];
-			vec.push_back(&p);
-		}
-		{
+			param.mValue = "100";
 			vector<ParameterType*>& vec = mActionOptionList[CLASSIFY];
 			ParameterType& p = mOptionList[param.mLongSwitch];
 			vec.push_back(&p);
@@ -589,11 +546,6 @@ void Parameters::SetupOptions() {
 		param.mTypeCode = REAL;
 		param.mValue = "0";
 		mOptionList.insert(make_pair(param.mLongSwitch, param));
-		{
-			vector<ParameterType*>& vec = mActionOptionList[CLUSTER];
-			ParameterType& p = mOptionList[param.mLongSwitch];
-			vec.push_back(&p);
-		}
 		{
 			vector<ParameterType*>& vec = mActionOptionList[CLASSIFY];
 			ParameterType& p = mOptionList[param.mLongSwitch];
@@ -647,16 +599,25 @@ void Parameters::SetupOptions() {
 		param.mValue = "";
 		mOptionList.insert(make_pair(param.mLongSwitch, param));
 		{
-			vector<ParameterType*>& vec = mActionOptionList[CLUSTER];
-			ParameterType& p = mOptionList[param.mLongSwitch];
-			vec.push_back(&p);
-		}
-		{
 			vector<ParameterType*>& vec = mActionOptionList[CLASSIFY];
 			ParameterType& p = mOptionList[param.mLongSwitch];
 			vec.push_back(&p);
 		}
 	}
+	{
+			ParameterType param;
+			param.mShortSwitch = "";
+			param.mLongSwitch = "write_approx_neighbors";
+			param.mShortDescription = "Writes all found approximate neighbors for each instance to file 'approx_dense_centers>'.";
+			param.mTypeCode = FLAG;
+			param.mValue = "0";
+			mOptionList.insert(make_pair(param.mLongSwitch, param));
+			{
+				vector<ParameterType*>& vec = mActionOptionList[CLUSTER];
+				ParameterType& p = mOptionList[param.mLongSwitch];
+				vec.push_back(&p);
+			}
+		}
 }
 
 void Parameters::Usage(string aCommandName, string aCompactOrExtended) {
@@ -718,6 +679,8 @@ void Parameters::Init(int argc, const char** argv) {
 				mInputDataFileName = param.mValue;
 			if (param.mShortSwitch == "V")
 				mVerbose = true;
+			if (param.mLongSwitch == "write_approx_neighbors")
+				mWriteApproxNeighbors = true;
 		}
 
 

@@ -91,6 +91,7 @@ public:
 	double mSeqShift;
 	unsigned mMinRadius;
 	unsigned mMinDistance;
+	bool mWriteApproxNeighbors;
 
 public:
 	Parameters();
