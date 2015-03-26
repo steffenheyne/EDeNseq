@@ -12,7 +12,7 @@ public:
    void Exec();
 protected:
    NearestNeighbor mNearestNeighbor;
-   void DenseCluster(ostream& out_c, ostream& out_n);
+   void DenseCluster();
 };
 
 #endif /* CLUSTER_MANAGER_H */

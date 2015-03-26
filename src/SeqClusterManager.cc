@@ -20,18 +20,14 @@ SeqClusterManager::SeqClusterManager(Parameters* apParameters, Data* apData)
 
 void SeqClusterManager::Exec() {
 	ProgressBar pb;
-	OutputManager on("approx_dense_centers", mpParameters->mDirectoryPath);
-	OutputManager oc("approx_dense_cluster", mpParameters->mDirectoryPath);
 
-	DenseCluster(oc.mOut,on.mOut);
+	DenseCluster();
 
-	cout << endl << "Approx dense cluster results written in file " << oc.GetFullPathFileName() << endl;
-	cout << "Approx dense center results written in file " << on.GetFullPathFileName() << endl;
 	pb.Count();
 	cout << endl << "Total clustering time:" << endl;
 }
 
-void SeqClusterManager::DenseCluster(ostream& out_c, ostream& out_n) {
+void SeqClusterManager::DenseCluster() {
 	cout << endl << "Compute neighborhood and density for selected " << mpData->Size() << " instances." << endl;
 	vector<pair<double, unsigned> > DensityList(mpData->Size());
 	unsigned fullCollisions = 0;
@@ -133,24 +129,34 @@ void SeqClusterManager::DenseCluster(ostream& out_c, ostream& out_n) {
 
 	cout << "Found " << clusters.size() << " clusters - output them now ..." << endl;
 
-	for (umap_uint_vec_uint::const_iterator it = clusters.begin(); it != clusters.end(); ++it) {
-		out_c << it->first << "    ";
-		for (vector<unsigned>::const_iterator mIt = it->second.begin(); mIt != it->second.end(); ++mIt) {
-			out_c << *mIt << " ";
-		}
-		out_c << endl;
-	}
+	// OUTPUT ---------
 
-	//output all info: id of neighbour, similarity of neighbor, target of neighbor
-	cout << "Output all ranked Neighborhoods..." << endl;
-	for (	unsigned i = 0; i < DensityList.size(); ++i) {
-		//unsigned ii = mpData->mRowIndexList[DensityList[i].second];
-		out_n << i << ":" << -DensityList[i].first <<  "    ";
-		neighborhood_list = mNearestNeighbor.ComputeNeighborhood(i,collisions,density);
-		for (vector<unsigned>::const_iterator it = neighborhood_list.begin(); it != neighborhood_list.end(); ++it) {
-			out_n << *it << " ";
+
+	OutputManager out_c("approx_dense_cluster", mpParameters->mDirectoryPath);
+
+	for (umap_uint_vec_uint::const_iterator it = clusters.begin(); it != clusters.end(); ++it) {
+		out_c.mOut << it->first << "    ";
+		for (vector<unsigned>::const_iterator mIt = it->second.begin(); mIt != it->second.end(); ++mIt) {
+			out_c.mOut << *mIt << " ";
 		}
-		out_n << endl;
+		out_c.mOut << endl;
+	}
+	cout << endl << "Approx dense cluster results written in file " << out_c.GetFullPathFileName() << endl;
+
+	if (mpParameters->mWriteApproxNeighbors){
+		//output all info: id of neighbour, similarity of neighbor, target of neighbor
+		OutputManager out_n("approx_dense_centers", mpParameters->mDirectoryPath);
+		cout << "Output all ranked Neighborhoods..." << endl;
+		for (	unsigned i = 0; i < DensityList.size(); ++i) {
+			//unsigned ii = mpData->mRowIndexList[DensityList[i].second];
+			out_n.mOut << i << ":" << -DensityList[i].first <<  "    ";
+			neighborhood_list = mNearestNeighbor.ComputeNeighborhood(i,collisions,density);
+			for (vector<unsigned>::const_iterator it = neighborhood_list.begin(); it != neighborhood_list.end(); ++it) {
+				out_n.mOut << *it << " ";
+			}
+			out_n.mOut << endl;
+		}
+		cout << "Approx dense center results written in file " << out_n.GetFullPathFileName() << endl;
 	}
 }
 
