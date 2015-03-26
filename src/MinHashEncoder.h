@@ -12,7 +12,20 @@ using namespace std;
 
 
 class MinHashEncoder {
+
+public:
+	enum INDEXTypeE {
+			CLUSTER, CLASSIFY
+		};
+
+		typedef INDEXTypeE INDEXType;
+
+	vector<SeqDataSet> indexDataSets;
+
 protected:
+
+	INDEXType	indexType;
+
 	Parameters* mpParameters;
 	Data* mpData;
 	vector<umap_uint_vec_uint> mInverseIndex;
@@ -69,9 +82,10 @@ protected:
 
 public:
 	MinHashEncoder();
-	MinHashEncoder(Parameters* apParameters, Data* apData);
-	void Init(Parameters* apParameters, Data* apData);
+	MinHashEncoder(Parameters* apParameters, Data* apData, INDEXType apIndexType=CLUSTER);
+	void Init(Parameters* apParameters, Data* apData, INDEXType apIndexType=CLUSTER);
 	void UpdateInverseIndex(vector<unsigned>& aSignature, unsigned aIndex);
+	void UpdateInverseIndexHist(vector<unsigned>& aSignature, unsigned aIndex);
 	void CleanUpInverseIndex();
 	void LoadDataIntoIndexThreaded(vector<SeqDataSet> myFiles,bool useMinHashCache, vector<vector<unsigned> >* myCache);
 	vector<unsigned> ComputeHashSignature(unsigned aID);

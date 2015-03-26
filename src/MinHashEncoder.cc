@@ -4,11 +4,11 @@ MinHashEncoder::MinHashEncoder() :
 mpParameters(NULL), mpData(NULL) {
 }
 
-MinHashEncoder::MinHashEncoder(Parameters* apParameters, Data* apData) {
-	Init(apParameters, apData);
+MinHashEncoder::MinHashEncoder(Parameters* apParameters, Data* apData, INDEXType apIndexType) {
+	Init(apParameters, apData, apIndexType);
 }
 
-void MinHashEncoder::Init(Parameters* apParameters, Data* apData) {
+void MinHashEncoder::Init(Parameters* apParameters, Data* apData, INDEXType apIndexType) {
 	mpParameters = apParameters;
 	mpData = apData;
 	numKeys=0;
@@ -20,6 +20,8 @@ void MinHashEncoder::Init(Parameters* apParameters, Data* apData) {
 	}
 	mHashBitMask = numeric_limits<unsigned>::max() >> 1;
 	mHashBitMask = (2 << (mpParameters->mHashBitSize - 1)) - 1;
+	indexType = apIndexType;
+	cout << "indexType " << indexType << endl;
 }
 
 inline vector<unsigned> MinHashEncoder::HashFuncNSPDK(const string& aString, unsigned aStart, unsigned aMaxRadius, unsigned aBitMask) {
@@ -284,8 +286,16 @@ void MinHashEncoder::finisher(bool idxUpdate, vector<vector<unsigned> >* myC){
 		if (!done && mySigSet->sigs.size()>0) {
 
 			if (idxUpdate){
-				for (unsigned j = 0; j < mySigSet->sigs.size(); j++) {
-					UpdateInverseIndex(mySigSet->sigs[j], mySigSet->offset+j);
+				switch (indexType) {
+				case CLUSTER:
+					for (unsigned j = 0; j < mySigSet->sigs.size(); j++) {
+						UpdateInverseIndex(mySigSet->sigs[j], mySigSet->offset+j);
+					}
+					break;
+				case CLASSIFY:
+					break;
+				default:
+					throw range_error("Cannot update index! Index Type not recognized.");
 				}
 			}
 
@@ -328,10 +338,9 @@ void MinHashEncoder::LoadDataIntoIndexThreaded(vector<SeqDataSet> myFiles, bool 
 
 	cout << "Computing MinHash signatures on the fly while reading " << myFiles.size() << " file(s)..." << endl;
 	bool updateIndex = true;
+
 	vector<vector<unsigned> >* myMinHashCache;
 	{
-		unique_lock<mutex> lk(mutm);
-
 		for (unsigned i=0;i<myFiles.size(); i++){
 			readFile_queue.push(myFiles[i]);
 		}
@@ -367,7 +376,7 @@ void MinHashEncoder::LoadDataIntoIndexThreaded(vector<SeqDataSet> myFiles, bool 
 		};
 	}
 
-	cout << endl << "Inverse index ratio of overfull bins (maxSizeBin): " << ((double)numFullBins)/((double)numKeys) << endl;
+	cout << endl << "Inverse index ratio of overfull bins (maxSizeBin): " << ((double)numFullBins)/((double)numKeys) << " "<< numFullBins << "/" << numKeys << " instances " << instance_counter << endl;
 
 	if (instance_counter > 0){
 		mpData->SetDataSize(instance_counter);
@@ -393,6 +402,23 @@ void MinHashEncoder::UpdateInverseIndex(vector<unsigned>& aSignature, unsigned a
 				numFullBins++; // just for bin statistics
 				mInverseIndex[k][key].clear();
 				mInverseIndex[k][key].push_back(MAXUNSIGNED);
+			}
+		}
+	}
+}
+
+void MinHashEncoder::UpdateInverseIndexHist(vector<unsigned>& aSignature, unsigned aIndex) {
+	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k) { //for every hash value
+		unsigned key = aSignature[k];
+		if (key != MAXUNSIGNED && key != 0) { //if key is equal to markers for empty bins then skip insertion instance in data structure
+			if (mInverseIndex[k].count(key) == 0) { //if this is the first time that an instance exhibits that specific value for that hash function, then store for the first time the reference to that instance
+				vector<unsigned> tmp(indexDataSets.size(),0);
+				tmp[aIndex]++;
+				mInverseIndex[k].insert(make_pair(key, tmp));
+				numKeys++; // just for bin statistics
+			} else {
+				// add key to bin if we not have a full bin
+				mInverseIndex[k][key][aIndex]++;
 			}
 		}
 	}
@@ -528,13 +554,10 @@ umap_uint_int MinHashEncoder::ComputeApproximateNeighborhoodExt(const vector<uns
 }
 
 vector<unsigned> MinHashEncoder::TrimNeighborhood(umap_uint_int& aNeighborhood, unsigned collisions, double& density) {
-	vector<unsigned> neighborhood_list;
-	const int MIN_BINS_IN_COMMON = 1; //Minimum number of bins that two instances have to have in common in order to be considered similar
-	//given a list of neighbors with an associated occurrences count, return only a fraction of the highest count ones
 
+	vector<unsigned> neighborhood_list;
 	density = 0;
 	double myC = (mpParameters->mPureApproximateSim * (mpParameters->mNumHashFunctions - collisions));
-	//if (myC<MIN_BINS_IN_COMMON) myC=MIN_BINS_IN_COMMON;
 	//cout << "here 2 myC "<< myC << " nsize " << aNeighborhood.size() << " coll " << collisions << endl;
 	for (umap_uint_int::const_iterator it = aNeighborhood.begin(); it != aNeighborhood.end();) {
 		if ( (double)it->second >= myC ) {
