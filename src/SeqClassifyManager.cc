@@ -9,7 +9,7 @@
 
 
 SeqClassifyManager::SeqClassifyManager(Parameters* apParameters, Data* apData):
-BaseManager(apParameters, apData), mMinHashEncoder(apParameters, apData) {
+BaseManager(apParameters, apData), mMinHashEncoder(apParameters, apData, MinHashEncoder::CLASSIFY) {
 }
 
 vector<SeqDataSet> SeqClassifyManager::LoadIndexDataList(string filename){
@@ -39,5 +39,9 @@ vector<SeqDataSet> SeqClassifyManager::LoadIndexDataList(string filename){
 void SeqClassifyManager::Exec() {
 
 	vector<SeqDataSet> fileList = LoadIndexDataList(mpParameters->mIndexDataList.c_str());
+
+	// load data (genomes) and create inverse MinHash index against that we can classify
 	mMinHashEncoder.LoadDataIntoIndexThreaded(fileList,false,NULL);
+
+	// save Index to disk
 }
