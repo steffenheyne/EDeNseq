@@ -100,94 +100,21 @@ void MinHashEncoder::generate_feature_vector(const GraphClass& aG, SVector& x) {
 	x /= x.norm();
 }
 
-bool MinHashEncoder::SetGraphFromFASTAFile(istream& in, GraphClass& oG, string& currSeq) {
-	vector<bool> vertex_status(5, false);
-	vertex_status[0] = true; //kernel point
-	vertex_status[1] = true; //kind
-	vertex_status[2] = true; //viewpoint
-	vertex_status[3] = false; //dead
-	vertex_status[4] = false; //abstraction
-
-	bool success_status = false;
-
-	unsigned win=mpParameters->mSeqWindow;
-	unsigned shift = (unsigned)((double)win*mpParameters->mSeqShift);
-
-	if (currSeq.size() == 0){
-		in >> std::ws;
-	}
-
-	char c = in.peek();
-	string header;
-	bool newSeq=false;
-	//cout << "here "<< " " << currSeq.size() << " " << in.eof() << " c "  << c << endl;
-	if (!in.eof() && c != EOF && c=='>' && currSeq.size() == 0 ){
-		getline(in, header,'>');
-		getline(in, header);
-		getline(in, currSeq,'>');
-
-		currSeq.erase(std::remove(currSeq.begin(), currSeq.end(), '\n'),currSeq.end());
-		currSeq.erase(std::remove(currSeq.begin(), currSeq.end(), ' '),currSeq.end());
-		std::transform(currSeq.begin(), currSeq.end(), currSeq.begin(), ::toupper);
-		in.unget();
-		if (currSeq.size()==0 || header.size()==0)
-			throw range_error("ERROR FASTA reader - empty Sequence or header found! Header:"+header);
-		//cout << " found seq " << header << " " << currSeq.size() << " length" << " EOF? "<< in.eof() << endl;
-		newSeq=true;
-	} else if (c != '>' && c != EOF && c!= '\n') {
-		throw range_error("ERROR FASTA format error!");
-	}
-
-	if (currSeq.size() > 0 ) {
-
-		// default case for window/shift
-		unsigned currSize = win;
-		// case now window/shift
-		if (win==0){
-			currSize = currSeq.size();
-		} else if (win>currSeq.size()) {
-			// case seq left is smaller than win
-			currSize=currSeq.size();
-		}
-
-		if (currSize>=win){
-
-			string graphSeq = currSeq.substr(0,currSize);
-			//cout << graphSeq << " " << currSeq.size() << " " << currSize << " " << in.eof() << endl;
-			unsigned real_vertex_index = oG.InsertVertex();
-			vector<string> vertex_symbolic_attribute_list(1);
-			vertex_symbolic_attribute_list[0] = graphSeq;
-			oG.SetVertexSymbolicAttributeList(real_vertex_index, vertex_symbolic_attribute_list);
-			oG.SetVertexStatusAttributeList(real_vertex_index, vertex_status);
-		} else if (newSeq){
-			throw range_error("ERROR FASTA reader! Too short sequence found. Either use win=0 or increase window size!");
-		}
-
-		if (win>0 && currSeq.size()-shift>=win){
-			currSeq.erase(0,shift);
-		} else if (currSeq.size()-shift<win || win == 0)
-			currSeq="";
-		success_status = true;
-	}
-	return success_status;
-}
-
 void MinHashEncoder::worker_readFiles(int numWorkers){
 
 	while (!done){
 
-		SeqDataSet myData;
-		myData.filename = "";
+		SeqDataSetP myData;
 		unique_lock<mutex> lk(mut1);
 		cv1.wait(lk,[&]{if ( (done) || (readFile_queue.try_pop(myData))) return true; else return false;});
 		lk.unlock();
-		if (!done && myData.filename != ""){
-			cout << endl << "read next file " << myData.filename << " index " << myData.idx << endl;
+		if (!done && myData->filename != ""){
+			cout << endl << "read next file " << myData->filename << " index " << myData->idx << endl;
 			igzstream fin;
-			fin.open(myData.filename.c_str());
+			fin.open(myData->filename.c_str());
 
 			if (!fin)
-				throw range_error("ERROR Data::LoadData: Cannot open file: " + myData.filename);
+				throw range_error("ERROR Data::LoadData: Cannot open file: " + myData->filename);
 
 			bool valid_input = true;
 			int file_instances = 0;
@@ -197,99 +124,95 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 				unsigned maxB = max(100,(int)log2((double)signature_counter)*50);
 				unsigned currBuff = rand()%(maxB*2 - maxB + 1) + maxB;
 
-				graphQueueS grSet;
-				grSet.gr.resize(currBuff);
-				grSet.id = myData.idx;
-				grSet.offset= file_instances;
+				workQueueS myDataChunk;
+				myDataChunk.gr.resize(currBuff);
+				myDataChunk.offset= file_instances;
+				myDataChunk.dataSet = &(*myData);
 
 				unsigned i = 0;
 				while (i < currBuff && !fin.eof() && valid_input) {
 
-					switch (myData.filetype) {
+					switch (myData->filetype) {
 					case FASTA:
-						SetGraphFromFASTAFile(fin, grSet.gr.at(i),currSeq);
+						mpData->SetGraphFromFASTAFile(fin, myDataChunk.gr.at(i),currSeq);
 						break;
 					case STRINGSEQ:
-						mpData->SetGraphFromFile(fin, grSet.gr.at(i));
+						mpData->SetGraphFromFile(fin, myDataChunk.gr.at(i));
 						break;
 					default:
-						throw range_error("ERROR Data::LoadData: file type not recognized: " + myData.filetype);
+						throw range_error("ERROR Data::LoadData: file type not recognized: " + myData->filetype);
 					}
 
-					if (grSet.gr.at(i).IsEmpty()) {
+					if (myDataChunk.gr.at(i).IsEmpty()) {
 						valid_input = false;
 					} else {
 						i++;
-						lk.lock();
 						instance_counter++;
-						lk.unlock();
 						file_instances++;
 					}
 				}
-				grSet.gr.resize(i);
+				myDataChunk.gr.resize(i);
 
-				//cout << " instances read " << instance_counter << " buffer " << currBuff << " full..." << graph_queue.size() << endl;
+				//cout << " instances read " << instance_counter << " " << myDataChunk.gr.size() << " buffer " << currBuff << " full..." << graph_queue.size() << endl;
 				if (graph_queue.size()>=numWorkers*5){
 					unique_lock<mutex> lk(mut2);
 					cv2.wait(lk,[&]{if ((done) || (graph_queue.size()<=numWorkers*2)) return true; else return false;});
 					lk.unlock();
 				}
-				graph_queue.push(std::make_shared<graphQueueS>(grSet));
+
+				graph_queue.push(std::make_shared<workQueueS> (myDataChunk));
 				cv2.notify_all();
 			}
 			fin.close();
 			files_done++;
+			myData->numSequences = file_instances;
 			cout << " instances produced from file " << file_instances << endl;
 		}
 	}
 }
 
-void MinHashEncoder::worker_Graph2Signature(int id){
+void MinHashEncoder::worker_Graph2Signature(){
 
 	while (!done){
 
-		graphQueueT myGraphSet;
+		workQueueT myData;
 		unique_lock<mutex> lk(mut2);
-		cv2.wait(lk,[&]{if ( (done) || (graph_queue.try_pop( (myGraphSet) ))) return true; else return false;});
+		cv2.wait(lk,[&]{if ( (done) || (graph_queue.try_pop( (myData) ))) return true; else return false;});
 		lk.unlock();
 
-		if (!done && myGraphSet->gr.size()>0) {
+		if (!done && myData->gr.size()>0) {
 			cv2.notify_all();
-			sigQueueS sigSet;
-			sigSet.sigs.resize(myGraphSet->gr.size());
-			sigSet.offset = myGraphSet->offset;
-			sigSet.id = myGraphSet->id;
+			myData->sigs.resize(myData->gr.size());
 
-			//cout << "  graph2sig thread got chunk " << myGraphSet->gr.size() << " offset " << myGraphSet->offset << " threadID " << " id " << id << endl;
+			//cout << "  graph2sig thread got chunk " << myData->gr.size() << " offset " << myData->offset << " idx " << myData->dataSet->idx <<  " " << mpParameters->mHashBitSize << endl;
 
-			for (unsigned j = 0; j < myGraphSet->gr.size(); j++) {
+			for (unsigned j = 0; j < myData->gr.size(); j++) {
 				SVector x(pow(2, mpParameters->mHashBitSize));
-				generate_feature_vector(myGraphSet->gr.at(j), x);
-				sigSet.sigs[j] = ComputeHashSignature(x);
+				generate_feature_vector(myData->gr[j], x);
+				myData->sigs[j] = ComputeHashSignature(x);
 			}
 
-			sig_queue.push(std::make_shared<sigQueueS>(sigSet));
+			sig_queue.push(myData);
 			cv3.notify_all();
 		}
 	}
 }
 
-void MinHashEncoder::finisher(bool idxUpdate, vector<vector<unsigned> >* myC){
+void MinHashEncoder::finisher(vector<vector<unsigned> >* myC){
 	ProgressBar progress_bar(1000);
 	while (!done){
 
-		sigQueueT mySigSet;
+		workQueueT myData;
 		unique_lock<mutex> lk(mut3);
-		cv3.wait(lk,[&]{if ( (done) || (sig_queue.try_pop( (mySigSet) ))) return true; else return false;});
+		cv3.wait(lk,[&]{if ( (done) || (sig_queue.try_pop( (myData) ))) return true; else return false;});
 		lk.unlock();
 
-		if (!done && mySigSet->sigs.size()>0) {
-
-			if (idxUpdate){
+		if (!done && myData->sigs.size()>0) {
+			if (myData->dataSet->updateIndex){
 				switch (indexType) {
 				case CLUSTER:
-					for (unsigned j = 0; j < mySigSet->sigs.size(); j++) {
-						UpdateInverseIndex(mySigSet->sigs[j], mySigSet->offset+j);
+					for (unsigned j = 0; j < myData->sigs.size(); j++) {
+						UpdateInverseIndex(myData->sigs[j], myData->offset+j);
 					}
 					break;
 				case CLASSIFY:
@@ -300,13 +223,14 @@ void MinHashEncoder::finisher(bool idxUpdate, vector<vector<unsigned> >* myC){
 			}
 
 			if (myC){
-				if (myC->size()<mySigSet->offset+mySigSet->sigs.size())
-					myC->resize(mySigSet->offset+mySigSet->sigs.size());
-				for (unsigned j = 0; j < mySigSet->sigs.size(); j++) {
-					myC->at(mySigSet->offset+j) = mySigSet->sigs[j];
+				if (myC->size()<myData->offset+myData->sigs.size())
+					myC->resize(myData->offset+myData->sigs.size());
+				for (unsigned j = 0; j < myData->sigs.size(); j++) {
+					myC->at(myData->offset+j) = myData->sigs[j];
 				}
 			}
-			signature_counter += mySigSet->sigs.size();
+			signature_counter += myData->sigs.size();
+
 			cvm.notify_all();
 			//cout << "    finisher updated index with " << mySigSet->sigs.size() << " signatures all_sigs=" <<  signature_counter << " inst=" << instance_counter << endl;
 		}
@@ -314,7 +238,7 @@ void MinHashEncoder::finisher(bool idxUpdate, vector<vector<unsigned> >* myC){
 	}
 }
 
-void MinHashEncoder::LoadDataIntoIndexThreaded(vector<SeqDataSet> myFiles, bool useMinHashCache, vector<vector<unsigned> >* myCache){
+void MinHashEncoder::LoadDataIntoIndexThreaded(vector<SeqDataSet>& myFiles, bool useMinHashCache, vector<vector<unsigned> >* myCache){
 
 	if (mpParameters->mNumRepeatsHashFunction == 0 || mpParameters->mNumRepeatsHashFunction > mpParameters->mNumHashShingles * mpParameters->mNumHashFunctions){
 		mpParameters->mNumRepeatsHashFunction = mpParameters->mNumHashShingles * mpParameters->mNumHashFunctions;
@@ -337,13 +261,14 @@ void MinHashEncoder::LoadDataIntoIndexThreaded(vector<SeqDataSet> myFiles, bool 
 	cout << "Using " << graphWorkers << " worker threads and 2 helper threads..." << endl;
 
 	cout << "Computing MinHash signatures on the fly while reading " << myFiles.size() << " file(s)..." << endl;
-	bool updateIndex = true;
 
 	vector<vector<unsigned> >* myMinHashCache;
 	{
 		for (unsigned i=0;i<myFiles.size(); i++){
-			readFile_queue.push(myFiles[i]);
+			mIndexDataSets.push_back(myFiles[i]);
+			readFile_queue.push(std::make_shared<SeqDataSet>(mIndexDataSets[i]));
 		}
+
 		// use external MinHash cache
 		if ( (useMinHashCache) && (myCache != NULL)) {
 			myMinHashCache = myCache;
@@ -356,9 +281,9 @@ void MinHashEncoder::LoadDataIntoIndexThreaded(vector<SeqDataSet> myFiles, bool 
 	}
 
 	//create all threads
-	threads.push_back( std::thread(&MinHashEncoder::finisher,this,updateIndex,myMinHashCache));
+	threads.push_back( std::thread(&MinHashEncoder::finisher,this,myMinHashCache));
 	for (int i=0;i<graphWorkers;i++){
-		threads.push_back( std::thread(&MinHashEncoder::worker_Graph2Signature,this,i));
+		threads.push_back( std::thread(&MinHashEncoder::worker_Graph2Signature,this));
 	}
 	threads.push_back( std::thread(&MinHashEncoder::worker_readFiles,this,graphWorkers));
 
@@ -380,7 +305,7 @@ void MinHashEncoder::LoadDataIntoIndexThreaded(vector<SeqDataSet> myFiles, bool 
 
 	if (instance_counter > 0){
 		mpData->SetDataSize(instance_counter);
-		mpData->mDataIsLoaded = true;
+		//mpData->mDataIsLoaded = true;
 	} else
 		throw range_error("ERROR Data::LoadData: something went wrong: data file was expected but no data is available");
 }
@@ -412,7 +337,7 @@ void MinHashEncoder::UpdateInverseIndexHist(vector<unsigned>& aSignature, unsign
 		unsigned key = aSignature[k];
 		if (key != MAXUNSIGNED && key != 0) { //if key is equal to markers for empty bins then skip insertion instance in data structure
 			if (mInverseIndex[k].count(key) == 0) { //if this is the first time that an instance exhibits that specific value for that hash function, then store for the first time the reference to that instance
-				vector<unsigned> tmp(indexDataSets.size(),0);
+				vector<unsigned> tmp(mIndexDataSets.size(),0);
 				tmp[aIndex]++;
 				mInverseIndex[k].insert(make_pair(key, tmp));
 				numKeys++; // just for bin statistics
@@ -462,8 +387,8 @@ vector<unsigned> MinHashEncoder::ComputeHashSignature(SVector& aX) {
 
 	unsigned numHashFunctionsFull = mpParameters->mNumHashFunctions * mpParameters->mNumHashShingles;
 	unsigned sub_hash_range = numHashFunctionsFull / mpParameters->mNumRepeatsHashFunction;
-
 	vector<unsigned> signature(numHashFunctionsFull);
+
 	//init with MAXUNSIGNED
 	for (unsigned k = 0; k < numHashFunctionsFull; ++k)
 		signature[k] = MAXUNSIGNED;

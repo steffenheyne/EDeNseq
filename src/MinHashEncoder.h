@@ -20,8 +20,6 @@ public:
 
 		typedef INDEXTypeE INDEXType;
 
-	vector<SeqDataSet> indexDataSets;
-
 protected:
 
 	INDEXType	indexType;
@@ -33,20 +31,18 @@ protected:
 	unsigned numKeys;
 	unsigned numFullBins;
 
-	struct graphQueueS {
+	vector<SeqDataSet>	mIndexDataSets;
+	vector<SeqDataSet>	mClassifyDataSets;
+
+	struct workQueueS {
 		vector<GraphClass> gr;
-		unsigned id;
+		vector<vector<unsigned> > sigs;
 		unsigned offset;
+		SeqDataSet* dataSet;
 	};
 
-	struct sigQueueS {
-		vector<vector<unsigned int> > sigs;
-		unsigned id;
-		unsigned offset;
-	};
-
-	typedef std::shared_ptr<graphQueueS> graphQueueT;
-	typedef std::shared_ptr<sigQueueS> sigQueueT;
+	typedef std::shared_ptr<SeqDataSet> SeqDataSetP;
+	typedef std::shared_ptr<workQueueS> workQueueT;
 
 	mutable std::mutex mutm;
 	mutable std::mutex mut1;
@@ -60,9 +56,9 @@ protected:
 	std::condition_variable cv3;
 
 	vector<std::thread> threads;
-	threadsafe_queue<SeqDataSet> readFile_queue;
-	threadsafe_queue<graphQueueT > graph_queue;
-	threadsafe_queue<sigQueueT > sig_queue;
+	threadsafe_queue<SeqDataSetP> readFile_queue;
+	threadsafe_queue<workQueueT> graph_queue;
+	threadsafe_queue<workQueueT> sig_queue;
 
 	std::atomic_bool done;
 	std::atomic_int files_done;
@@ -72,8 +68,8 @@ protected:
 	unsigned mHashBitMask;
 
 	void worker_readFiles(int numWorkers);
-	void worker_Graph2Signature(int id);
-	void finisher(bool idxUpdate, vector<vector<unsigned> >* myCache);
+	void worker_Graph2Signature();
+	void finisher(vector<vector<unsigned> >* myCache);
 	void generate_feature_vector(const GraphClass& aG, SVector& x);
 	void InitFeatureCache(unsigned aSize, unsigned aRadius);
 	vector<unsigned> HashFuncNSPDK(const string& aString, unsigned aStart, unsigned aMaxRadius, unsigned aBitMask);
@@ -87,7 +83,7 @@ public:
 	void UpdateInverseIndex(vector<unsigned>& aSignature, unsigned aIndex);
 	void UpdateInverseIndexHist(vector<unsigned>& aSignature, unsigned aIndex);
 	void CleanUpInverseIndex();
-	void LoadDataIntoIndexThreaded(vector<SeqDataSet> myFiles,bool useMinHashCache, vector<vector<unsigned> >* myCache);
+	void LoadDataIntoIndexThreaded(vector<SeqDataSet>& myFiles,bool useMinHashCache, vector<vector<unsigned> >* myCache);
 	vector<unsigned> ComputeHashSignature(unsigned aID);
 	vector<unsigned> ComputeHashSignature(SVector& aX);
 	vector<unsigned> ComputeHashSignatureSize(vector<unsigned>& aSignature);
