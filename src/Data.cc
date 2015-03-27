@@ -1,7 +1,7 @@
 #include "Data.h"
 
 Data::Data() :
-mpParameters(0), mDataIsLoaded(false) {
+mpParameters(0) {
 }
 
 void Data::Init(Parameters* apParameters) {
@@ -14,135 +14,32 @@ void Data::Init(Parameters* apParameters) {
 	}
 }
 
-void Data::LoadMultilabelRealList(string aFileName, vector<vector<double> >& oList) {
-	oList.clear();
-	if (mpParameters->mVerbose)
-		cout << endl << "Reading multilabel file: " << aFileName << " ...";
-	ifstream fin;
-	fin.open(aFileName.c_str());
-	if (!fin)
-		throw range_error("ERROR Data::LoadMultilabelRealList: Cannot open file:" + aFileName);
-	while (!fin.eof()) {
-		string line;
-		getline(fin, line);
-		stringstream ss;
-		ss << line << endl;
-		if (line.size() > 1) {
-			vector<double> multilabel_list;
-			while (!ss.eof()) {
-				double value(0);
-				ss >> value;
-				if (ss.good()) {
-					multilabel_list.push_back(value);
-				}
-			}
-			oList.push_back(multilabel_list);
-		}
-	}
-	fin.close();
-}
+vector<SeqDataSet> Data::LoadIndexDataList(string filename){
 
-
-void Data::LoadRealList(string aFileName, vector<double>& oList) {
-	oList.clear();
-	if (mpParameters->mVerbose)
-		cout << endl << "Reading file: " << aFileName << " ..";
-	ifstream fin;
-	fin.open(aFileName.c_str());
-	if (!fin)
-		throw range_error("ERROR Data::LoadRealList: Cannot open file:" + aFileName);
-	while (!fin.eof()) {
-		string line;
-		getline(fin, line);
-		stringstream ss;
-		ss << line << endl;
-		while (!ss.eof()) {
-			double value(0);
-			ss >> value;
-			if (ss.good()) {
-				oList.push_back(value);
-			}
-		}
-	}
-	fin.close();
-	if (mpParameters->mVerbose)
-		cout << ".. read: " << oList.size() << " values." << endl;
-}
-
-void Data::LoadUnsignedList(string aFileName, vector<unsigned>& oList) {
-	oList.clear();
-	if (!mpParameters->mVerbose)
-		cout << endl << "Reading file: " << aFileName << " ..";
-	ifstream fin;
-	fin.open(aFileName.c_str());
-	if (!fin)
-		throw range_error("ERROR Data::LoadUnsignedList: Cannot open file:" + aFileName);
-	while (!fin.eof()) {
-		string line;
-		getline(fin, line);
-		stringstream ss;
-		ss << line << endl;
-		while (!ss.eof()) {
-			unsigned value(0);
-			ss >> value;
-			if (ss.good()) {
-				oList.push_back(value);
-			}
-		}
-	}
-	fin.close();
-	if (mpParameters->mVerbose)
-		cout << ".. read: " << oList.size() << " values." << endl;
-}
-
-void Data::LoadData(istream& fin) {
-	ProgressBar pb;
+	vector<SeqDataSet> myList;
 	bool valid_input = true;
-	unsigned instance_counter = 0;
-	while (!fin.eof() && valid_input) {
-		switch (mpParameters->mFileTypeCode) {
-		case STRINGSEQ:{
-			vector<GraphClass> g_list(BUFFER_SIZE);
-			unsigned i = 0;
-			while (i < BUFFER_SIZE && !fin.eof() && valid_input) {
-				SetGraphFromFile(fin, g_list[i]);
-				if (g_list[i].IsEmpty()) {
-					valid_input = false;
-				} else {
-					i++;
-					instance_counter++;
-				}
-			}
-		}
-		break;
-		default:
-			throw range_error("ERROR Data::LoadData: file type not recognized: " + mpParameters->mFileType);
-		}
-	}
-
-	if (instance_counter > 0)
-		mDataIsLoaded = true;
-	else
-		throw range_error("ERROR Data::LoadData: something went wrong: data file was expected but no data is available");
-
-	SetDataSize(instance_counter);
-}
-
-void Data::LoadData(bool aLoadIndex = false, bool aLoadTarget = false, bool aLoadMultilabelTarget = false) {
-	//mVectorList.clear();
-	//	mKernel.ParametersSetup();
 	igzstream fin;
-	fin.open(mpParameters->mInputDataFileName.c_str());
+	string line;
+
+	fin.open(filename.c_str());
 	if (!fin)
-		throw range_error("ERROR Data::LoadData: Cannot open file: " + mpParameters->mInputDataFileName);
-	if (mpParameters->mVerbose)
-		cout << "Processing file: " << mpParameters->mInputDataFileName << endl;
-	LoadData(fin);
+		throw range_error("ERROR LoadData: Cannot open index data file: " + filename);
+	while (!fin.eof() && valid_input) {
+		SeqDataSet mySet;
+		mySet.filetype=FASTA;
+		if (fin >> mySet.idx >> mySet.filename >> mySet.desc){
+			cout << "found file idx " << mySet.idx << "\t" << mySet.filename << "\t" << mySet.desc << endl;
+			mySet.updateIndex=true;
+			mySet.updateSigCache=false;
+			myList.push_back(mySet);
+		}
+		getline(fin, line);
+	}
+	if (!myList.size())
+		throw range_error("ERROR LoadIndexData: No data found in " + filename + "!");
+	return myList;
 }
 
-bool Data::IsDataLoaded() {
-	return mDataIsLoaded;
-}
 
 void Data::SetGraphFromFile(istream& in, GraphClass& oG) {
 	switch (mpParameters->mFileTypeCode) {
@@ -154,6 +51,78 @@ void Data::SetGraphFromFile(istream& in, GraphClass& oG) {
 		throw range_error("ERROR Data::SetGraphFromFile: file type not recognized: " + mpParameters->mFileType);
 	}
 	//******************************************************************************************************
+}
+
+bool Data::SetGraphFromFASTAFile(istream& in, GraphClass& oG, string& currSeq) {
+	vector<bool> vertex_status(5, false);
+	vertex_status[0] = true; //kernel point
+	vertex_status[1] = true; //kind
+	vertex_status[2] = true; //viewpoint
+	vertex_status[3] = false; //dead
+	vertex_status[4] = false; //abstraction
+
+	bool success_status = false;
+
+	unsigned win=mpParameters->mSeqWindow;
+	unsigned shift = (unsigned)((double)win*mpParameters->mSeqShift);
+
+	if (currSeq.size() == 0){
+		in >> std::ws;
+	}
+
+	char c = in.peek();
+	string header;
+	bool newSeq=false;
+	//cout << "here "<< " " << currSeq.size() << " " << in.eof() << " c "  << c << endl;
+	if (!in.eof() && c != EOF && c=='>' && currSeq.size() == 0 ){
+		getline(in, header,'>');
+		getline(in, header);
+		getline(in, currSeq,'>');
+
+		currSeq.erase(std::remove(currSeq.begin(), currSeq.end(), '\n'),currSeq.end());
+		currSeq.erase(std::remove(currSeq.begin(), currSeq.end(), ' '),currSeq.end());
+		std::transform(currSeq.begin(), currSeq.end(), currSeq.begin(), ::toupper);
+		in.unget();
+		if (currSeq.size()==0 || header.size()==0)
+			throw range_error("ERROR FASTA reader - empty Sequence or header found! Header:"+header);
+		//cout << " found seq " << header << " " << currSeq.size() << " length" << " EOF? "<< in.eof() << endl;
+		newSeq=true;
+	} else if (c != '>' && c != EOF && c!= '\n') {
+		throw range_error("ERROR FASTA format error!");
+	}
+
+	if (currSeq.size() > 0 ) {
+
+		// default case for window/shift
+		unsigned currSize = win;
+		// case now window/shift
+		if (win==0){
+			currSize = currSeq.size();
+		} else if (win>currSeq.size()) {
+			// case seq left is smaller than win
+			currSize=currSeq.size();
+		}
+
+		if (currSize>=win){
+
+			string graphSeq = currSeq.substr(0,currSize);
+			//cout << graphSeq << " " << currSeq.size() << " " << currSize << " " << in.eof() << endl;
+			unsigned real_vertex_index = oG.InsertVertex();
+			vector<string> vertex_symbolic_attribute_list(1);
+			vertex_symbolic_attribute_list[0] = graphSeq;
+			oG.SetVertexSymbolicAttributeList(real_vertex_index, vertex_symbolic_attribute_list);
+			oG.SetVertexStatusAttributeList(real_vertex_index, vertex_status);
+		} else if (newSeq){
+			throw range_error("ERROR FASTA reader! Too short sequence found. Either use win=0 or increase window size!");
+		}
+
+		if (win>0 && currSeq.size()-shift>=win){
+			currSeq.erase(0,shift);
+		} else if (currSeq.size()-shift<win || win == 0)
+			currSeq="";
+		success_status = true;
+	}
+	return success_status;
 }
 
 bool Data::SetGraphFromStringFile(istream& in, GraphClass& oG) {
