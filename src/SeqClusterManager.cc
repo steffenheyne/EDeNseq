@@ -13,6 +13,8 @@ SeqClusterManager::SeqClusterManager(Parameters* apParameters, Data* apData)
 	mySet.idx = 1;
 	mySet.filetype = mpParameters->mFileTypeCode;
 	mySet.desc = "approx_cluster_set";
+	mySet.updateIndex=true;
+	mySet.updateSigCache=true;
 	myList.push_back(mySet);
 	mNearestNeighbor.mMinHashEncoder.LoadDataIntoIndexThreaded(myList,true,NULL);
 	mNearestNeighbor.CacheReset();

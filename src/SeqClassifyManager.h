@@ -19,7 +19,6 @@ private:
 
 public:
 	SeqClassifyManager(Parameters* apParameters, Data* apData);
-	vector<SeqDataSet> LoadIndexDataList(string filename);
 	void Exec();
 };
 
