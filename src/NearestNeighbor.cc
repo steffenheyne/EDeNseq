@@ -15,8 +15,8 @@ void NearestNeighbor::CacheReset() {
 	mNeighborhoodCache.clear();
 	mNeighborhoodCacheExt.clear();
 	mNeighborhoodCacheInfo.clear();
-	if (mpData->IsDataLoaded() == false)
-		throw range_error("ERROR: Cannot clean cache if data is not loaded");
+//	if (mpData->IsDataLoaded() == false)
+//		throw range_error("ERROR: Cannot clean cache if data is not loaded");
 	mNeighborhoodCache.resize(mpData->Size());
 	mNeighborhoodCacheExt.resize(mpData->Size());
 	mNeighborhoodCacheInfo.resize(mpData->Size());
