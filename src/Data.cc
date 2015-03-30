@@ -35,6 +35,7 @@ vector<SeqDataSet> Data::LoadIndexDataList(string filename){
 		}
 		getline(fin, line);
 	}
+	fin.close();
 	if (!myList.size())
 		throw range_error("ERROR LoadIndexData: No data found in " + filename + "!");
 	return myList;
@@ -158,3 +159,74 @@ void Data::SetDataSize(unsigned aSize){
 	mDataSize=aSize;
 }
 
+void Data::writeBinaryIndex(ostream &out, const vector<umap_uint_vec_uint> &index) {
+	// create binary reverse index representation
+	// format:
+	unsigned numHashFunc = index.size();
+	out.write((const char*) &numHashFunc, sizeof(unsigned));
+	for (vector<umap_uint_vec_uint>::const_iterator it = index.begin(); it!= index.end(); it++){
+		unsigned numBins = it->size();
+		out.write((const char*) &numBins, sizeof(unsigned));
+		for (umap_uint_vec_uint::const_iterator itBin = it->begin(); itBin!=it->end(); itBin++){
+			unsigned binId = itBin->first;
+			unsigned numBinEntries = itBin->second.size();
+			out.write((const char*) &binId, sizeof(unsigned));
+			out.write((const char*) &numBinEntries, sizeof(unsigned));
+			for (vector<unsigned>::const_iterator binEntry = itBin->second.begin(); binEntry != itBin->second.end(); binEntry++){
+				unsigned short int t= *binEntry;
+				out.write((const char*) &(t), sizeof(unsigned short int));
+			}
+		}
+	}
+}
+
+bool Data::readBinaryIndex(string filename, vector<umap_uint_vec_uint> &index){
+	igzstream fin;
+	fin.open(filename.c_str());
+	unsigned numHashFunc = 0;
+	fin.read((char*) &numHashFunc, sizeof(unsigned));
+	if (numHashFunc <= 0)
+		fin.setstate(std::ios::badbit);
+	if (!fin.good())
+		return false;
+	//cout << "here1"<< endl;
+	index.resize(numHashFunc);
+	for (unsigned  hashFunc = 0; hashFunc < numHashFunc; hashFunc++){
+
+		unsigned numBins = 0;
+		fin.read((char*) &numBins, sizeof(unsigned));
+		if (numBins < 0)
+			fin.setstate(std::ios::badbit);
+		if (!fin.good())
+			return false;
+		//cout << "here2"<< endl;
+		for (unsigned  bin = 0; bin < numBins; bin++){
+
+			unsigned binId = 0;
+			unsigned numBinEntries = 0;
+			fin.read((char*) &binId, sizeof(unsigned));
+			fin.read((char*) &numBinEntries, sizeof(unsigned));
+			if (numBinEntries < 0 || binId <= 0)
+				fin.setstate(std::ios::badbit);
+			if (!fin.good())
+				return false;
+			//cout << "here3"<< endl;
+			vector<unsigned> tmp(numBinEntries);
+			index[hashFunc].insert(make_pair(binId,tmp));
+
+			for (unsigned entry = 0; entry < numBinEntries; entry++ ){
+
+				unsigned short int t = 0;
+				fin.read((char*) &t, sizeof(unsigned short int));
+				if (t < 0)
+					fin.setstate(std::ios::badbit);
+				if (!fin.good())
+					return false;
+				//cout << "here4"<< endl;
+				index[hashFunc][binId].push_back(t);
+			}
+		}
+	}
+	fin.close();
+	return true;
+}

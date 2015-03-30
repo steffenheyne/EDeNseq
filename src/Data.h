@@ -19,6 +19,7 @@ struct SeqDataSet {
 	unsigned numSequences;
 	bool updateIndex;
 	bool updateSigCache;
+	//vector<vector<unsigned> > sigCache;
 };
 
 class Data {
@@ -34,6 +35,8 @@ public:
 	void SetGraphFromFile(istream& in, GraphClass& oG);
 	bool SetGraphFromFASTAFile(istream& in, GraphClass& oG, string& currSeq);
 	bool SetGraphFromStringFile(istream& in, GraphClass& oG);
+	void writeBinaryIndex(ostream &out, const vector<umap_uint_vec_uint> &index);
+	bool readBinaryIndex(string filename, vector<umap_uint_vec_uint> &index);
 
 	unsigned Size();
 	void SetDataSize(unsigned aSize);
