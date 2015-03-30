@@ -1,10 +1,11 @@
 #include "MinHashEncoder.h"
 
 MinHashEncoder::MinHashEncoder() :
-mpParameters(NULL), mpData(NULL) {
+mpParameters(NULL), mpData(NULL), mInverseIndexPub(mInverseIndex) {
+
 }
 
-MinHashEncoder::MinHashEncoder(Parameters* apParameters, Data* apData, INDEXType apIndexType) {
+MinHashEncoder::MinHashEncoder(Parameters* apParameters, Data* apData, INDEXType apIndexType):mInverseIndexPub(mInverseIndex) {
 	Init(apParameters, apData, apIndexType);
 }
 
@@ -126,7 +127,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 
 				workQueueS myDataChunk;
 				myDataChunk.gr.resize(currBuff);
-				myDataChunk.offset= file_instances;
+				myDataChunk.offset= instance_counter; // offset goes over all files
 				myDataChunk.dataSet = &(*myData);
 
 				unsigned i = 0;
@@ -198,7 +199,7 @@ void MinHashEncoder::worker_Graph2Signature(){
 	}
 }
 
-void MinHashEncoder::finisher(vector<vector<unsigned> >* myC){
+void MinHashEncoder::finisher(vector<vector<unsigned> >* myCache){
 	ProgressBar progress_bar(1000);
 	while (!done){
 
@@ -216,17 +217,20 @@ void MinHashEncoder::finisher(vector<vector<unsigned> >* myC){
 					}
 					break;
 				case CLASSIFY:
+					for (unsigned j = 0; j < myData->sigs.size(); j++) {
+						UpdateInverseIndexHist(myData->sigs[j], myData->dataSet->idx-1);
+					}
 					break;
 				default:
 					throw range_error("Cannot update index! Index Type not recognized.");
 				}
 			}
 
-			if (myC){
-				if (myC->size()<myData->offset+myData->sigs.size())
-					myC->resize(myData->offset+myData->sigs.size());
+			if (myData->dataSet->updateSigCache){
+				if (myCache->size()<myData->offset+myData->sigs.size())
+					myCache->resize(myData->offset+myData->sigs.size());
 				for (unsigned j = 0; j < myData->sigs.size(); j++) {
-					myC->at(myData->offset+j) = myData->sigs[j];
+					myCache->at(myData->offset+j) = myData->sigs[j];
 				}
 			}
 			signature_counter += myData->sigs.size();
@@ -238,7 +242,7 @@ void MinHashEncoder::finisher(vector<vector<unsigned> >* myC){
 	}
 }
 
-void MinHashEncoder::LoadDataIntoIndexThreaded(vector<SeqDataSet>& myFiles, bool useMinHashCache, vector<vector<unsigned> >* myCache){
+void MinHashEncoder::LoadDataIntoIndexThreaded(vector<SeqDataSet>& myFiles, vector<vector<unsigned> >* myCache){
 
 	if (mpParameters->mNumRepeatsHashFunction == 0 || mpParameters->mNumRepeatsHashFunction > mpParameters->mNumHashShingles * mpParameters->mNumHashFunctions){
 		mpParameters->mNumRepeatsHashFunction = mpParameters->mNumHashShingles * mpParameters->mNumHashFunctions;
@@ -265,22 +269,28 @@ void MinHashEncoder::LoadDataIntoIndexThreaded(vector<SeqDataSet>& myFiles, bool
 	vector<vector<unsigned> >* myMinHashCache;
 	{
 		for (unsigned i=0;i<myFiles.size(); i++){
-			mIndexDataSets.push_back(myFiles[i]);
-			readFile_queue.push(std::make_shared<SeqDataSet>(mIndexDataSets[i]));
+			if (myFiles[i].updateIndex)
+				mIndexDataSets.push_back(myFiles[i]);
+		}
+
+		if (indexType == CLASSIFY)
+				cout << "INDEX histogram length " << mIndexDataSets.size() << endl;
+
+		for (unsigned i=0;i<myFiles.size(); i++){
+			readFile_queue.push(std::make_shared<SeqDataSet>(myFiles[i]));
 		}
 
 		// use external MinHash cache
-		if ( (useMinHashCache) && (myCache != NULL)) {
+		if (myCache != NULL) {
 			myMinHashCache = myCache;
-		} else if (useMinHashCache){
+		} else {
 			// use standard cache
 			myMinHashCache = &mMinHashCache;
-		} else
-			// no cache at all, eg. when only index building
-			myMinHashCache = NULL;
+		}
 	}
 
 	//create all threads
+	threads.clear();
 	threads.push_back( std::thread(&MinHashEncoder::finisher,this,myMinHashCache));
 	for (int i=0;i<graphWorkers;i++){
 		threads.push_back( std::thread(&MinHashEncoder::worker_Graph2Signature,this));
@@ -305,7 +315,6 @@ void MinHashEncoder::LoadDataIntoIndexThreaded(vector<SeqDataSet>& myFiles, bool
 
 	if (instance_counter > 0){
 		mpData->SetDataSize(instance_counter);
-		//mpData->mDataIsLoaded = true;
 	} else
 		throw range_error("ERROR Data::LoadData: something went wrong: data file was expected but no data is available");
 }
@@ -376,10 +385,10 @@ vector<unsigned> MinHashEncoder::ComputeHashSignatureSize(vector<unsigned>& aSig
 }
 
 vector<unsigned> MinHashEncoder::ComputeHashSignature(unsigned aID) {
-	if (mMinHashCache[aID].size() > 0)
+	if (mMinHashCache.size()>0 && mMinHashCache[aID].size() > 0)
 		return mMinHashCache[aID];
 	else {
-		throw range_error("ERROR cache should be filled!");
+		throw range_error("ERROR internal MinHashCache is not filled!");
 	}
 }
 

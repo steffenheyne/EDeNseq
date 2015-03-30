@@ -77,13 +77,14 @@ protected:
 	bool SetGraphFromFASTAFile(istream& in, GraphClass& oG, string& currSeq);
 
 public:
+	const vector<umap_uint_vec_uint>& mInverseIndexPub;
 	MinHashEncoder();
 	MinHashEncoder(Parameters* apParameters, Data* apData, INDEXType apIndexType=CLUSTER);
 	void Init(Parameters* apParameters, Data* apData, INDEXType apIndexType=CLUSTER);
 	void UpdateInverseIndex(vector<unsigned>& aSignature, unsigned aIndex);
 	void UpdateInverseIndexHist(vector<unsigned>& aSignature, unsigned aIndex);
 	void CleanUpInverseIndex();
-	void LoadDataIntoIndexThreaded(vector<SeqDataSet>& myFiles,bool useMinHashCache, vector<vector<unsigned> >* myCache);
+	void LoadDataIntoIndexThreaded(vector<SeqDataSet>& myFiles, vector<vector<unsigned> >* myCache);
 	vector<unsigned> ComputeHashSignature(unsigned aID);
 	vector<unsigned> ComputeHashSignature(SVector& aX);
 	vector<unsigned> ComputeHashSignatureSize(vector<unsigned>& aSignature);
