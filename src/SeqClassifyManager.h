@@ -20,6 +20,7 @@ private:
 public:
 	SeqClassifyManager(Parameters* apParameters, Data* apData);
 	void Exec();
+	void SeqClassifyManager::ClassifySeqs();
 };
 
 #endif /* SEQCLASSIFYMANAGER_H_ */
