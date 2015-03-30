@@ -87,6 +87,7 @@ public:
 
 	// MetaGenome
 	string mIndexDataList;
+	bool mNoIndexCacheFile;
 	unsigned mSeqWindow;
 	double mSeqShift;
 	unsigned mMinRadius;

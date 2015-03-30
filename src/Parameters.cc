@@ -607,6 +607,20 @@ void Parameters::SetupOptions() {
 	{
 			ParameterType param;
 			param.mShortSwitch = "";
+			param.mLongSwitch = "no_index_cache_file";
+			param.mShortDescription = "Do not save/read MinHash reverse index to/from <index_data_file>.bhi file.";
+			param.mTypeCode = FLAG;
+			param.mValue = "0";
+			mOptionList.insert(make_pair(param.mLongSwitch, param));
+			{
+				vector<ParameterType*>& vec = mActionOptionList[CLASSIFY];
+				ParameterType& p = mOptionList[param.mLongSwitch];
+				vec.push_back(&p);
+			}
+		}
+	{
+			ParameterType param;
+			param.mShortSwitch = "";
 			param.mLongSwitch = "write_approx_neighbors";
 			param.mShortDescription = "Writes all found approximate neighbors for each instance to file 'approx_dense_centers>'.";
 			param.mTypeCode = FLAG;
@@ -718,6 +732,8 @@ void Parameters::Init(int argc, const char** argv) {
 			mMaxFractionOfDataset = stream_cast<double>(param.mValue);
 		if (param.mLongSwitch == "index_data_file")
 			mIndexDataList = param.mValue;
+		if (param.mLongSwitch == "no_index_cache_file")
+			mNoIndexCacheFile = true;
 		if (param.mLongSwitch == "seq_shift")
 			mSeqShift = stream_cast<double>(param.mValue);
 		if (param.mLongSwitch == "seq_window")
