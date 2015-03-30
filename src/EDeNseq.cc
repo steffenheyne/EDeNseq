@@ -32,7 +32,7 @@ public:
 	}
 
 	void Exec() {
-		ProgressBar pb;
+		ProgressBar pb(100);
 
 		cout << SEP << endl << PROG_NAME << endl << "Version: " << PROG_VERSION << endl << "Last Update: " << PROG_DATE << endl << PROG_CREDIT << endl << SEP << endl;
 
@@ -50,7 +50,7 @@ public:
 		default:
 			throw range_error("ERROR: Unknown action parameter: " + mParameters.mAction);
 		}
-		pb.Count();
+		pb.Count(1);
 		cout << "Total run-time:" << endl;
 	}
 };
