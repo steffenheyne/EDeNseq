@@ -41,6 +41,7 @@ using namespace std;
 
 typedef std::tr1::unordered_map<unsigned, int> umap_uint_int;
 typedef std::tr1::unordered_map<unsigned, vector<unsigned> > umap_uint_vec_uint;
+typedef std::tr1::unordered_map<unsigned, vector<int> > umap_uint_vec_int;
 
 //typedef std::tr1::unordered_map<pair<unsigned, unsigned>, int> umap_pair_uint_uint_int;
 //typedef std::tr1::unordered_map<pair<unsigned, int>, vector<unsigned> > umap_pair_uint_int_vec_uint;
@@ -163,8 +164,9 @@ public:
 	void Count(int co);
 	unsigned End();
 private:
+	mutable std::mutex mut;
 	unsigned mStep;
-	atomic_int mCounter;
+	unsigned mCounter;
 	TimerClass mTimer;
 };
 

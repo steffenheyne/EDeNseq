@@ -92,6 +92,7 @@ void ProgressBar::Begin() {
 }
 
 void ProgressBar::Count() {
+	std::lock_guard<std::mutex> lk(mut);
 	mCounter++;
 	double t = 1000/mStep;
 	if (mCounter % mStep == 0)
@@ -101,6 +102,7 @@ void ProgressBar::Count() {
 }
 
 void ProgressBar::Count(int max) {
+	std::lock_guard<std::mutex> lk(mut);
 	double t = 1000/mStep;
 	for (int i=mCounter; i<max; i++){
 		mCounter++;
