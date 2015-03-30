@@ -8,24 +8,27 @@ SeqClusterManager::SeqClusterManager(Parameters* apParameters, Data* apData)
 :BaseManager(apParameters, apData), mNearestNeighbor(apParameters, apData)
 {
 	SeqDataSet mySet;
-	vector<SeqDataSet> myList;
 	mySet.filename = mpParameters->mInputDataFileName.c_str();
 	mySet.idx = 1;
 	mySet.filetype = mpParameters->mFileTypeCode;
 	mySet.desc = "approx_cluster_set";
 	mySet.updateIndex=true;
 	mySet.updateSigCache=true;
+	//mySet.sigCache.clear();
+
+	mDataSet = mySet;
+	vector<SeqDataSet> myList;
 	myList.push_back(mySet);
-	mNearestNeighbor.mMinHashEncoder.LoadDataIntoIndexThreaded(myList,true,NULL);
+	mNearestNeighbor.mMinHashEncoder.LoadDataIntoIndexThreaded(myList,NULL);
 	mNearestNeighbor.CacheReset();
 }
 
 void SeqClusterManager::Exec() {
-	ProgressBar pb;
+	ProgressBar pb(1000);
 
 	DenseCluster();
 
-	pb.Count();
+	pb.Count(1);
 	cout << endl << "Total clustering time:" << endl;
 }
 

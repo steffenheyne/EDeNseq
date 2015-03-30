@@ -11,6 +11,7 @@ public:
 	SeqClusterManager(Parameters* apParameters, Data* apData);
    void Exec();
 protected:
+   SeqDataSet mDataSet;
    NearestNeighbor mNearestNeighbor;
    void DenseCluster();
 };
