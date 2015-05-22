@@ -6,10 +6,14 @@
  */
 
 #include "SeqClassifyManager.h"
+#include "MinHashEncoder.h"
 
 
 SeqClassifyManager::SeqClassifyManager(Parameters* apParameters, Data* apData):
-BaseManager(apParameters, apData), mMinHashEncoder(apParameters, apData, MinHashEncoder::CLASSIFY) {
+BaseManager(apParameters, apData), mHistogramIndex(apParameters, apData)
+{
+	mpParameters = apParameters;
+	mpData=apData;
 }
 
 
@@ -38,24 +42,28 @@ void SeqClassifyManager::Exec() {
 	// create new index
 	if (!std::ifstream(mpParameters->mIndexDataList+".bhi").good()){
 		cout << endl << " *** Creating inverse index *** "<< endl << endl;
-		mMinHashEncoder.LoadDataIntoIndexThreaded(fileList,NULL);
+		mHistogramIndex.LoadDataIntoIndexThreaded(fileList,NULL);
 
 		// write index
 		if (mpParameters->mNoIndexCacheFile){
 			cout << "inverse index file : " << mpParameters->mIndexDataList+".bhi" << endl;
 			cout << " write index file ... ";
 			OutputManager om((indexName+".bhi").c_str(), mpParameters->mDirectoryPath);
-			mpData->writeBinaryIndex(om.mOut,mMinHashEncoder.mInverseIndexPub);
+			mHistogramIndex.writeBinaryIndex2(om.mOut,mHistogramIndex.mInverseIndex);
 			om.mOut.close();
 			cout << endl;
 		} else
 			cout << "Index is NOT saved to file!"<< endl;
 	} else {
+
+		mHistogramIndex.mInverseIndex.clear();
+		for (unsigned i=0;i<fileList.size(); i++){
+			mHistogramIndex.mIndexDataSets.push_back(fileList[i]);
+		}
 		// read index
 		cout << endl << " *** Read inverse index *** "<< endl << endl;
 		cout << "inverse index file : " << mpParameters->mIndexDataList+".bhi" << endl << "read index ..." << endl;
-		vector<umap_uint_vec_uint> tIndex;
-		bool indexState = mpData->readBinaryIndex(mpParameters->mIndexDataList+".bhi",tIndex);
+		bool indexState = mHistogramIndex.readBinaryIndex2(mpParameters->mIndexDataList+".bhi",mHistogramIndex.mInverseIndex);
 		cout << "finished! ";
 		if (indexState == true){
 			cout << " Index OK!" << endl;
@@ -64,14 +72,53 @@ void SeqClassifyManager::Exec() {
 	}
 
 	cout << endl << " *** Read sequences for classification and create their MinHash signatures *** " << endl << endl;
-	mMinHashEncoder.LoadDataIntoIndexThreaded(myList,NULL);
+	mHistogramIndex.LoadDataIntoIndexThreaded(myList,NULL);
 
 	ClassifySeqs();
-
 }
+
+double changeNAN(double i) {if (std::isnan(i)) return 0.0; else return i;}
 
 void SeqClassifyManager::ClassifySeqs(){
 
+	valarray<double> metaHist;
+	metaHist.resize(mHistogramIndex.mIndexDataSets.size());
+	metaHist *= 0;
+	unsigned classifiedInstances = 0;
+	ProgressBar pb(1000);
+//#ifdef USEMULTITHREAD
+//#pragma omp parallel for schedule(dynamic,100)
+//#endif
+	for (unsigned i = 0; i < mpData->Size(); ++i) {
 
+		valarray<double> hist;
+		unsigned emptyBins = 0;
+		mHistogramIndex.ComputeHistogram(mHistogramIndex.ComputeHashSignature(i),hist,emptyBins);
 
+		hist /= mpParameters->mNumHashFunctions-emptyBins;
+		hist = hist.apply(changeNAN);
+		metaHist += hist;
+
+		if (hist.sum()!=0)
+			classifiedInstances++;
+		pb.Count();
+	//#ifdef USEMULTITHREAD
+	//#pragma omp critical
+	//#endif
+			{
+			/*cout << i << ":"<< emptyBins << "  \t";
+			/for (unsigned j=0; j<hist.size();j++){
+					cout << setprecision(2) << hist[j] << "\t";
+			}
+			cout << endl;*/
+		}
+	}
+
+	// metahistogram
+	cout << endl << endl << "META histogram - classified seqs: " << setprecision(3) << (double)classifiedInstances/((double)mpData->Size()) << " (" << classifiedInstances << ")" << endl;
+	metaHist = metaHist/metaHist.sum();
+	for (unsigned j=0; j<metaHist.size();j++){
+		cout << setprecision(2) << metaHist[j] << "\t";
+	}
+	cout << "  SUM "<< metaHist.sum() << endl << endl;
 }

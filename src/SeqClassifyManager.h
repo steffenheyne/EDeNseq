@@ -8,19 +8,20 @@
 #ifndef SEQCLASSIFYMANAGER_H_
 #define SEQCLASSIFYMANAGER_H_
 
+#include "MinHashEncoder.h"
 #include "BaseManager.h"
 #include "Data.h"
 #include "Parameters.h"
-#include "MinHashEncoder.h"
+
+#include <math.h>
 
 class SeqClassifyManager: public BaseManager {
-private:
-	MinHashEncoder mMinHashEncoder;
 
 public:
 	SeqClassifyManager(Parameters* apParameters, Data* apData);
 	void Exec();
-	void SeqClassifyManager::ClassifySeqs();
+	void ClassifySeqs();
+	HistogramIndex mHistogramIndex;
 };
 
 #endif /* SEQCLASSIFYMANAGER_H_ */
