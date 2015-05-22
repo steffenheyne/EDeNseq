@@ -2,11 +2,13 @@
 #ifndef MIN_HASH_ENCODER_H
 #define MIN_HASH_ENCODER_H
 
+#include <streambuf>
+#include <valarray>
+
 #include "Utility.h"
 #include "Parameters.h"
 #include "Data.h"
 #include "BaseManager.h"
-#include <streambuf>
 
 using namespace std;
 
@@ -14,11 +16,29 @@ using namespace std;
 class MinHashEncoder {
 
 public:
-	enum INDEXTypeE {
-			CLUSTER, CLASSIFY
-		};
 
-		typedef INDEXTypeE INDEXType;
+	//	typedef unsigned binTy;
+	//	typedef vector<binTy>	indexBinTy;
+	//	typedef std::tr1::unordered_map<unsigned,indexBinTy> indexSingleTy;
+	//	typedef vector<indexSingleTy> indexTy;
+	//
+	//	//typedef unsigned binKeyTy;
+	//	typedef uint8_t binKeyTy;
+	//	typedef pair<binKeyTy,binTy> indexBinItem;
+	//	typedef vector<indexBinItem> indexBinTy2;
+	//	typedef std::tr1::unordered_map<unsigned,indexBinTy2> indexSingleTy2;
+	//	typedef vector<indexSingleTy2> indexTy2;
+	//
+	//	const binTy MAXBIN = std::numeric_limits<binTy>::max();
+
+
+	enum INDEXTypeE {
+		CLUSTER, CLASSIFY
+	};
+
+	typedef INDEXTypeE INDEXType;
+
+	vector<SeqDataSet>	mIndexDataSets;
 
 protected:
 
@@ -26,13 +46,10 @@ protected:
 
 	Parameters* mpParameters;
 	Data* mpData;
-	vector<umap_uint_vec_uint> mInverseIndex;
+
 	vector<vector<unsigned> > mMinHashCache;
 	unsigned numKeys;
 	unsigned numFullBins;
-
-	vector<SeqDataSet>	mIndexDataSets;
-	vector<SeqDataSet>	mClassifyDataSets;
 
 	struct workQueueS {
 		vector<GraphClass> gr;
@@ -71,29 +88,87 @@ protected:
 	void worker_Graph2Signature();
 	void finisher(vector<vector<unsigned> >* myCache);
 	void generate_feature_vector(const GraphClass& aG, SVector& x);
-	void InitFeatureCache(unsigned aSize, unsigned aRadius);
 	vector<unsigned> HashFuncNSPDK(const string& aString, unsigned aStart, unsigned aMaxRadius, unsigned aBitMask);
 	unsigned HashFuncNSPDK(const vector<unsigned>& aList, unsigned aBitMask);
-	bool SetGraphFromFASTAFile(istream& in, GraphClass& oG, string& currSeq);
 
 public:
-	const vector<umap_uint_vec_uint>& mInverseIndexPub;
-	MinHashEncoder();
 	MinHashEncoder(Parameters* apParameters, Data* apData, INDEXType apIndexType=CLUSTER);
+	virtual ~MinHashEncoder();
+
 	void Init(Parameters* apParameters, Data* apData, INDEXType apIndexType=CLUSTER);
-	void UpdateInverseIndex(vector<unsigned>& aSignature, unsigned aIndex);
-	void UpdateInverseIndexHist(vector<unsigned>& aSignature, unsigned aIndex);
+	virtual void UpdateInverseIndex(vector<unsigned>& aSignature, unsigned aIndex) {};
 	void CleanUpInverseIndex();
 	void LoadDataIntoIndexThreaded(vector<SeqDataSet>& myFiles, vector<vector<unsigned> >* myCache);
-	vector<unsigned> ComputeHashSignature(unsigned aID);
+	vector<unsigned>& ComputeHashSignature(unsigned aID);
 	vector<unsigned> ComputeHashSignature(SVector& aX);
 	vector<unsigned> ComputeHashSignatureSize(vector<unsigned>& aSignature);
+
+};
+
+class NeighborhoodIndex : public MinHashEncoder
+{
+public:
+	NeighborhoodIndex(Parameters* apParameters, Data* apData)
+		:MinHashEncoder(apParameters,apData,CLUSTER)
+	{
+		mInverseIndex.clear();
+		for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k){
+			mInverseIndex.push_back(indexSingleTy());
+		}
+	}
+
+	typedef unsigned binKeyTy;
+	typedef vector<binKeyTy>	indexBinTy;
+	typedef std::tr1::unordered_map<unsigned,indexBinTy> indexSingleTy;
+	typedef vector<indexSingleTy> indexTy;
+
+	const binKeyTy MAXBINKEY = std::numeric_limits<binKeyTy>::max();
+
+	indexTy mInverseIndex;
+
+	void 				  UpdateInverseIndex(vector<unsigned>& aSignature, unsigned aIndex);
 	void             ComputeApproximateNeighborhoodCore(const vector<unsigned>& aSignature, umap_uint_int& neighborhood, unsigned& collisions);
 	umap_uint_int    ComputeApproximateNeighborhoodExt(const vector<unsigned>& aSignature, unsigned& collisions, double& density);
 	vector<unsigned> ComputeApproximateNeighborhood(const vector<unsigned>& aSignature, unsigned& collisions, double& density);
+
 	vector<unsigned> TrimNeighborhood(umap_uint_int& aNeighborhood, unsigned collisions, double& density);
 	double           ComputeApproximateSim(const unsigned& aID, const unsigned& bID);
 	pair<unsigned,unsigned> ComputeApproximateSim(const unsigned& aID, const vector<unsigned>& bSignature);
+
+};
+
+class HistogramIndex : public MinHashEncoder
+{
+public:
+
+	HistogramIndex(Parameters* apParameters, Data* apData)
+		:MinHashEncoder(apParameters,apData,CLASSIFY)
+	{
+		mInverseIndex.clear();
+		for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k){
+			mInverseIndex.push_back(indexSingleTy());
+		}
+
+	}
+
+	typedef unsigned binKeyTy;
+	//typedef uint8_t binTy;
+
+	//typedef pair<binKeyTy,binTy> indexBinItem;
+	//typedef vector<indexBinItem> indexBinTy;
+	typedef vector<binKeyTy> indexBinTy;
+	typedef std::tr1::unordered_map<unsigned,indexBinTy> indexSingleTy;
+	typedef vector<indexSingleTy> indexTy;
+
+	const binKeyTy MAXBINKEY = std::numeric_limits<binKeyTy>::max();
+	//const binTy       MAXBIN = std::numeric_limits<binTy>::max();
+
+	indexTy mInverseIndex;
+	void 				  UpdateInverseIndex(vector<unsigned>& aSignature, unsigned aIndex);
+	void  			  ComputeHistogram(const vector<unsigned>& aSignature, std::valarray<double>& hist, unsigned& emptyBins);
+
+	void writeBinaryIndex2(ostream &out, const indexTy& index);
+	bool readBinaryIndex2(string filename, indexTy& index);
 };
 
 #endif /* MIN_HASH_ENCODER_H */
