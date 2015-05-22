@@ -33,11 +33,11 @@ public:
 	void Init(Parameters* apParameters);
 	vector<SeqDataSet> LoadIndexDataList(string filename);
 	void SetGraphFromFile(istream& in, GraphClass& oG);
-	bool SetGraphFromFASTAFile(istream& in, GraphClass& oG, string& currSeq);
+	bool SetGraphFromFASTAFile(istream& in, GraphClass& oG, string& currSeq, uint& pos, string& name);
+	bool SetGraphFromSeq(string& seq, GraphClass& oG);
 	bool SetGraphFromStringFile(istream& in, GraphClass& oG);
-	void writeBinaryIndex(ostream &out, const vector<umap_uint_vec_uint> &index);
-	bool readBinaryIndex(string filename, vector<umap_uint_vec_uint> &index);
-
+	string GetNextFastaSeq(istream& in,string& header);
+	bool SetGraphFromSeq(GraphClass& oG, string& currSeq);
 	unsigned Size();
 	void SetDataSize(unsigned aSize);
 };
