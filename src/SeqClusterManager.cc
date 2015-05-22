@@ -14,11 +14,11 @@ SeqClusterManager::SeqClusterManager(Parameters* apParameters, Data* apData)
 	mySet.desc = "approx_cluster_set";
 	mySet.updateIndex=true;
 	mySet.updateSigCache=true;
-	//mySet.sigCache.clear();
 
-	mDataSet = mySet;
+	//mDataSet = mySet;
 	vector<SeqDataSet> myList;
 	myList.push_back(mySet);
+
 	mNearestNeighbor.mMinHashEncoder.LoadDataIntoIndexThreaded(myList,NULL);
 	mNearestNeighbor.CacheReset();
 }

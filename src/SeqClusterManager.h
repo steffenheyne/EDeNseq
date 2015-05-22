@@ -3,6 +3,8 @@
 #define CLUSTER_MANAGER_H
 
 #include "NearestNeighbor.h"
+#include "MinHashEncoder.h"
+
 
 using namespace std;
 
@@ -11,7 +13,7 @@ public:
 	SeqClusterManager(Parameters* apParameters, Data* apData);
    void Exec();
 protected:
-   SeqDataSet mDataSet;
+   //SeqDataSet mDataSet;
    NearestNeighbor mNearestNeighbor;
    void DenseCluster();
 };
