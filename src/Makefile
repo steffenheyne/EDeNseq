@@ -47,14 +47,14 @@ objects_mains := $(patsubst %,%.o,$(PROGRAMS))
 EDeNseq : $(objects)
 	${CXX} ${CXXFLAGS} ${OBABEL} $(filter-out $(objects_mains),$(objects)) $@.o ${LIBS} -o $@
 	 
-EDeNseq.o: EDeNseq.cc vectors.h gzstream.h
+EDeNseq.o: EDeNseq.cc vectors.h gzstream.h MinHashEncoder.h
 	 ${CXX} ${CXXFLAGS} -c EDeNseq.cc -o EDeNseq.o
 
-ClusterManager.o:ClusterManager.h NearestNeighbor.cc
+SeqClassifyManager.o:SeqClassifyManager.h MinHashEncoder.h
+
+SeqClusterManager.o:SeqClusterManager.h MinHashEncoder.h MinHashEncoder.cc
 
 NearestNeighbor.o:NearestNeighbor.h MinHashEncoder.h BaseManager.cc
-
-FeatureManager.o:FeatureManager.h MinHashEncoder.h Data.h BaseManager.cc
 
 MinHashEncoder.o:MinHashEncoder.h Data.h
 
