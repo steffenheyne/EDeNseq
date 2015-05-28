@@ -39,6 +39,8 @@ public:
 	typedef INDEXTypeE INDEXType;
 
 	vector<SeqDataSet>	mIndexDataSets;
+	std::tr1::unordered_map<string, unsigned> name2idxMap;
+	vector<string> idx2nameMap;
 
 protected:
 
@@ -54,6 +56,7 @@ protected:
 	struct workQueueS {
 		vector<GraphClass> gr;
 		vector<vector<unsigned> > sigs;
+		vector<string> names;
 		unsigned offset;
 		SeqDataSet* dataSet;
 	};

@@ -194,7 +194,7 @@ bool Data::SetGraphFromSeq(GraphClass& oG, string& currSeq) {
 //	return success_status;
 //}
 
-bool Data::SetGraphFromFASTAFile(istream& in, GraphClass& oG, string& currSeq, uint& pos) {
+bool Data::SetGraphFromFASTAFile(istream& in, GraphClass& oG, string& currSeq, uint& pos, string& name) {
 
 	bool success_status = false;
 
@@ -214,6 +214,7 @@ bool Data::SetGraphFromFASTAFile(istream& in, GraphClass& oG, string& currSeq, u
 		getline(in, header);
 		getline(in, currSeq,'>');
 
+		name = header;
 		currSeq.erase(std::remove(currSeq.begin(), currSeq.end(), '\n'),currSeq.end());
 		currSeq.erase(std::remove(currSeq.begin(), currSeq.end(), ' '),currSeq.end());
 		std::transform(currSeq.begin(), currSeq.end(), currSeq.begin(), ::toupper);
@@ -303,3 +304,52 @@ void Data::SetDataSize(unsigned aSize){
 	mDataSize=aSize;
 }
 
+void Data::LoadStringList(string aFileName, vector<string>& oList, uint numTokens) {
+	oList.clear();
+	cout << endl << "Reading file: " << aFileName << " ..";
+	ifstream fin;
+	fin.open(aFileName.c_str());
+	if (!fin)
+		throw range_error("ERROR Data::LoadStringList: Cannot open file:" + aFileName);
+	while (!fin.eof()) {
+		string line;
+		getline(fin, line);
+		stringstream ss;
+		ss << line << endl;
+		uint tok = 0;
+		while (!ss.eof() && tok<numTokens) {
+			string value;
+			ss >> value;
+			if (ss.good()) {
+				oList.push_back(value);
+			}
+			tok++;
+		}
+	}
+	fin.close();
+	cout << ".. read: " << oList.size() << " values." << endl;
+}
+
+//void Data::LoadIndex() {
+//if (mpParameters->mRowIndexFileName != "")
+//	if (mRowIndexList.size() == 0) {
+//		LoadUnsignedList(mpParameters->mRowIndexFileName, mRowIndexList);
+//		mIndexIsLoaded = true;
+//	}
+//if (mpParameters->mColIndexFileName != "")
+//	if (mColIndexList.size() == 0) {
+//		LoadUnsignedList(mpParameters->mColIndexFileName, mColIndexList);
+//		mIndexIsLoaded = true;
+//	}
+//
+//if (IsDataLoaded() == false)
+//	throw range_error("ERROR Data::LoadIndex: Cannot assign indices before reading data file.");
+//
+//if (mRowIndexList.size() == 0) {
+//	if (!mpParameters->mMinimalOutput)
+//		cout << endl << "No row index list specified. Assuming all " << Size() << " row indices as valid." << endl;
+//	for (unsigned i = 0; i < Size(); ++i)
+//		mRowIndexList.push_back(i);
+//}
+//
+//}

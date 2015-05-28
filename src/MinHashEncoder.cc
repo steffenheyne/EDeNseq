@@ -117,9 +117,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 
 			bool valid_input = true;
 			file_instances = 0;
-			string header;
 			string currSeq;
-			string name;
 			uint pos;
 
 			while (  valid_input ) {
@@ -129,6 +127,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 
 				workQueueS myDataChunk;
 				myDataChunk.gr.resize(currBuff);
+				myDataChunk.names.resize(currBuff);
 				myDataChunk.offset= instance_counter; // offset goes over all files
 				myDataChunk.dataSet = &(*myData);
 
@@ -137,7 +136,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 
 					switch (myData->filetype) {
 					case FASTA:
-						mpData->SetGraphFromFASTAFile(fin, myDataChunk.gr.at(i),currSeq, pos, name);
+						mpData->SetGraphFromFASTAFile(fin, myDataChunk.gr.at(i),currSeq, pos, myDataChunk.names.at(i));
 						break;
 					case STRINGSEQ:
 						mpData->SetGraphFromFile(fin, myDataChunk.gr.at(i));
@@ -152,9 +151,11 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 						i++;
 						instance_counter++;
 						file_instances++;
+						if (myDataChunk.names.at(i-1) == "") { myDataChunk.names.at(i-1) = std::to_string(instance_counter); }
 					}
 				}
 				myDataChunk.gr.resize(i);
+				myDataChunk.names.resize(i);
 
 				//cout << " instances read " << instance_counter << " " << myDataChunk.gr.size() << " buffer " << currBuff << " full..." << graph_queue.size() << " " << std::this_thread::get_id() << endl;
 				if (graph_queue.size()>=numWorkers*100){
@@ -196,6 +197,7 @@ void MinHashEncoder::worker_Graph2Signature(){
 			}
 
 			sig_queue.push(myData);
+			cv2.notify_all();
 			cv3.notify_all();
 		}
 	}
@@ -224,24 +226,30 @@ void MinHashEncoder::finisher(vector<vector<unsigned> >* myCache){
 					}
 					break;
 				default:
-					throw range_error("Cannot update index! Index Type 	not recognized.");
+					throw range_error("Cannot update index! Index Type not recognized.");
 				}
 			}
 
+			uint chunkSize = myData->sigs.size();
 			if (myData->dataSet->updateSigCache){
-				if (myCache->size()<myData->offset+myData->sigs.size())
-					myCache->resize(myData->offset+myData->sigs.size());
-				for (unsigned j = 0; j < myData->sigs.size(); j++) {
+
+				if (myCache->size()<myData->offset + chunkSize) {
+					myCache->resize(myData->offset + chunkSize);
+					idx2nameMap.resize(myData->offset + chunkSize);
+				}
+				for (unsigned j = 0; j < chunkSize; j++) {
 					myCache->at(myData->offset+j) = myData->sigs[j];
+					name2idxMap.insert(make_pair(myData->names[j],myData->offset+j));
+					idx2nameMap.at(myData->offset+j) = myData->names[j];
 				}
 			}
-			signature_counter += myData->sigs.size();
-			//cout << "    finisher updated index with " << mySigSet->sigs.size() << " signatures all_sigs=" <<  signature_counter << " inst=" << instance_counter << endl;
+			signature_counter += chunkSize;
+			//cout << "    finisher updated index with " << chunkSize << " signatures all_sigs=" <<  signature_counter << " inst=" << instance_counter << endl;
 		}
 		progress_bar.Count(signature_counter);
-		cvm.notify_all();
 		cv1.notify_all();
 		cv2.notify_all();
+		cvm.notify_all();
 	}
 }
 
@@ -293,15 +301,13 @@ void MinHashEncoder::LoadDataIntoIndexThreaded(vector<SeqDataSet>& myFiles, vect
 		myMinHashCache->clear();
 	}
 
-	//create all threads
+	//create all threads: 1 finisher, 1 readFiles, n workers as provided
 	threads.clear();
 	threads.push_back( std::thread(&MinHashEncoder::finisher,this,myMinHashCache));
 	for (int i=0;i<graphWorkers;i++){
 		threads.push_back( std::thread(&MinHashEncoder::worker_Graph2Signature,this));
 	}
 	threads.push_back( std::thread(&MinHashEncoder::worker_readFiles,this,graphWorkers));
-	//	threads.push_back( std::thread(&MinHashEncoder::worker_readFiles,this,graphWorkers));
-	//	threads.push_back( std::thread(&MinHashEncoder::worker_readFiles,this,graphWorkers));
 
 	{
 		join_threads joiner(threads);
@@ -315,6 +321,9 @@ void MinHashEncoder::LoadDataIntoIndexThreaded(vector<SeqDataSet>& myFiles, vect
 			cv2.notify_all();
 			cv3.notify_all();
 		};
+		cv1.notify_all();
+		cv2.notify_all();
+		cv3.notify_all();
 	}
 
 	cout << endl << "Inverse index ratio of overfull bins (maxSizeBin): " << ((double)numFullBins)/((double)numKeys) << " "<< numFullBins << "/" << numKeys << " instances " << instance_counter << endl;
@@ -409,7 +418,6 @@ vector<unsigned> MinHashEncoder::ComputeHashSignature(SVector& aX) {
 	}
 
 	// compute shingles, i.e. rehash mNumHashShingles hash values into one hash value
-
 	if (mpParameters->mNumHashShingles == 1 ) {
 		return signature;
 	} else {

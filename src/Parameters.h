@@ -92,6 +92,7 @@ public:
 	double mSeqShift;
 	unsigned mMinRadius;
 	unsigned mMinDistance;
+	string mDenseCenterNamesFile;
 	bool mWriteApproxNeighbors;
 
 public:

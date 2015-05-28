@@ -302,6 +302,7 @@ public:
 		{
 			if(threads[i].joinable())
 				threads[i].join();
+			cout << "thread " << i << " joined " << endl;
 		}
 		cout << threads.size() << " threads joined" << endl;
 	}

@@ -420,19 +420,19 @@ void Parameters::SetupOptions() {
 		}
 	}
 	{
-			ParameterType param;
-			param.mShortSwitch = "";
-			param.mLongSwitch = "pure_approximate_sim";
-			param.mShortDescription = "Calculation of the approximate neighborhood of an instance is only based on minHash signatures. Parameter value is between ]0..1] and determines the minimal fraction of common min-hash bins/hashes (similarity) of elements in the approximate neighborhood. 0=OFF and higher values also turn off e.g. -x etc.";
-			param.mTypeCode = REAL;
-			param.mValue = "0.5";
-			mOptionList.insert(make_pair(param.mLongSwitch, param));
-			{
-				vector<ParameterType*>& vec = mActionOptionList[CLUSTER];
-				ParameterType& p = mOptionList[param.mLongSwitch];
-				vec.push_back(&p);
-			}
+		ParameterType param;
+		param.mShortSwitch = "";
+		param.mLongSwitch = "pure_approximate_sim";
+		param.mShortDescription = "Calculation of the approximate neighborhood of an instance is only based on minHash signatures. Parameter value is between ]0..1] and determines the minimal fraction of common min-hash bins/hashes (similarity) of elements in the approximate neighborhood. 0=OFF and higher values also turn off e.g. -x etc.";
+		param.mTypeCode = REAL;
+		param.mValue = "0.5";
+		mOptionList.insert(make_pair(param.mLongSwitch, param));
+		{
+			vector<ParameterType*>& vec = mActionOptionList[CLUSTER];
+			ParameterType& p = mOptionList[param.mLongSwitch];
+			vec.push_back(&p);
 		}
+	}
 	{
 		ParameterType param;
 		param.mShortSwitch = "";
@@ -605,33 +605,47 @@ void Parameters::SetupOptions() {
 		}
 	}
 	{
-			ParameterType param;
-			param.mShortSwitch = "";
-			param.mLongSwitch = "no_index_cache_file";
-			param.mShortDescription = "Do not save/read MinHash reverse index to/from <index_data_file>.bhi file.";
-			param.mTypeCode = FLAG;
-			param.mValue = "0";
-			mOptionList.insert(make_pair(param.mLongSwitch, param));
-			{
-				vector<ParameterType*>& vec = mActionOptionList[CLASSIFY];
-				ParameterType& p = mOptionList[param.mLongSwitch];
-				vec.push_back(&p);
-			}
+		ParameterType param;
+		param.mShortSwitch = "";
+		param.mLongSwitch = "dense_center_names_file";
+		param.mShortDescription = "list with seq names used as cluster centers; names have to match either fasta header (file_type FASTA) or idx (file_type STRINGSEQ); note: a dense cluster can contain not listed seqs";
+		param.mTypeCode = STRING;
+		param.mValue = "";
+		mOptionList.insert(make_pair(param.mLongSwitch, param));
+		{
+			vector<ParameterType*>& vec = mActionOptionList[CLUSTER];
+			ParameterType& p = mOptionList[param.mLongSwitch];
+			vec.push_back(&p);
 		}
+	}
 	{
-			ParameterType param;
-			param.mShortSwitch = "";
-			param.mLongSwitch = "write_approx_neighbors";
-			param.mShortDescription = "Writes all found approximate neighbors for each instance to file 'approx_dense_centers>'.";
-			param.mTypeCode = FLAG;
-			param.mValue = "0";
-			mOptionList.insert(make_pair(param.mLongSwitch, param));
-			{
-				vector<ParameterType*>& vec = mActionOptionList[CLUSTER];
-				ParameterType& p = mOptionList[param.mLongSwitch];
-				vec.push_back(&p);
-			}
+		ParameterType param;
+		param.mShortSwitch = "";
+		param.mLongSwitch = "no_index_cache_file";
+		param.mShortDescription = "Do not save/read MinHash reverse index to/from <index_data_file>.bhi file.";
+		param.mTypeCode = FLAG;
+		param.mValue = "0";
+		mOptionList.insert(make_pair(param.mLongSwitch, param));
+		{
+			vector<ParameterType*>& vec = mActionOptionList[CLASSIFY];
+			ParameterType& p = mOptionList[param.mLongSwitch];
+			vec.push_back(&p);
 		}
+	}
+	{
+		ParameterType param;
+		param.mShortSwitch = "";
+		param.mLongSwitch = "write_approx_neighbors";
+		param.mShortDescription = "Writes all found approximate neighbors for each instance to file 'approx_dense_centers>'.";
+		param.mTypeCode = FLAG;
+		param.mValue = "0";
+		mOptionList.insert(make_pair(param.mLongSwitch, param));
+		{
+			vector<ParameterType*>& vec = mActionOptionList[CLUSTER];
+			ParameterType& p = mOptionList[param.mLongSwitch];
+			vec.push_back(&p);
+		}
+	}
 }
 
 void Parameters::Usage(string aCommandName, string aCompactOrExtended) {
@@ -744,7 +758,8 @@ void Parameters::Init(int argc, const char** argv) {
 			mMinDistance = stream_cast<unsigned>(param.mValue);
 		if (param.mLongSwitch == "pure_approximate_sim")
 			mPureApproximateSim = stream_cast<double>(param.mValue);
-
+		if (param.mLongSwitch == "dense_center_names_file")
+			mDenseCenterNamesFile = param.mValue;
 	}
 
 	//convert action string to action code

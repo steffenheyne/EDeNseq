@@ -40,6 +40,7 @@ public:
 	bool SetGraphFromSeq(GraphClass& oG, string& currSeq);
 	unsigned Size();
 	void SetDataSize(unsigned aSize);
+	void LoadStringList(string aFileName, vector<string>& oList, uint numTokens);
 };
 
 #endif /* DATA_H */
