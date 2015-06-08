@@ -9,9 +9,11 @@
 #include "Parameters.h"
 #include "Data.h"
 #include "BaseManager.h"
+#include <sparsehash/dense_hash_map>
+#include <sparsehash/sparse_hash_map>
+
 
 using namespace std;
-
 
 class MinHashEncoder {
 
@@ -150,17 +152,20 @@ public:
 		mInverseIndex.clear();
 		for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k){
 			mInverseIndex.push_back(indexSingleTy());
+			//mInverseIndex.back().set_empty_key(0);
 		}
 
 	}
 
-	typedef unsigned binKeyTy;
+	typedef uint8_t binKeyTy;
 	//typedef uint8_t binTy;
 
 	//typedef pair<binKeyTy,binTy> indexBinItem;
 	//typedef vector<indexBinItem> indexBinTy;
 	typedef vector<binKeyTy> indexBinTy;
 	typedef std::tr1::unordered_map<unsigned,indexBinTy> indexSingleTy;
+//	typedef google::dense_hash_map<unsigned, indexBinTy> indexSingleTy;
+//	typedef google::sparse_hash_map<unsigned, indexBinTy> indexSingleTy;
 	typedef vector<indexSingleTy> indexTy;
 
 	const binKeyTy MAXBINKEY = std::numeric_limits<binKeyTy>::max();

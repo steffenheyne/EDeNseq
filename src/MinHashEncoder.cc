@@ -148,10 +148,10 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 					if (myDataChunk.gr.at(i).IsEmpty()) {
 						valid_input = false;
 					} else {
-						i++;
 						instance_counter++;
 						file_instances++;
-						if (myDataChunk.names.at(i-1) == "") { myDataChunk.names.at(i-1) = std::to_string(instance_counter); }
+						if (myDataChunk.names.at(i) == "") { myDataChunk.names.at(i) = std::to_string(instance_counter); }
+						i++;
 					}
 				}
 				myDataChunk.gr.resize(i);
@@ -279,9 +279,16 @@ void MinHashEncoder::LoadDataIntoIndexThreaded(vector<SeqDataSet>& myFiles, vect
 
 	vector<vector<unsigned> >* myMinHashCache;
 	{
+		// check if we have datasets to update the index
+		vector<SeqDataSet> newIndexData;
 		for (unsigned i=0;i<myFiles.size(); i++){
 			if (myFiles[i].updateIndex)
-				mIndexDataSets.push_back(myFiles[i]);
+				newIndexData.push_back(myFiles[i]);
+				//mIndexDataSets.push_back(myFiles[i]);
+		}
+
+		if (newIndexData.size()>0){
+
 		}
 
 		if (indexType == CLASSIFY)

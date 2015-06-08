@@ -19,7 +19,6 @@ struct SeqDataSet {
 	unsigned numSequences;
 	bool updateIndex;
 	bool updateSigCache;
-	//vector<vector<unsigned> > sigCache;
 };
 
 class Data {

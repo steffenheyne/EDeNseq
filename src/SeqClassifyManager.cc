@@ -94,8 +94,8 @@ void SeqClassifyManager::ClassifySeqs(){
 		valarray<double> hist;
 		unsigned emptyBins = 0;
 		mHistogramIndex.ComputeHistogram(mHistogramIndex.ComputeHashSignature(i),hist,emptyBins);
-
-		hist /= mpParameters->mNumHashFunctions-emptyBins;
+		hist /= hist.sum();
+		//hist /= mpParameters->mNumHashFunctions-emptyBins;
 		hist = hist.apply(changeNAN);
 		metaHist += hist;
 
@@ -117,8 +117,14 @@ void SeqClassifyManager::ClassifySeqs(){
 	// metahistogram
 	cout << endl << endl << "META histogram - classified seqs: " << setprecision(3) << (double)classifiedInstances/((double)mpData->Size()) << " (" << classifiedInstances << ")" << endl;
 	metaHist = metaHist/metaHist.sum();
+	vector<pair<double,uint> > sortedHist;
 	for (unsigned j=0; j<metaHist.size();j++){
-		cout << setprecision(2) << metaHist[j] << "\t";
+		sortedHist.push_back(make_pair(-metaHist[j],j));
+	}
+	sort(sortedHist.begin(), sortedHist.end());
+
+	for (unsigned j=0; j<sortedHist.size();j++){
+		cout << setprecision(2) << j << "\t" << -sortedHist[j].first << "\t" << sortedHist[j].second << "\t" << mHistogramIndex.mIndexDataSets[sortedHist[j].second].desc <<"\n";
 	}
 	cout << "  SUM "<< metaHist.sum() << endl << endl;
 }
