@@ -23,12 +23,12 @@ with serveral chromosomes or in order to put very similar genomes together.
 
 Here is an example about creating the index file for bacterial reference genomes. 
 
-## Get table with reference genomes from NCBI ftp server (prok_reference_genomes.txt)
-## Download latest version for each refseq entry via eutils in fasta format, zip it and save it in $outdir 
-## create EDeNseq index table (refseq_bact_genomes.index_list)
+1. Get table with reference genomes from NCBI ftp server (prok_reference_genomes.txt)
+2. Download latest version for each refseq entry via eutils in fasta format, zip it and save it in $outdir 
+3. create EDeNseq index table (refseq_bact_genomes.index_list)
 
 ```bash
-wget ...
+wget ftp://ftp.ncbi.nlm.nih.gov/genomes/GENOME_REPORTS/prok_reference_genomes.txt
 
 outdir="refseq_bact_genomes"; mkdir -p outdir; 
 
