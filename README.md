@@ -39,3 +39,11 @@ done
 cat prok_reference_genomes.txt | awk '{FS="\t";OFS="\t";if (NR==1) next;idx++;split($4,CHR,","); for (i in CHR){gsub(" ","_",$3);print CHR[i],idx,$3}}' |  awk -v PATH=$(pwd)/$outdir '{OFS="\t";fasta=PATH"/"$1".fa.gz"; if ((getline _ < fasta)>=0){ print $2,fasta,$1"|"$3 }}' > refseq_bact_genomes.index_list
 
 ```
+
+## Example 
+
+```bash
+
+EDeNseq -a CLASSIFY -f STRINGSEQ -i test_seqs.eden -b 30 --num_hash_shingles 2 --numThreads 4 --index_data_file ./refseq_bact_genomes.index_list --seq_window 80 --seq_shift 0.3 -r 6 -d 14 --min_radius 6 --min_distance 14  --num_repeat_hash_functions 0  -F 8
+
+```
