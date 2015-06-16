@@ -22,26 +22,18 @@ void SeqClassifyManager::Exec() {
 	// load data source for index (genomes)
 	vector<SeqDataSet> fileList = mpData->LoadIndexDataList(mpParameters->mIndexDataList.c_str());
 
-	// sequence set for classification
-	SeqDataSet mySet;
-	mySet.filename = mpParameters->mInputDataFileName.c_str();
-	mySet.idx = 1;
-	mySet.filetype = mpParameters->mFileTypeCode;
-	mySet.desc = "approx_cluster_set";
-	mySet.updateIndex=false;
-	mySet.updateSigCache=true;
-	vector<SeqDataSet> myList;
-	myList.push_back(mySet);
-
 	// create/load inverse MinHash index against that we can classify other sequences
-	const unsigned pos = mpParameters->mIndexDataList.find_last_of("/");
 	string indexName = mpParameters->mIndexDataList;
+	const unsigned pos = mpParameters->mIndexDataList.find_last_of("/");
 	if (std::string::npos != pos)
 		indexName = mpParameters->mIndexDataList.substr(pos+1);
+
+	mHistogramIndex.PrepareIndexDataSets(fileList);
 
 	// create new index
 	if (!std::ifstream(mpParameters->mIndexDataList+".bhi").good()){
 		cout << endl << " *** Creating inverse index *** "<< endl << endl;
+
 		mHistogramIndex.LoadDataIntoIndexThreaded(fileList,NULL);
 
 		// write index
@@ -56,10 +48,6 @@ void SeqClassifyManager::Exec() {
 			cout << "Index is NOT saved to file!"<< endl;
 	} else {
 
-		mHistogramIndex.mInverseIndex.clear();
-		for (unsigned i=0;i<fileList.size(); i++){
-			mHistogramIndex.mIndexDataSets.push_back(fileList[i]);
-		}
 		// read index
 		cout << endl << " *** Read inverse index *** "<< endl << endl;
 		cout << "inverse index file : " << mpParameters->mIndexDataList+".bhi" << endl << "read index ..." << endl;
@@ -71,6 +59,18 @@ void SeqClassifyManager::Exec() {
 			throw range_error("Cannot read index from file " + mpParameters->mIndexDataList+".bhi");
 	}
 
+	// sequence set for classification
+	SeqDataSet mySet;
+	mySet.filename = mpParameters->mInputDataFileName.c_str();
+	mySet.uIdx = 1;
+	mySet.idx = 0;
+	mySet.filetype = mpParameters->mFileTypeCode;
+	mySet.desc = "seqs_to_classify";
+	mySet.updateIndex=false;
+	mySet.updateSigCache=true;
+	vector<SeqDataSet> myList;
+	myList.push_back(mySet);
+
 	cout << endl << " *** Read sequences for classification and create their MinHash signatures *** " << endl << endl;
 	mHistogramIndex.LoadDataIntoIndexThreaded(myList,NULL);
 
@@ -79,33 +79,45 @@ void SeqClassifyManager::Exec() {
 
 double changeNAN(double i) {if (std::isnan(i)) return 0.0; else return i;}
 
+double indicator(double i) {if (i>0) return 1; else return 0;}
+
+
 void SeqClassifyManager::ClassifySeqs(){
 
 	valarray<double> metaHist;
-	metaHist.resize(mHistogramIndex.mIndexDataSets.size());
+	valarray<double> metaHistNum;
+
+	metaHist.resize(mHistogramIndex.GetHistogramSize());
 	metaHist *= 0;
+	metaHistNum.resize(mHistogramIndex.GetHistogramSize());
+	metaHistNum *= 0;
+
 	unsigned classifiedInstances = 0;
 	ProgressBar pb(1000);
-//#ifdef USEMULTITHREAD
-//#pragma omp parallel for schedule(dynamic,100)
-//#endif
+	//#ifdef USEMULTITHREAD
+	//#pragma omp parallel for schedule(dynamic,100)
+	//#endif
 	for (unsigned i = 0; i < mpData->Size(); ++i) {
 
 		valarray<double> hist;
 		unsigned emptyBins = 0;
+		mHistogramIndex.ComputeHashSignature(i);
 		mHistogramIndex.ComputeHistogram(mHistogramIndex.ComputeHashSignature(i),hist,emptyBins);
-		hist /= hist.sum();
+
+		unsigned sum = hist.sum();
+		hist /= sum;
 		//hist /= mpParameters->mNumHashFunctions-emptyBins;
 		hist = hist.apply(changeNAN);
 		metaHist += hist;
+		metaHistNum += hist.apply(indicator);
 
-		if (hist.sum()!=0)
+		if (sum!=0)
 			classifiedInstances++;
 		pb.Count();
-	//#ifdef USEMULTITHREAD
-	//#pragma omp critical
-	//#endif
-			{
+		//#ifdef USEMULTITHREAD
+		//#pragma omp critical
+		//#endif
+		{
 			/*cout << i << ":"<< emptyBins << "  \t";
 			/for (unsigned j=0; j<hist.size();j++){
 					cout << setprecision(2) << hist[j] << "\t";
@@ -124,7 +136,13 @@ void SeqClassifyManager::ClassifySeqs(){
 	sort(sortedHist.begin(), sortedHist.end());
 
 	for (unsigned j=0; j<sortedHist.size();j++){
-		cout << setprecision(2) << j << "\t" << -sortedHist[j].first << "\t" << sortedHist[j].second << "\t" << mHistogramIndex.mIndexDataSets[sortedHist[j].second].desc <<"\n";
+		std::pair< std::multimap<uint,uint>::iterator, std::multimap<uint,uint>::iterator > ret;
+		ret = mHistogramIndex.mHistBin2DatasetIdx.equal_range(sortedHist[j].second);
+		cout << setprecision(2) << j+1 << "\t" << -sortedHist[j].first << "\t" << setprecision(10) << metaHistNum[sortedHist[j].second] << "\t" << sortedHist[j].second << "\t";
+		for (std::multimap<uint,uint>::iterator it = ret.first; it != ret.second; ++it ){
+			cout << mHistogramIndex.mIndexDataSets[it->second].desc <<";";
+		}
+		cout << endl;
 	}
-	cout << "  SUM "<< metaHist.sum() << endl << endl;
+	cout << "SUM\t"<< metaHist.sum() << endl << endl;
 }

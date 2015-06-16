@@ -4,7 +4,7 @@ EDeNseq is a tool for fast clustering and classification of (metagenomics) reads
 
 # Read Classification
 
-EDeNseq can classify reads against an index of e.g. genomes. In order to build the index,
+EDeNseq classifies reads against an index of e.g. genomes. In order to build the index,
 EDeNseq needs a tab-delimited file with three columns:
 
 `<idx>	<fa-file-path>	<description>`
@@ -15,7 +15,7 @@ Second column, `<fa-file-path>`, is the path to a fasta file used for that idx.
 The last column is some description of the file/slot. 
 This is used only for output purposes. 
 
-Note: there can multiple lines with the same <idx>! This allows to put several 
+Note: there can multiple lines with the same `<idx>`! This allows to put several 
 fasta files (genomes) in the same index slot! This is useful e.g. for bacteria 
 with serveral chromosomes or in order to put very similar genomes together. 
 

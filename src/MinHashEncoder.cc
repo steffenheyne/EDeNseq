@@ -16,7 +16,12 @@ void MinHashEncoder::Init(Parameters* apParameters, Data* apData, INDEXType apIn
 	mHashBitMask = numeric_limits<unsigned>::max() >> 1;
 	mHashBitMask = (2 << (mpParameters->mHashBitSize - 1)) - 1;
 	indexType = apIndexType;
-	cout << "indexType " << indexType << endl;
+
+	if (mpParameters->mNumRepeatsHashFunction == 0 || mpParameters->mNumRepeatsHashFunction > mpParameters->mNumHashShingles * mpParameters->mNumHashFunctions){
+		mpParameters->mNumRepeatsHashFunction = mpParameters->mNumHashShingles * mpParameters->mNumHashFunctions;
+	}
+
+	cout << "MinHashEncoder object created of indexType " << indexType << endl;
 }
 
 inline vector<unsigned> MinHashEncoder::HashFuncNSPDK(const string& aString, unsigned aStart, unsigned aMaxRadius, unsigned aBitMask) {
@@ -102,13 +107,13 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 
 		SeqDataSetP myData;
 		unique_lock<mutex> lk(mut1);
-		cv1.wait(lk,[&]{if ( ( (done) ||  ((instance_counter <= signature_counter) && (readFile_queue.try_pop(myData))))) return true; else return false;});
+		cv1.wait(lk,[&]{if ( ( (done) ||  ((mInstanceCounter <= mSignatureCounter) && (readFile_queue.try_pop(myData))))) return true; else return false;});
 		lk.unlock();
 		if (file_instances != 0) cout << " instances produced from file " << file_instances << endl;
 
 		if (!done && myData->filename != ""){
 
-			cout << endl << "read next file " << myData->filename << " index " << myData->idx << " " << " sig_all_counter " << signature_counter << " inst_counter "<< instance_counter << " thread " << std::this_thread::get_id() << endl;
+			cout << endl << "read next file " << myData->filename << " index " << myData->idx << " " << " sig_all_counter " << mSignatureCounter << " inst_counter "<< mInstanceCounter << " thread " << std::this_thread::get_id() << endl;
 			igzstream fin;
 			fin.open(myData->filename.c_str(),std::ios::in);
 
@@ -118,17 +123,17 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 			bool valid_input = true;
 			file_instances = 0;
 			string currSeq;
-			uint pos;
+			unsigned pos;
 
 			while (  valid_input ) {
 
-				unsigned maxB = max(100,(int)log2((double)signature_counter)*10);
+				unsigned maxB = max(100,(int)log2((double)mSignatureCounter)*10);
 				unsigned currBuff = rand()%(maxB*2 - maxB + 1) + maxB;
 
 				workQueueS myDataChunk;
 				myDataChunk.gr.resize(currBuff);
 				myDataChunk.names.resize(currBuff);
-				myDataChunk.offset= instance_counter; // offset goes over all files
+				myDataChunk.offset= mInstanceCounter; // offset goes over all files
 				myDataChunk.dataSet = &(*myData);
 
 				unsigned i = 0;
@@ -148,16 +153,18 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 					if (myDataChunk.gr.at(i).IsEmpty()) {
 						valid_input = false;
 					} else {
-						instance_counter++;
+						mInstanceCounter++;
 						file_instances++;
-						if (myDataChunk.names.at(i) == "") { myDataChunk.names.at(i) = std::to_string(instance_counter); }
+						if (myDataChunk.names.at(i) == "") {
+							myDataChunk.names.at(i) = std::to_string(mInstanceCounter);
+						}
 						i++;
 					}
 				}
 				myDataChunk.gr.resize(i);
 				myDataChunk.names.resize(i);
 
-				//cout << " instances read " << instance_counter << " " << myDataChunk.gr.size() << " buffer " << currBuff << " full..." << graph_queue.size() << " " << std::this_thread::get_id() << endl;
+				//cout << " instances read " << mInstanceCounter << " " << myDataChunk.gr.size() << " buffer " << currBuff << " full..." << graph_queue.size() << " " << std::this_thread::get_id() << endl;
 				if (graph_queue.size()>=numWorkers*100){
 					unique_lock<mutex> lk(mut2);
 					cv2.wait(lk,[&]{if ((done) || (graph_queue.size()<=numWorkers*5)) return true; else return false;});
@@ -211,9 +218,9 @@ void MinHashEncoder::finisher(vector<vector<unsigned> >* myCache){
 		unique_lock<mutex> lk(mut3);
 		cv3.wait(lk,[&]{if ( (done) || (sig_queue.try_pop( (myData) ))) return true; else return false;});
 		lk.unlock();
-
 		if (!done && myData->sigs.size()>0) {
 			if (myData->dataSet->updateIndex){
+
 				switch (indexType) {
 				case CLUSTER:
 					for (unsigned j = 0; j < myData->sigs.size(); j++) {
@@ -222,7 +229,7 @@ void MinHashEncoder::finisher(vector<vector<unsigned> >* myCache){
 					break;
 				case CLASSIFY:
 					for (unsigned j = 0; j < myData->sigs.size(); j++) {
-						UpdateInverseIndex(myData->sigs[j], myData->dataSet->idx-1);
+						UpdateInverseIndex(myData->sigs[j], myData->dataSet->idx);
 					}
 					break;
 				default:
@@ -232,7 +239,6 @@ void MinHashEncoder::finisher(vector<vector<unsigned> >* myCache){
 
 			uint chunkSize = myData->sigs.size();
 			if (myData->dataSet->updateSigCache){
-
 				if (myCache->size()<myData->offset + chunkSize) {
 					myCache->resize(myData->offset + chunkSize);
 					idx2nameMap.resize(myData->offset + chunkSize);
@@ -243,10 +249,10 @@ void MinHashEncoder::finisher(vector<vector<unsigned> >* myCache){
 					idx2nameMap.at(myData->offset+j) = myData->names[j];
 				}
 			}
-			signature_counter += chunkSize;
-			//cout << "    finisher updated index with " << chunkSize << " signatures all_sigs=" <<  signature_counter << " inst=" << instance_counter << endl;
+			mSignatureCounter += chunkSize;
+			//cout << "    finisher updated index with " << chunkSize << " signatures all_sigs=" <<  mSignatureCounter << " inst=" << mInstanceCounter << endl;
 		}
-		progress_bar.Count(signature_counter);
+		progress_bar.Count(mSignatureCounter);
 		cv1.notify_all();
 		cv2.notify_all();
 		cvm.notify_all();
@@ -255,60 +261,50 @@ void MinHashEncoder::finisher(vector<vector<unsigned> >* myCache){
 
 void MinHashEncoder::LoadDataIntoIndexThreaded(vector<SeqDataSet>& myFiles, vector<vector<unsigned> >* myCache){
 
-	if (mpParameters->mNumRepeatsHashFunction == 0 || mpParameters->mNumRepeatsHashFunction > mpParameters->mNumHashShingles * mpParameters->mNumHashFunctions){
-		mpParameters->mNumRepeatsHashFunction = mpParameters->mNumHashShingles * mpParameters->mNumHashFunctions;
+
+	uint numIndexUpdates = 0;
+	for (unsigned i=0;i<myFiles.size(); i++){
+		readFile_queue.push(std::make_shared<SeqDataSet>(myFiles[i]));
+		if (myFiles[i].updateIndex)
+			numIndexUpdates++;
 	}
+
+	// check which cache to use for signatures
+	// use either external MinHash cache or class member
+	vector<vector<unsigned> >* myMinHashCache;
+	if (myCache != NULL) {
+		myMinHashCache = myCache;
+	} else {
+		// use standard cache
+		myMinHashCache = &mMinHashCache;
+	}
+	myMinHashCache->clear();
 
 	cout << "Using " << mpParameters->mNumHashFunctions << " hash functions (with factor " << mpParameters->mNumRepeatsHashFunction << " for single minhash)" << endl;
 	cout << "Using " << mpParameters->mNumHashShingles << " as hash shingle factor" << endl;
-	cout << "Using Feature radius   " << mpParameters->mMinRadius<<".."<<mpParameters->mRadius << endl;
-	cout << "Using Feature distance " << mpParameters->mMinDistance<<".."<<mpParameters->mDistance << endl;
-	cout << "Using FASTA win " << mpParameters->mSeqWindow<<" shift"<<mpParameters->mSeqShift << endl;
+	cout << "Using feature radius   " << mpParameters->mMinRadius<<".."<<mpParameters->mRadius << endl;
+	cout << "Using feature distance " << mpParameters->mMinDistance<<".."<<mpParameters->mDistance << endl;
+	cout << "Using sequence window  " << mpParameters->mSeqWindow<<" shift"<<mpParameters->mSeqShift << endl;
+	cout << "Computing MinHash signatures on the fly while reading " << myFiles.size() << " file(s)..." << endl;
+	cout << "Update inverse index with " << numIndexUpdates << " file(s)..." << endl;
 
-	done = false;
-	files_done=0;
-	signature_counter = 0;
-	instance_counter = 0;
+	// threaded producer-consumer model for signature creation and index update
+	// created threads:
+	// 	1 finisher that updates the index and signature cache,
+	// 	1 to read files and produces sequence instances
+	//		n worker threads that create the signatures
 
 	int graphWorkers = std::thread::hardware_concurrency();
 	if (mpParameters->mNumThreads>0)
 		graphWorkers = mpParameters->mNumThreads;
+
 	cout << "Using " << graphWorkers << " worker threads and 2 helper threads..." << endl;
 
-	cout << "Computing MinHash signatures on the fly while reading " << myFiles.size() << " file(s)..." << endl;
+	done = false;
+	files_done=0;
+	mSignatureCounter = 0;
+	mInstanceCounter = 0;
 
-	vector<vector<unsigned> >* myMinHashCache;
-	{
-		// check if we have datasets to update the index
-		vector<SeqDataSet> newIndexData;
-		for (unsigned i=0;i<myFiles.size(); i++){
-			if (myFiles[i].updateIndex)
-				newIndexData.push_back(myFiles[i]);
-				//mIndexDataSets.push_back(myFiles[i]);
-		}
-
-		if (newIndexData.size()>0){
-
-		}
-
-		if (indexType == CLASSIFY)
-			cout << "INDEX histogram length " << mIndexDataSets.size() << endl;
-
-		for (unsigned i=0;i<myFiles.size(); i++){
-			readFile_queue.push(std::make_shared<SeqDataSet>(myFiles[i]));
-		}
-
-		// use external MinHash cache
-		if (myCache != NULL) {
-			myMinHashCache = myCache;
-		} else {
-			// use standard cache
-			myMinHashCache = &mMinHashCache;
-		}
-		myMinHashCache->clear();
-	}
-
-	//create all threads: 1 finisher, 1 readFiles, n workers as provided
 	threads.clear();
 	threads.push_back( std::thread(&MinHashEncoder::finisher,this,myMinHashCache));
 	for (int i=0;i<graphWorkers;i++){
@@ -322,68 +318,28 @@ void MinHashEncoder::LoadDataIntoIndexThreaded(vector<SeqDataSet>& myFiles, vect
 		unique_lock<mutex> lk(mutm);
 		cv1.notify_all();
 		while(!done){
-			cvm.wait(lk,[&]{if ( (files_done<(int)myFiles.size()) || (signature_counter < instance_counter)) return false; else return true;});
+			cvm.wait(lk,[&]{if ( (files_done<(int)myFiles.size()) || (mSignatureCounter < mInstanceCounter)) return false; else return true;});
+			lk.unlock();
 			done=true;
-			cv1.notify_all();
-			cv2.notify_all();
 			cv3.notify_all();
-		};
-		cv1.notify_all();
-		cv2.notify_all();
-		cv3.notify_all();
-	}
+			cv2.notify_all();
+			cv1.notify_all();
+		}
 
-	cout << endl << "Inverse index ratio of overfull bins (maxSizeBin): " << ((double)numFullBins)/((double)numKeys) << " "<< numFullBins << "/" << numKeys << " instances " << instance_counter << endl;
+	} // leave block only if threads are finished and joined, destroys joiner
 
-	if (instance_counter > 0){
-		mpData->SetDataSize(instance_counter);
+	// threads finished
+
+	if (numIndexUpdates>0)
+		cout << endl << "Inverse index ratio of overfull bins (maxSizeBin): " << ((double)numFullBins)/((double)numKeys) << " "<< numFullBins << "/" << numKeys << " instances " << mInstanceCounter << endl;
+
+	if (mInstanceCounter == 0) {
+		throw range_error("ERROR in MinHashEncoder::LoadData: something went wrong; no instances/signatures produced");
 	} else
-		throw range_error("ERROR Data::LoadData: something went wrong: data file was expected but no data is available");
+		cout << "Instances/signatures produced " << mInstanceCounter << endl;
+
+	mpData->SetDataSize(mInstanceCounter);
 }
-
-
-//void HistogramIndex::UpdateInverseIndexHist(vector<unsigned>& aSignature, unsigned aIndex) {
-//	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k) { //for every hash value
-//		unsigned key = aSignature[k];
-//		if (key != MAXUNSIGNED && key != 0) { //if key is equal to markers for empty bins then skip insertion instance in data structure
-//			if (mInverseIndex[k].count(key) == 0) { //if this is the first time that an instance exhibits that specific value for that hash function, then store for the first time the reference to that instance
-//				indexBinTy tmp(mIndexDataSets.size(),0);
-//				tmp[aIndex]++;
-//				mInverseIndex[k].insert(make_pair(key, tmp));
-//				numKeys++; // just for bin statistics
-//			} else if (mInverseIndex[k][key][aIndex]<MAXBIN){
-//				mInverseIndex[k][key][aIndex]++;
-//			}
-//		}
-//	}
-//}
-
-
-//void MinHashEncoder::CleanUpInverseIndex() {
-//	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k) {
-//		for (indexSingleTy::const_iterator jt = mInverseIndex[k].begin(); jt != mInverseIndex[k].end(); ++jt) {
-//			unsigned hash_id = jt->first;
-//			if (hash_id != 0 && hash_id != MAXUNSIGNED) { //do not consider buckets corresponding to null bins
-//				unsigned collision_size = mInverseIndex[k][hash_id].size();
-//
-//				if (collision_size < mpParameters->mMaxSizeBin) {
-//				} else {//remove bins that are too full from inverse index
-//					mInverseIndex[k].erase(hash_id);
-//				}
-//			}
-//		}
-//	}
-//}
-
-//vector<unsigned> MinHashEncoder::ComputeHashSignatureSize(vector<unsigned>& aSignature) {
-//	vector<unsigned> signature_size(mpParameters->mNumHashFunctions);
-//	assert(aSignature.size()==mpParameters->mNumHashFunctions);
-//	for (unsigned i = 0; i < aSignature.size(); ++i) {
-//		unsigned key = aSignature[i];
-//		signature_size[i] = mInverseIndex[i][key].size();
-//	}
-//	return signature_size;
-//}
 
 vector<unsigned>& MinHashEncoder::ComputeHashSignature(unsigned aID) {
 	if (mMinHashCache.size()>0 && mMinHashCache[aID].size() > 0)
@@ -398,7 +354,6 @@ vector<unsigned> MinHashEncoder::ComputeHashSignature(SVector& aX) {
 	unsigned numHashFunctionsFull = mpParameters->mNumHashFunctions * mpParameters->mNumHashShingles;
 	unsigned sub_hash_range = numHashFunctionsFull / mpParameters->mNumRepeatsHashFunction;
 	vector<unsigned> signature(numHashFunctionsFull);
-
 	//init with MAXUNSIGNED
 	for (unsigned k = 0; k < numHashFunctionsFull; ++k)
 		signature[k] = MAXUNSIGNED;
@@ -414,7 +369,7 @@ vector<unsigned> MinHashEncoder::ComputeHashSignature(SVector& aX) {
 				unsigned lower_bound = MAXUNSIGNED / sub_hash_range * kk;
 				unsigned upper_bound = MAXUNSIGNED / sub_hash_range * (kk + 1);
 				// upper bound can be different from MAXUNSIGNED due to rounding effects, correct this
-				if (kk+1==sub_hash_range) upper_bound=MAXUNSIGNED;
+				//if (kk+1==sub_hash_range) upper_bound=MAXUNSIGNED;
 				if (key >= lower_bound && key < upper_bound) { //if we are in the k-th slot
 					unsigned signature_feature = kk + (l - 1) * sub_hash_range;
 					if (key < signature[signature_feature]) //keep the min hash within the slot
@@ -470,13 +425,11 @@ void NeighborhoodIndex::ComputeApproximateNeighborhoodCore(const vector<unsigned
 	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k) {
 
 		unsigned hash_id = aSignature[k];
-		//cout << "hash func " << k << " id " << hash_id << endl;
 		if (hash_id != 0 && hash_id != MAXUNSIGNED && mInverseIndex[k][hash_id].front() != MAXBINKEY) {
 
 			//fill neighborhood set counting number of occurrences
 			for (indexBinTy::iterator it = mInverseIndex[k][hash_id].begin(); it != mInverseIndex[k][hash_id].end(); ++it) {
 				binKeyTy instance_id = *it;
-				//cout << "inst "<< instance_id << endl;
 				if (neighborhood.count(instance_id) > 0)
 					neighborhood[instance_id]++;
 				else
@@ -486,7 +439,6 @@ void NeighborhoodIndex::ComputeApproximateNeighborhoodCore(const vector<unsigned
 			collisions++;
 		}
 	}
-	//cout << " coll " << collisions << endl;
 }
 
 vector<unsigned> NeighborhoodIndex::ComputeApproximateNeighborhood(const vector<unsigned>& aSignature, unsigned& collisions, double& density) {
@@ -567,90 +519,77 @@ pair<unsigned,unsigned> NeighborhoodIndex::ComputeApproximateSim(const unsigned&
 	return tmp;
 }
 
-//void HistogramIndex::writeBinaryIndex(ostream &out, const indexTy& index) {
-//	// create binary reverse index representation
-//	// format:
-//	unsigned numHashFunc = index.size();
-//	out.write((const char*) &numHashFunc, sizeof(unsigned));
-//	for (indexTy::const_iterator it = index.begin(); it!= index.end(); it++){
-//		unsigned numBins = it->size();
-//		out.write((const char*) &numBins, sizeof(unsigned));
-//		for (indexSingleTy::const_iterator itBin = it->begin(); itBin!=it->end(); itBin++){
-//			unsigned binId = itBin->first;
-//			unsigned numBinEntries = itBin->second.size();
-//			out.write((const char*) &binId, sizeof(unsigned));
-//			out.write((const char*) &numBinEntries, sizeof(unsigned));
-//			for (indexBinTy::const_iterator binEntry = itBin->second.begin(); binEntry != itBin->second.end(); binEntry++){
-//				binTy t= *binEntry;
-//				out.write((const char*) &(t), sizeof(binTy));
-//			}
-//		}
-//	}
-//}
+void HistogramIndex::SetHistogramSize(unsigned size){
+	mHistogramSize = size;
+}
+
+
+unsigned HistogramIndex::GetHistogramSize(){
+	return mHistogramSize;
+}
+
+
+bool compare(const SeqDataSet& first, const SeqDataSet& second) {
+
+	return (first.uIdx<second.uIdx);
+}
+
+void  HistogramIndex::PrepareIndexDataSets(vector<SeqDataSet>& myFileList){
+
+	if (!myFileList.size())
+		throw range_error("ERROR no datasets to prepare ...");
+
+	sort(myFileList.begin(),myFileList.end(),compare);
+
+	// check if we have datasets to update the index
+	uint bin = 0;
+	uint userIdx = myFileList[0].uIdx;
+	for (unsigned i=0;i<myFileList.size(); i++){
+		if (myFileList[i].updateIndex){
+			if ( myFileList[i].uIdx != userIdx )
+				bin++;
+			mHistBin2DatasetIdx.insert(make_pair(bin,i));
+			userIdx = myFileList[i].uIdx;
+			myFileList[i].idx = bin;
+			mIndexDataSets.push_back(myFileList[i]);
+			//cout << "bin" << bin << " " << userIdx << " "<<myFileList[i].idx << " " << myFileList[i].uIdx << endl;
+		}
+	}
+	SetHistogramSize(bin+1);
+}
 
 void HistogramIndex::UpdateInverseIndex(vector<unsigned>& aSignature, unsigned aIndex) {
 	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k) { //for every hash value
 		unsigned key = aSignature[k];
 		if (key != MAXUNSIGNED && key != 0) { //if key is equal to markers for empty bins then skip insertion instance in data structure
 			if (mInverseIndex[k].count(key) == 0) { //if this is the first time that an instance exhibits that specific value for that hash function, then store for the first time the reference to that instance
-				indexBinTy tmp;
-				//indexBinItem myI = make_pair<binItemTy>(aIndex,1);
-				tmp.push_back(aIndex);
-				mInverseIndex[k].insert(make_pair(key, tmp));
+				mInverseIndex[k][key]= indexBinTy(1,aIndex);
 				numKeys++; // just for bin statistics
 			} else if (mInverseIndex[k][key].back() != aIndex){
 				mInverseIndex[k][key].push_back(aIndex);
-			} //else if (mInverseIndex[k][key][0].second<MAXBIN){
-			  //	mInverseIndex[k][key][0].second++;
-			  // }
+			}
 		}
 	}
 }
 
 
-double indicator(double i){if (i>0) return 1.0; else return 0.0;}
-
-//void  HistogramIndex::ComputeHistogram(const vector<unsigned>& aSignature, std::valarray<double>& hist, unsigned& emptyBins) {
-//
-//	hist.resize(mIndexDataSets.size());
-//	hist *= 0;
-//	emptyBins = 0;
-//
-//	for (unsigned k = 0; k < aSignature.size(); ++k) {
-//		if (mInverseIndex[k].count(aSignature[k]) > 0) {
-//			vector<double> md(mInverseIndex[k][aSignature[k]].begin(),mInverseIndex[k][aSignature[k]].end());
-//			std::valarray<double> t(md.data(),hist.size() );
-//			std::valarray<double> ti = t.apply(indicator);
-//			hist += ti;
-//		} else {
-//			emptyBins++;
-//		}
-//	}
-//}
-
-
 void HistogramIndex::ComputeHistogram(const vector<unsigned>& aSignature, std::valarray<double>& hist, unsigned& emptyBins) {
 
-	hist.resize(mIndexDataSets.size());
+	hist.resize(GetHistogramSize());
 	hist *= 0;
 	emptyBins = 0;
 
 	for (unsigned k = 0; k < aSignature.size(); ++k) {
 		if (mInverseIndex[k].count(aSignature[k]) > 0) {
 
-			unsigned si = hist.size();
-			std::valarray<double> t(0.0,si);
+			std::valarray<double> t(0.0, hist.size());
 
 			for (typename indexBinTy::const_iterator it = mInverseIndex[k][aSignature[k]].begin(); it != mInverseIndex[k][aSignature[k]].end();it++){
-				//t[it->first]=it->second;
 				t[*it]=1;
 			}
 
-			//		vector<double> md(mInverseIndex[k][aSignature[k]].begin(),mInverseIndex[k][aSignature[k]].end());
-			//		std::valarray<double> t(md.data(),hist.size() );
-			//		std::valarray<double> ti = t.apply(indicator);
-			//		hist += ti;
 			hist += t;
+
 		} else {
 			emptyBins++;
 		}
@@ -661,6 +600,17 @@ void HistogramIndex::ComputeHistogram(const vector<unsigned>& aSignature, std::v
 void HistogramIndex::writeBinaryIndex2(ostream &out, const indexTy& index) {
 	// create binary reverse index representation
 	// format:
+	out.write((const char*) &mpParameters->mHashBitSize, sizeof(unsigned));
+	out.write((const char*) &mpParameters->mRandomSeed, sizeof(unsigned));
+	out.write((const char*) &mpParameters->mRadius, sizeof(unsigned));
+	out.write((const char*) &mpParameters->mMinRadius, sizeof(unsigned));
+	out.write((const char*) &mpParameters->mDistance, sizeof(unsigned));
+	out.write((const char*) &mpParameters->mMinDistance, sizeof(unsigned));
+	out.write((const char*) &mpParameters->mNumHashShingles, sizeof(unsigned));
+	out.write((const char*) &mpParameters->mNumRepeatsHashFunction, sizeof(unsigned));
+	out.write((const char*) &mpParameters->mSeqWindow, sizeof(unsigned));
+	out.write(reinterpret_cast<char *>(&mpParameters->mSeqShift), sizeof(mpParameters->mSeqShift));
+
 	unsigned numHashFunc = index.size();
 	out.write((const char*) &numHashFunc, sizeof(unsigned));
 	for (typename indexTy::const_iterator it = index.begin(); it!= index.end(); it++){
@@ -673,9 +623,7 @@ void HistogramIndex::writeBinaryIndex2(ostream &out, const indexTy& index) {
 			out.write((const char*) &numBinEntries, sizeof(unsigned));
 			for (typename indexBinTy::const_iterator binEntry = itBin->second.begin(); binEntry != itBin->second.end(); binEntry++){
 				binKeyTy s = *binEntry;
-				//binTy t = binEntry->second;
 				out.write((const char*) &(s), sizeof(binKeyTy));
-				//out.write((const char*) &(t), sizeof(binTy));
 			}
 		}
 	}
@@ -684,6 +632,20 @@ void HistogramIndex::writeBinaryIndex2(ostream &out, const indexTy& index) {
 bool HistogramIndex::readBinaryIndex2(string filename, indexTy &index){
 	igzstream fin;
 	fin.open(filename.c_str());
+
+	fin.read((char*) &mpParameters->mHashBitSize, sizeof(unsigned));
+	fin.read((char*) &mpParameters->mRandomSeed, sizeof(unsigned));
+	fin.read((char*) &mpParameters->mRadius, sizeof(unsigned));
+	fin.read((char*) &mpParameters->mMinRadius, sizeof(unsigned));
+	fin.read((char*) &mpParameters->mDistance, sizeof(unsigned));
+	fin.read((char*) &mpParameters->mMinDistance, sizeof(unsigned));
+	fin.read((char*) &mpParameters->mNumHashShingles, sizeof(unsigned));
+	fin.read((char*) &mpParameters->mNumRepeatsHashFunction, sizeof(unsigned));
+	fin.read((char*) &mpParameters->mSeqWindow, sizeof(unsigned));
+	fin.read( reinterpret_cast<char*>( &mpParameters->mSeqShift ), sizeof mpParameters->mSeqShift);
+
+	cout << " shift "<< mpParameters->mSeqShift << endl;
+
 	unsigned numHashFunc = 0;
 	fin.read((char*) &numHashFunc, sizeof(unsigned));
 	if (numHashFunc <= 0)
@@ -715,10 +677,7 @@ bool HistogramIndex::readBinaryIndex2(string filename, indexTy &index){
 			for (unsigned entry = 0; entry < numBinEntries; entry++ ){
 
 				binKeyTy s;
-//				binTy t;
 				fin.read((char*) &s, sizeof(binKeyTy));
-	//			fin.read((char*) &t, sizeof(binTy));
-				//if (s < 0 || t < 0)
 				if (s < 0)
 					fin.setstate(std::ios::badbit);
 				if (!fin.good())
@@ -730,6 +689,27 @@ bool HistogramIndex::readBinaryIndex2(string filename, indexTy &index){
 	fin.close();
 	return true;
 }
+
+//double indicator(double i){if (i>0) return 1.0; else return 0.0;}
+
+//void  HistogramIndex::ComputeHistogram(const vector<unsigned>& aSignature, std::valarray<double>& hist, unsigned& emptyBins) {
+//
+//	hist.resize(mIndexDataSets.size());
+//	hist *= 0;
+//	emptyBins = 0;
+//
+//	for (unsigned k = 0; k < aSignature.size(); ++k) {
+//		if (mInverseIndex[k].count(aSignature[k]) > 0) {
+//			vector<double> md(mInverseIndex[k][aSignature[k]].begin(),mInverseIndex[k][aSignature[k]].end());
+//			std::valarray<double> t(md.data(),hist.size() );
+//			std::valarray<double> ti = t.apply(indicator);
+//			hist += ti;
+//		} else {
+//			emptyBins++;
+//		}
+//	}
+//}
+
 
 //bool HistogramIndex::readBinaryIndex(string filename, indexTy &index){
 //	igzstream fin;
@@ -779,3 +759,67 @@ bool HistogramIndex::readBinaryIndex2(string filename, indexTy &index){
 //}
 
 
+
+//void HistogramIndex::UpdateInverseIndexHist(vector<unsigned>& aSignature, unsigned aIndex) {
+//	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k) { //for every hash value
+//		unsigned key = aSignature[k];
+//		if (key != MAXUNSIGNED && key != 0) { //if key is equal to markers for empty bins then skip insertion instance in data structure
+//			if (mInverseIndex[k].count(key) == 0) { //if this is the first time that an instance exhibits that specific value for that hash function, then store for the first time the reference to that instance
+//				indexBinTy tmp(mIndexDataSets.size(),0);
+//				tmp[aIndex]++;
+//				mInverseIndex[k].insert(make_pair(key, tmp));
+//				numKeys++; // just for bin statistics
+//			} else if (mInverseIndex[k][key][aIndex]<MAXBIN){
+//				mInverseIndex[k][key][aIndex]++;
+//			}
+//		}
+//	}
+//}
+
+
+//void MinHashEncoder::CleanUpInverseIndex() {
+//	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k) {
+//		for (indexSingleTy::const_iterator jt = mInverseIndex[k].begin(); jt != mInverseIndex[k].end(); ++jt) {
+//			unsigned hash_id = jt->first;
+//			if (hash_id != 0 && hash_id != MAXUNSIGNED) { //do not consider buckets corresponding to null bins
+//				unsigned collision_size = mInverseIndex[k][hash_id].size();
+//
+//				if (collision_size < mpParameters->mMaxSizeBin) {
+//				} else {//remove bins that are too full from inverse index
+//					mInverseIndex[k].erase(hash_id);
+//				}
+//			}
+//		}
+//	}
+//}
+
+//vector<unsigned> MinHashEncoder::ComputeHashSignatureSize(vector<unsigned>& aSignature) {
+//	vector<unsigned> signature_size(mpParameters->mNumHashFunctions);
+//	assert(aSignature.size()==mpParameters->mNumHashFunctions);
+//	for (unsigned i = 0; i < aSignature.size(); ++i) {
+//		unsigned key = aSignature[i];
+//		signature_size[i] = mInverseIndex[i][key].size();
+//	}
+//	return signature_size;
+//}
+
+//void HistogramIndex::writeBinaryIndex(ostream &out, const indexTy& index) {
+//	// create binary reverse index representation
+//	// format:
+//	unsigned numHashFunc = index.size();
+//	out.write((const char*) &numHashFunc, sizeof(unsigned));
+//	for (indexTy::const_iterator it = index.begin(); it!= index.end(); it++){
+//		unsigned numBins = it->size();
+//		out.write((const char*) &numBins, sizeof(unsigned));
+//		for (indexSingleTy::const_iterator itBin = it->begin(); itBin!=it->end(); itBin++){
+//			unsigned binId = itBin->first;
+//			unsigned numBinEntries = itBin->second.size();
+//			out.write((const char*) &binId, sizeof(unsigned));
+//			out.write((const char*) &numBinEntries, sizeof(unsigned));
+//			for (indexBinTy::const_iterator binEntry = itBin->second.begin(); binEntry != itBin->second.end(); binEntry++){
+//				binTy t= *binEntry;
+//				out.write((const char*) &(t), sizeof(binTy));
+//			}
+//		}
+//	}
+//}

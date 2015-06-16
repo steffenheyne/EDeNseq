@@ -19,6 +19,8 @@ SeqClusterManager::SeqClusterManager(Parameters* apParameters, Data* apData)
 	myList.push_back(mySet);
 
 	mNearestNeighbor.mMinHashEncoder.LoadDataIntoIndexThreaded(myList,NULL);
+	//mpData->SetDataSize(mNearestNeighbor.mMinHashEncoder.mInstanceCounter);
+
 	mNearestNeighbor.CacheReset();
 }
 

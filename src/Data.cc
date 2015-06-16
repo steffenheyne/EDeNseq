@@ -27,8 +27,9 @@ vector<SeqDataSet> Data::LoadIndexDataList(string filename){
 	while (!fin.eof() && valid_input) {
 		SeqDataSet mySet;
 		mySet.filetype=FASTA;
-		if (fin >> mySet.idx >> mySet.filename >> mySet.desc){
-			cout << "found file idx " << mySet.idx << "\t" << mySet.filename << "\t" << mySet.desc << endl;
+		if (fin >> mySet.uIdx >> mySet.filename >> mySet.desc){
+			cout << "found file idx " << mySet.uIdx << "\t" << mySet.filename << "\t" << mySet.desc << endl;
+			mySet.idx=0;
 			mySet.updateIndex=true;
 			mySet.updateSigCache=false;
 			myList.push_back(mySet);
@@ -38,6 +39,7 @@ vector<SeqDataSet> Data::LoadIndexDataList(string filename){
 	fin.close();
 	if (!myList.size())
 		throw range_error("ERROR LoadIndexData: No data found in " + filename + "!");
+
 	return myList;
 }
 
@@ -194,7 +196,7 @@ bool Data::SetGraphFromSeq(GraphClass& oG, string& currSeq) {
 //	return success_status;
 //}
 
-bool Data::SetGraphFromFASTAFile(istream& in, GraphClass& oG, string& currSeq, uint& pos, string& name) {
+bool Data::SetGraphFromFASTAFile(istream& in, GraphClass& oG, string& currSeq, unsigned& pos, string& name) {
 
 	bool success_status = false;
 
@@ -228,7 +230,7 @@ bool Data::SetGraphFromFASTAFile(istream& in, GraphClass& oG, string& currSeq, u
 		throw range_error("ERROR FASTA format error!");
 	}
 
-	if (currSeq.size() > 0 ) {
+	if (currSeq.size() > pos ) {
 
 		// default case for window/shift
 		unsigned currSize = win;
@@ -243,14 +245,15 @@ bool Data::SetGraphFromFASTAFile(istream& in, GraphClass& oG, string& currSeq, u
 		if (currSize>=win){
 			string seq = currSeq.substr(pos,currSize);
 			SetGraphFromSeq( seq ,oG);
+			//cout << currSeq.size() << " " << currSize << " eof? " << in.eof() << " pos " << pos << " win " << win << " " << seq << endl;
 		} else if (newSeq){
 			throw range_error("ERROR FASTA reader! Too short sequence found. Either use win=0 or increase window size!");
 		}
 
-		//cout << cuGrrrSeq.size() << " " << currSize << " eof? " << in.eof() << " pos " << pos << endl;
-		if (win>0 && currSeq.size()-pos-shift>=win){
+
+		if ((win>0) && (currSeq.size()-pos-shift>=win)){
 			pos += shift;
-		} else if (currSeq.size()-shift-pos<win || win == 0)
+		} else if ((currSeq.size()-shift-pos<win) || (win == 0))
 			{
 				currSeq="";
 				pos = 0;

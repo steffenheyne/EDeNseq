@@ -13,6 +13,7 @@ const unsigned BUFFER_SIZE = 100;
 
 struct SeqDataSet {
 	unsigned idx;
+	unsigned uIdx;
 	string filename;
 	string desc;
 	InputFileType filetype;
@@ -32,7 +33,7 @@ public:
 	void Init(Parameters* apParameters);
 	vector<SeqDataSet> LoadIndexDataList(string filename);
 	void SetGraphFromFile(istream& in, GraphClass& oG);
-	bool SetGraphFromFASTAFile(istream& in, GraphClass& oG, string& currSeq, uint& pos, string& name);
+	bool SetGraphFromFASTAFile(istream& in, GraphClass& oG, string& currSeq, unsigned& pos, string& name);
 	bool SetGraphFromSeq(string& seq, GraphClass& oG);
 	bool SetGraphFromStringFile(istream& in, GraphClass& oG);
 	string GetNextFastaSeq(istream& in,string& header);

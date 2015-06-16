@@ -19,21 +19,6 @@ class MinHashEncoder {
 
 public:
 
-	//	typedef unsigned binTy;
-	//	typedef vector<binTy>	indexBinTy;
-	//	typedef std::tr1::unordered_map<unsigned,indexBinTy> indexSingleTy;
-	//	typedef vector<indexSingleTy> indexTy;
-	//
-	//	//typedef unsigned binKeyTy;
-	//	typedef uint8_t binKeyTy;
-	//	typedef pair<binKeyTy,binTy> indexBinItem;
-	//	typedef vector<indexBinItem> indexBinTy2;
-	//	typedef std::tr1::unordered_map<unsigned,indexBinTy2> indexSingleTy2;
-	//	typedef vector<indexSingleTy2> indexTy2;
-	//
-	//	const binTy MAXBIN = std::numeric_limits<binTy>::max();
-
-
 	enum INDEXTypeE {
 		CLUSTER, CLASSIFY
 	};
@@ -84,8 +69,8 @@ protected:
 
 	std::atomic_bool done;
 	std::atomic_int files_done;
-	std::atomic_int instance_counter;
-	std::atomic_int signature_counter;
+	std::atomic_int mInstanceCounter;
+	std::atomic_int mSignatureCounter;
 
 	unsigned mHashBitMask;
 
@@ -122,6 +107,7 @@ public:
 		}
 	}
 
+	// inverse index
 	typedef unsigned binKeyTy;
 	typedef vector<binKeyTy>	indexBinTy;
 	typedef std::tr1::unordered_map<unsigned,indexBinTy> indexSingleTy;
@@ -144,6 +130,21 @@ public:
 
 class HistogramIndex : public MinHashEncoder
 {
+private:
+
+	unsigned mHistogramSize;
+
+	typedef uint8_t binKeyTy;
+	//typedef unsigned binKeyTy;
+	typedef vector<binKeyTy> indexBinTy;
+	typedef std::tr1::unordered_map<unsigned,indexBinTy> indexSingleTy;
+//	typedef google::dense_hash_map<unsigned, indexBinTy> indexSingleTy;
+//	typedef google::sparse_hash_map<unsigned, indexBinTy> indexSingleTy;
+	typedef vector<indexSingleTy> indexTy;
+
+	const binKeyTy MAXBINKEY = std::numeric_limits<binKeyTy>::max();
+
+
 public:
 
 	HistogramIndex(Parameters* apParameters, Data* apData)
@@ -157,26 +158,16 @@ public:
 
 	}
 
-	typedef uint8_t binKeyTy;
-	//typedef uint8_t binTy;
-
-	//typedef pair<binKeyTy,binTy> indexBinItem;
-	//typedef vector<indexBinItem> indexBinTy;
-	typedef vector<binKeyTy> indexBinTy;
-	typedef std::tr1::unordered_map<unsigned,indexBinTy> indexSingleTy;
-//	typedef google::dense_hash_map<unsigned, indexBinTy> indexSingleTy;
-//	typedef google::sparse_hash_map<unsigned, indexBinTy> indexSingleTy;
-	typedef vector<indexSingleTy> indexTy;
-
-	const binKeyTy MAXBINKEY = std::numeric_limits<binKeyTy>::max();
-	//const binTy       MAXBIN = std::numeric_limits<binTy>::max();
-
+	multimap<uint, uint> mHistBin2DatasetIdx;
 	indexTy mInverseIndex;
-	void 				  UpdateInverseIndex(vector<unsigned>& aSignature, unsigned aIndex);
-	void  			  ComputeHistogram(const vector<unsigned>& aSignature, std::valarray<double>& hist, unsigned& emptyBins);
 
-	void writeBinaryIndex2(ostream &out, const indexTy& index);
-	bool readBinaryIndex2(string filename, indexTy& index);
+	unsigned	GetHistogramSize();
+	void  SetHistogramSize(unsigned size);
+	void	PrepareIndexDataSets(vector<SeqDataSet>& myFileList);
+	void	UpdateInverseIndex(vector<unsigned>& aSignature, unsigned aIndex);
+	void  ComputeHistogram(const vector<unsigned>& aSignature, std::valarray<double>& hist, unsigned& emptyBins);
+	void	writeBinaryIndex2(ostream &out, const indexTy& index);
+	bool	readBinaryIndex2(string filename, indexTy& index);
 };
 
 #endif /* MIN_HASH_ENCODER_H */

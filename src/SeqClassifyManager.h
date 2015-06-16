@@ -19,9 +19,13 @@ class SeqClassifyManager: public BaseManager {
 
 public:
 	SeqClassifyManager(Parameters* apParameters, Data* apData);
+
+	HistogramIndex mHistogramIndex;
+	unsigned mNumSequences;
+
 	void Exec();
 	void ClassifySeqs();
-	HistogramIndex mHistogramIndex;
+
 };
 
 #endif /* SEQCLASSIFYMANAGER_H_ */

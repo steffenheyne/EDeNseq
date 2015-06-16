@@ -30,6 +30,7 @@ OPTS=-g -O3 -Wno-deprecated -DLOSS=1 -std=c++11 -pthread -fopenmp -DUSEMULTITHRE
 CXXFLAGS=${OPTS} -Wall -I eigen-eigen-3.20 -I sparsehash # -mtune=native -march=native 
 #CXXFLAGS= ${OPTS} 
 #LIBS=-lm -lz -Wl,--whole-archive -lpthread -Wl,--no-whole-archive
+#LIBS=-lm -lz -lpthread -Wl,-u,pthread
 LIBS=-lm -lz -lpthread
 
 PROGRAMS=EDeNseq	
