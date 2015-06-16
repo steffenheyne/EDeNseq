@@ -42,7 +42,7 @@ cat prok_reference_genomes.txt | awk '{FS="\t";OFS="\t";if (NR==1) next;idx++;sp
 
 ## Example 
 
-```bash
+```
 
 EDeNseq -a CLASSIFY -f STRINGSEQ -i test_seqs.eden -b 30 --num_hash_shingles 2 --numThreads 4 --index_data_file ./refseq_bact_genomes.index_list --seq_window 80 --seq_shift 0.3 -r 6 -d 14 --min_radius 6 --min_distance 14  --num_repeat_hash_functions 0  -F 8
 
