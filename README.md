@@ -30,7 +30,7 @@ Here is an example about creating the index file for bacterial reference genomes
 ```bash
 wget ftp://ftp.ncbi.nlm.nih.gov/genomes/GENOME_REPORTS/prok_reference_genomes.txt
 
-outdir="refseq_bact_genomes"; mkdir -p outdir; 
+outdir="refseq_bact_genomes"; mkdir -p $outdir; 
 
 for i in $(cat prok_reference_genomes.txt | awk '{FS="\t";OFS="\t";if (NR==1) next; split($4,CHR,","); for (i in CHR){gsub(" ","_",$3);print CHR[i]}}'); do
 	get "http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id="$i"&rettype=fasta&retmode=text" -q -O - | gzip > $outdir/$i.fa.gz; 
