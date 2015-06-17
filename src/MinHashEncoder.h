@@ -4,13 +4,13 @@
 
 #include <streambuf>
 #include <valarray>
-
+#include <list>
 #include "Utility.h"
 #include "Parameters.h"
 #include "Data.h"
 #include "BaseManager.h"
 //#include <sparsehash/dense_hash_map>
-//#include <sparsehash/sparse_hash_map>
+#include <sparsehash/sparse_hash_map>
 
 
 using namespace std;
@@ -130,22 +130,19 @@ public:
 
 class HistogramIndex : public MinHashEncoder
 {
-private:
+public:
 
 	unsigned mHistogramSize;
 
 	typedef uint8_t binKeyTy;
 	//typedef unsigned binKeyTy;
-	typedef vector<binKeyTy> indexBinTy;
+	typedef  vector<binKeyTy> indexBinTy;
 	typedef std::tr1::unordered_map<unsigned,indexBinTy> indexSingleTy;
 //	typedef google::dense_hash_map<unsigned, indexBinTy> indexSingleTy;
 //	typedef google::sparse_hash_map<unsigned, indexBinTy> indexSingleTy;
 	typedef vector<indexSingleTy> indexTy;
 
 	const binKeyTy MAXBINKEY = std::numeric_limits<binKeyTy>::max();
-
-
-public:
 
 	HistogramIndex(Parameters* apParameters, Data* apData)
 		:MinHashEncoder(apParameters,apData,CLASSIFY)

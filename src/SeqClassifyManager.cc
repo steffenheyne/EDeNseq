@@ -145,4 +145,27 @@ void SeqClassifyManager::ClassifySeqs(){
 		cout << endl;
 	}
 	cout << "SUM\t"<< metaHist.sum() << endl << endl;
+
+	valarray<double> indexHist;
+
+	indexHist.resize(mHistogramIndex.GetHistogramSize());
+	indexHist *= 0;
+
+	for (typename HistogramIndex::indexTy::const_iterator it = mHistogramIndex.mInverseIndex.begin(); it!= mHistogramIndex.mInverseIndex.end(); it++){
+	//	unsigned numBins = it->size();
+		for (typename HistogramIndex::indexSingleTy::const_iterator itBin = it->begin(); itBin!=it->end(); itBin++){
+//			unsigned binId = itBin->first;
+//			unsigned numBinEntries = itBin->second.size();
+			indexHist[itBin->second.size()-1] += 1;
+
+//			for (typename HistogramIndex::indexBinTy::const_iterator binEntry = itBin->second.begin(); binEntry != itBin->second.end(); binEntry++){
+//				HistogramIndex::binKeyTy s = *binEntry;
+//			}
+		}
+	}
+
+	for (unsigned i=0; i<indexHist.size();i++){
+		cout << " index bin size " << i+1 << "\t" << indexHist[i] << endl;
+	}
+
 }

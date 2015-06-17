@@ -127,7 +127,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 
 			while (  valid_input ) {
 
-				unsigned maxB = max(100,(int)log2((double)mSignatureCounter)*10);
+				unsigned maxB = max(100,(int)log2((double)mSignatureCounter)*100);
 				unsigned currBuff = rand()%(maxB*2 - maxB + 1) + maxB;
 
 				workQueueS myDataChunk;
@@ -167,7 +167,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 				//cout << " instances read " << mInstanceCounter << " " << myDataChunk.gr.size() << " buffer " << currBuff << " full..." << graph_queue.size() << " " << std::this_thread::get_id() << endl;
 				if (graph_queue.size()>=numWorkers*100){
 					unique_lock<mutex> lk(mut2);
-					cv2.wait(lk,[&]{if ((done) || (graph_queue.size()<=numWorkers*5)) return true; else return false;});
+					cv2.wait(lk,[&]{if ((done) || (graph_queue.size()<=numWorkers*20)) return true; else return false;});
 					lk.unlock();
 				}
 
@@ -563,7 +563,10 @@ void HistogramIndex::UpdateInverseIndex(vector<unsigned>& aSignature, unsigned a
 		unsigned key = aSignature[k];
 		if (key != MAXUNSIGNED && key != 0) { //if key is equal to markers for empty bins then skip insertion instance in data structure
 			if (mInverseIndex[k].count(key) == 0) { //if this is the first time that an instance exhibits that specific value for that hash function, then store for the first time the reference to that instance
-				mInverseIndex[k][key]= indexBinTy(1,aIndex);
+				indexBinTy t(1,aIndex);
+				t.reserve(1);
+				mInverseIndex[k][key]= t;
+				//mInverseIndex[k][key].reserve(1);
 				numKeys++; // just for bin statistics
 			} else if (mInverseIndex[k][key].back() != aIndex){
 				mInverseIndex[k][key].push_back(aIndex);
