@@ -127,7 +127,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 
 			while (  valid_input ) {
 
-				unsigned maxB = max(100,(int)log2((double)mSignatureCounter)*100);
+				unsigned maxB = max(100,(int)log2((double)mSignatureCounter)*1);
 				unsigned currBuff = rand()%(maxB*2 - maxB + 1) + maxB;
 
 				workQueueS myDataChunk;
