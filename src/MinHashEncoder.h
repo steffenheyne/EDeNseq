@@ -10,7 +10,8 @@
 #include "Data.h"
 #include "BaseManager.h"
 //#include <sparsehash/dense_hash_map>
-#include <sparsehash/sparse_hash_map>
+//#include <sparsehash/sparse_hash_map>
+#include "sparsehash-2.0.2/sparsehash/sparse_hash_map"
 //#include <unordered_map>
 
 using namespace std;
