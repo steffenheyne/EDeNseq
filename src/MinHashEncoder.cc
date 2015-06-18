@@ -734,6 +734,7 @@ bool HistogramIndex::readBinaryIndex2(string filename, indexTy &index){
 			fin.setstate(std::ios::badbit);
 		if (!fin.good())
 			return false;
+		index[hashFunc].resize(numBins);
 		for (unsigned  bin = 0; bin < numBins; bin++){
 
 			unsigned binId = 0;
