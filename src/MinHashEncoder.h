@@ -10,8 +10,8 @@
 #include "Data.h"
 #include "BaseManager.h"
 //#include <sparsehash/dense_hash_map>
-//#include <sparsehash/sparse_hash_map>
-
+#include <sparsehash/sparse_hash_map>
+//#include <unordered_map>
 
 using namespace std;
 
@@ -134,12 +134,21 @@ public:
 
 	unsigned mHistogramSize;
 
-	typedef uint8_t binKeyTy;
+	struct bin {
+		vector<uint16_t> val;
+	//	std::shared_ptr<bin> next;
+		//bin(std::shared_ptr<bin> const p) :val(p->val),next(p->next){}
+		//bin(){};
+	};
+
+	typedef uint16_t binKeyTy;
 	//typedef unsigned binKeyTy;
-	typedef  vector<binKeyTy> indexBinTy;
-	typedef std::tr1::unordered_map<unsigned,indexBinTy> indexSingleTy;
+	//typedef   vector<binKeyTy> indexBinTy;
+	typedef   binKeyTy* indexBinTy;
+
+//	typedef std::tr1::unordered_map<unsigned,binKeyTy*> indexSingleTy;
 //	typedef google::dense_hash_map<unsigned, indexBinTy> indexSingleTy;
-//	typedef google::sparse_hash_map<unsigned, indexBinTy> indexSingleTy;
+	typedef google::sparse_hash_map<unsigned, indexBinTy> indexSingleTy;
 	typedef vector<indexSingleTy> indexTy;
 
 	const binKeyTy MAXBINKEY = std::numeric_limits<binKeyTy>::max();

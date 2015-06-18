@@ -698,7 +698,7 @@ void Parameters::Init(int argc, const char** argv) {
 
 	//set the boolean parameters to a default value of false
 	mVerbose = false;
-
+	mNoIndexCacheFile = false;
 	//set the data members of Parameters according to user choice
 	for (map<string, ParameterType>::iterator it = mOptionList.begin(); it != mOptionList.end(); ++it) {
 		ParameterType& param = it->second;
@@ -709,6 +709,8 @@ void Parameters::Init(int argc, const char** argv) {
 				mVerbose = true;
 			if (param.mLongSwitch == "write_approx_neighbors")
 				mWriteApproxNeighbors = true;
+			if (param.mLongSwitch == "no_index_cache_file")
+				mNoIndexCacheFile = true;
 		}
 
 
@@ -746,8 +748,6 @@ void Parameters::Init(int argc, const char** argv) {
 			mMaxFractionOfDataset = stream_cast<double>(param.mValue);
 		if (param.mLongSwitch == "index_data_file")
 			mIndexDataList = param.mValue;
-		if (param.mLongSwitch == "no_index_cache_file")
-			mNoIndexCacheFile = true;
 		if (param.mLongSwitch == "seq_shift")
 			mSeqShift = stream_cast<double>(param.mValue);
 		if (param.mLongSwitch == "seq_window")

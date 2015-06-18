@@ -19,25 +19,22 @@ BaseManager(apParameters, apData), mHistogramIndex(apParameters, apData)
 
 void SeqClassifyManager::Exec() {
 
-	// load data source for index (genomes)
+	// load and prepare index list file to get files for indexing
 	vector<SeqDataSet> fileList = mpData->LoadIndexDataList(mpParameters->mIndexDataList.c_str());
-
-	// create/load inverse MinHash index against that we can classify other sequences
 	string indexName = mpParameters->mIndexDataList;
 	const unsigned pos = mpParameters->mIndexDataList.find_last_of("/");
 	if (std::string::npos != pos)
 		indexName = mpParameters->mIndexDataList.substr(pos+1);
-
 	mHistogramIndex.PrepareIndexDataSets(fileList);
 
-	// create new index
+	// create/load new inverse MinHash index against that we can classify other sequences
 	if (!std::ifstream(mpParameters->mIndexDataList+".bhi").good()){
 		cout << endl << " *** Creating inverse index *** "<< endl << endl;
 
 		mHistogramIndex.LoadDataIntoIndexThreaded(fileList,NULL);
 
 		// write index
-		if (mpParameters->mNoIndexCacheFile){
+		if (!mpParameters->mNoIndexCacheFile){
 			cout << "inverse index file : " << mpParameters->mIndexDataList+".bhi" << endl;
 			cout << " write index file ... ";
 			OutputManager om((indexName+".bhi").c_str(), mpParameters->mDirectoryPath);
@@ -48,7 +45,7 @@ void SeqClassifyManager::Exec() {
 			cout << "Index is NOT saved to file!"<< endl;
 	} else {
 
-		// read index
+		// read existing index file (*.bhi)
 		cout << endl << " *** Read inverse index *** "<< endl << endl;
 		cout << "inverse index file : " << mpParameters->mIndexDataList+".bhi" << endl << "read index ..." << endl;
 		bool indexState = mHistogramIndex.readBinaryIndex2(mpParameters->mIndexDataList+".bhi",mHistogramIndex.mInverseIndex);
@@ -59,7 +56,7 @@ void SeqClassifyManager::Exec() {
 			throw range_error("Cannot read index from file " + mpParameters->mIndexDataList+".bhi");
 	}
 
-	// sequence set for classification
+	// prepare sequence set for classification
 	SeqDataSet mySet;
 	mySet.filename = mpParameters->mInputDataFileName.c_str();
 	mySet.uIdx = 1;
@@ -152,15 +149,13 @@ void SeqClassifyManager::ClassifySeqs(){
 	indexHist *= 0;
 
 	for (typename HistogramIndex::indexTy::const_iterator it = mHistogramIndex.mInverseIndex.begin(); it!= mHistogramIndex.mInverseIndex.end(); it++){
-	//	unsigned numBins = it->size();
 		for (typename HistogramIndex::indexSingleTy::const_iterator itBin = it->begin(); itBin!=it->end(); itBin++){
-//			unsigned binId = itBin->first;
-//			unsigned numBinEntries = itBin->second.size();
-			indexHist[itBin->second.size()-1] += 1;
 
-//			for (typename HistogramIndex::indexBinTy::const_iterator binEntry = itBin->second.begin(); binEntry != itBin->second.end(); binEntry++){
-//				HistogramIndex::binKeyTy s = *binEntry;
-//			}
+			int i = 0;
+			while (itBin->second[i] != mHistogramIndex.MAXBINKEY){
+				i++;
+			}
+			indexHist[i-1] += 1;
 		}
 	}
 
