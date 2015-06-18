@@ -558,27 +558,6 @@ void  HistogramIndex::PrepareIndexDataSets(vector<SeqDataSet>& myFileList){
 	SetHistogramSize(bin+1);
 }
 
-//void HistogramIndex::UpdateInverseIndex(vector<unsigned>& aSignature, unsigned aIndex) {
-//	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k) { //for every hash value
-//		unsigned key = aSignature[k];
-//		if (key != MAXUNSIGNED && key != 0) { //if key is equal to markers for empty bins then skip insertion instance in data structure
-//			if (mInverseIndex[k].count(key) == 0) { //if this is the first time that an instance exhibits that specific value for that hash function, then store for the first time the reference to that instance
-//			/*	indexBinTy t(1,aIndex);
-//				t.reserve(1);
-//				mInverseIndex[k][key]= t;*/
-//				std::unique_ptr<bin> myP(new bin);
-//				myP->val=aIndex;
-//				mInverseIndex[k][key] = std::move(myP);
-//				//mInverseIndex[k][key].reserve(1);
-//				numKeys++; // just for bin statistics
-//			} else if (mInverseIndex[k][key].back() != aIndex){
-//				mInverseIndex[k][key].push_back(aIndex);
-//			}
-//		}
-//	}
-//}
-
-
 void HistogramIndex::UpdateInverseIndex(vector<unsigned>& aSignature, unsigned aIndex) {
 	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k) { //for every hash value
 		unsigned key = aSignature[k];
@@ -587,57 +566,28 @@ void HistogramIndex::UpdateInverseIndex(vector<unsigned>& aSignature, unsigned a
 
 				binKeyTy * foo;
 				foo = new binKeyTy[2];
-				foo[0]= (binKeyTy)aIndex;
-				foo[1]= MAXBINKEY;
+				foo[1]= (binKeyTy)aIndex;
+				foo[0]= 1; //index of last element is stored at idx[0]
 
 				mInverseIndex[k][key] = foo;
 				numKeys++; // just for bin statistics
-			} else if (mInverseIndex[k][key][0] != (binKeyTy)aIndex){
-				binKeyTy* foo = mInverseIndex[k][key];
-				int i = 0;
-				while (foo[i]!=MAXBINKEY){
-					i++;
-				}
+			} else if (mInverseIndex[k][key][mInverseIndex[k][key][0]] != (binKeyTy)aIndex){
 
+				binKeyTy newSize = (mInverseIndex[k][key][0])+1;
 				binKeyTy * fooNew;
-				fooNew = new binKeyTy[i+2];
-				fooNew[0]=(binKeyTy)aIndex;
+				fooNew = new binKeyTy[newSize+1];
 
-				for (int j=0;j<i;j++){
-					fooNew[j+1]=foo[j];
-				}
+				memcpy(fooNew,mInverseIndex[k][key],newSize*sizeof(binKeyTy));
+				fooNew[0] = newSize;
+				fooNew[newSize] = (binKeyTy)aIndex;
 
-				fooNew[i+1] = MAXBINKEY;
+				delete[] mInverseIndex[k][key];
 				mInverseIndex[k][key] = fooNew;
-				delete[] foo;
 			}
 		}
 	}
 }
 
-
-//void HistogramIndex::ComputeHistogram(const vector<unsigned>& aSignature, std::valarray<double>& hist, unsigned& emptyBins) {
-//
-//	hist.resize(GetHistogramSize());
-//	hist *= 0;
-//	emptyBins = 0;
-//
-//	for (unsigned k = 0; k < aSignature.size(); ++k) {
-//		if (mInverseIndex[k].count(aSignature[k]) > 0) {
-//
-//			std::valarray<double> t(0.0, hist.size());
-//
-//			for (typename indexBinTy::const_iterator it = mInverseIndex[k][aSignature[k]].begin(); it != mInverseIndex[k][aSignature[k]].end();it++){
-//				t[*it]=1;
-//			}
-//
-//			hist += t;
-//
-//		} else {
-//			emptyBins++;
-//		}
-//	}
-//}
 
 void HistogramIndex::ComputeHistogram(const vector<unsigned>& aSignature, std::valarray<double>& hist, unsigned& emptyBins) {
 
@@ -649,10 +599,9 @@ void HistogramIndex::ComputeHistogram(const vector<unsigned>& aSignature, std::v
 		if (mInverseIndex[k].count(aSignature[k]) > 0) {
 
 			std::valarray<double> t(0.0, hist.size());
-			int i = 0;
-			while (mInverseIndex[k][aSignature[k]][i] != MAXBINKEY){
+
+			for (uint i=1;i<=mInverseIndex[k][aSignature[k]][0];i++){
 				t[mInverseIndex[k][aSignature[k]][i]]=1;
-				i++;
 			}
 
 			hist += t;
@@ -685,19 +634,14 @@ void HistogramIndex::writeBinaryIndex2(ostream &out, const indexTy& index) {
 		for (typename indexSingleTy::const_iterator itBin = it->begin(); itBin!=it->end(); itBin++){
 			unsigned binId = itBin->first;
 
-			unsigned i = 0;
-			while (itBin->second[i]!=MAXBINKEY){
-				i++;
-			}
-
-			unsigned numBinEntries = i;
+			unsigned numBinEntries = itBin->second[0];
 			out.write((const char*) &binId, sizeof(unsigned));
 			out.write((const char*) &numBinEntries, sizeof(unsigned));
-			for (i=0;i<numBinEntries;i++){
+
+			for (binKeyTy i=1;i<=numBinEntries;i++){
 				binKeyTy s = itBin->second[i];
 				out.write((const char*) &(s), sizeof(binKeyTy));
 			}
-
 		}
 	}
 }
@@ -745,9 +689,10 @@ bool HistogramIndex::readBinaryIndex2(string filename, indexTy &index){
 				fin.setstate(std::ios::badbit);
 			if (!fin.good())
 				return false;
+
 			indexBinTy tmp = new binKeyTy[numBinEntries+1];
 
-			for (unsigned entry = 0; entry < numBinEntries; entry++ ){
+			for (unsigned entry = 1; entry <= numBinEntries; entry++ ){
 
 				binKeyTy s;
 				fin.read((char*) &s, sizeof(binKeyTy));
@@ -757,13 +702,57 @@ bool HistogramIndex::readBinaryIndex2(string filename, indexTy &index){
 					return false;
 				tmp[entry] = s;
 			}
-			tmp[numBinEntries] = MAXBINKEY;
+			tmp[0] = numBinEntries;
 			index[hashFunc][binId] = tmp;
 		}
 	}
 	fin.close();
 	return true;
 }
+
+//void HistogramIndex::UpdateInverseIndex(vector<unsigned>& aSignature, unsigned aIndex) {
+//	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k) { //for every hash value
+//		unsigned key = aSignature[k];
+//		if (key != MAXUNSIGNED && key != 0) { //if key is equal to markers for empty bins then skip insertion instance in data structure
+//			if (mInverseIndex[k].count(key) == 0) { //if this is the first time that an instance exhibits that specific value for that hash function, then store for the first time the reference to that instance
+//			/*	indexBinTy t(1,aIndex);
+//				t.reserve(1);
+//				mInverseIndex[k][key]= t;*/
+//				std::unique_ptr<bin> myP(new bin);
+//				myP->val=aIndex;
+//				mInverseIndex[k][key] = std::move(myP);
+//				//mInverseIndex[k][key].reserve(1);
+//				numKeys++; // just for bin statistics
+//			} else if (mInverseIndex[k][key].back() != aIndex){
+//				mInverseIndex[k][key].push_back(aIndex);
+//			}
+//		}
+//	}
+//}
+
+
+//void HistogramIndex::ComputeHistogram(const vector<unsigned>& aSignature, std::valarray<double>& hist, unsigned& emptyBins) {
+//
+//	hist.resize(GetHistogramSize());
+//	hist *= 0;
+//	emptyBins = 0;
+//
+//	for (unsigned k = 0; k < aSignature.size(); ++k) {
+//		if (mInverseIndex[k].count(aSignature[k]) > 0) {
+//
+//			std::valarray<double> t(0.0, hist.size());
+//
+//			for (typename indexBinTy::const_iterator it = mInverseIndex[k][aSignature[k]].begin(); it != mInverseIndex[k][aSignature[k]].end();it++){
+//				t[*it]=1;
+//			}
+//
+//			hist += t;
+//
+//		} else {
+//			emptyBins++;
+//		}
+//	}
+//}
 
 //double indicator(double i){if (i>0) return 1.0; else return 0.0;}
 

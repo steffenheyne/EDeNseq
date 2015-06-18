@@ -107,7 +107,6 @@ void SeqClassifyManager::ClassifySeqs(){
 		hist = hist.apply(changeNAN);
 		metaHist += hist;
 		metaHistNum += hist.apply(indicator);
-
 		if (sum!=0)
 			classifiedInstances++;
 		pb.Count();
@@ -143,24 +142,18 @@ void SeqClassifyManager::ClassifySeqs(){
 	}
 	cout << "SUM\t"<< metaHist.sum() << endl << endl;
 
+	// bin size statistics
 	valarray<double> indexHist;
-
 	indexHist.resize(mHistogramIndex.GetHistogramSize());
 	indexHist *= 0;
 
 	for (typename HistogramIndex::indexTy::const_iterator it = mHistogramIndex.mInverseIndex.begin(); it!= mHistogramIndex.mInverseIndex.end(); it++){
 		for (typename HistogramIndex::indexSingleTy::const_iterator itBin = it->begin(); itBin!=it->end(); itBin++){
-
-			int i = 0;
-			while (itBin->second[i] != mHistogramIndex.MAXBINKEY){
-				i++;
-			}
-			indexHist[i-1] += 1;
+			indexHist[itBin->second[0]-1] += 1;
 		}
 	}
 
 	for (unsigned i=0; i<indexHist.size();i++){
 		cout << " index bin size " << i+1 << "\t" << indexHist[i] << endl;
 	}
-
 }
