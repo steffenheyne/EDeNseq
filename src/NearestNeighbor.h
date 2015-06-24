@@ -9,15 +9,14 @@ using namespace std;
 
 class NearestNeighbor: public BaseManager {
 public:
-	MinHashEncoder mMinHashEncoder;
+	NeighborhoodIndex mMinHashEncoder;
 protected:
-	vector<vector<unsigned> > mNeighborhoodCache;
-	vector<umap_uint_int> mNeighborhoodCacheExt;
-	vector<pair<unsigned,double> > mNeighborhoodCacheInfo;
+	vector<vector<unsigned> > 			mNeighborhoodCache;
+	vector<umap_uint_int> 				mNeighborhoodCacheExt;
+	vector<pair<unsigned,double> >	mNeighborhoodCacheInfo;
 
 public:
 	NearestNeighbor(Parameters* apParameters, Data* apData);
-	void Init(Parameters* apParameters, Data* apData);
 	void CacheReset();
 
 	vector<unsigned> ComputeNeighborhood(unsigned aID);

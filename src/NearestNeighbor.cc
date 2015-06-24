@@ -1,13 +1,7 @@
 #include "NearestNeighbor.h"
 
 NearestNeighbor::NearestNeighbor(Parameters* apParameters, Data* apData) :
-BaseManager(apParameters, apData) {
-	Init(apParameters, apData);
-}
-
-void NearestNeighbor::Init(Parameters* apParameters, Data* apData) {
-	//	BaseManager::Init(apParameters, apData);
-	mMinHashEncoder.Init(apParameters, apData);
+BaseManager(apParameters, apData),mMinHashEncoder(apParameters, apData) {
 }
 
 void NearestNeighbor::CacheReset() {
@@ -15,8 +9,7 @@ void NearestNeighbor::CacheReset() {
 	mNeighborhoodCache.clear();
 	mNeighborhoodCacheExt.clear();
 	mNeighborhoodCacheInfo.clear();
-//	if (mpData->IsDataLoaded() == false)
-//		throw range_error("ERROR: Cannot clean cache if data is not loaded");
+
 	mNeighborhoodCache.resize(mpData->Size());
 	mNeighborhoodCacheExt.resize(mpData->Size());
 	mNeighborhoodCacheInfo.resize(mpData->Size());
