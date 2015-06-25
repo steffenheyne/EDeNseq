@@ -127,8 +127,8 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 
 			while (  valid_input ) {
 
-				unsigned maxB = max(100,(int)log2((double)mSignatureCounter)*1);
-				unsigned currBuff = rand()%(maxB*2 - maxB + 1) + maxB;
+				unsigned maxB = max(100,(int)log2((double)mSignatureCounter)*50);
+				unsigned currBuff = rand()%(maxB*3 - maxB + 1) + maxB;
 
 				workQueueS myDataChunk;
 				myDataChunk.gr.resize(currBuff);
@@ -218,7 +218,9 @@ void MinHashEncoder::finisher(vector<vector<unsigned> >* myCache){
 		unique_lock<mutex> lk(mut3);
 		cv3.wait(lk,[&]{if ( (done) || (sig_queue.try_pop( (myData) ))) return true; else return false;});
 		lk.unlock();
+
 		if (!done && myData->sigs.size()>0) {
+
 			if (myData->dataSet->updateIndex){
 
 				switch (indexType) {
@@ -249,8 +251,13 @@ void MinHashEncoder::finisher(vector<vector<unsigned> >* myCache){
 					idx2nameMap.at(myData->offset+j) = myData->names[j];
 				}
 			}
+
+			if ( (!myData->dataSet->updateIndex) && (!myData->dataSet->updateSigCache) ) {
+				finishUpdate(myData, myCache);
+			}
+
 			mSignatureCounter += chunkSize;
-			//cout << "    finisher updated index with " << chunkSize << " signatures all_sigs=" <<  mSignatureCounter << " inst=" << mInstanceCounter << endl;
+			//cout << "    finisher updated index with " << chunkSize << " signatures all_sigs=" <<  mSignatureCounter << " inst=" << mInstanceCounter << " sigQueue=" << sig_queue.size() << endl;
 		}
 		progress_bar.Count(mSignatureCounter);
 		cv1.notify_all();
@@ -259,7 +266,7 @@ void MinHashEncoder::finisher(vector<vector<unsigned> >* myCache){
 	}
 }
 
-void MinHashEncoder::LoadDataIntoIndexThreaded(vector<SeqDataSet>& myFiles, vector<vector<unsigned> >* myCache){
+void MinHashEncoder::LoadData_Threaded(vector<SeqDataSet>& myFiles, vector<vector<unsigned> >* myCache){
 
 
 	uint numIndexUpdates = 0;
@@ -305,7 +312,7 @@ void MinHashEncoder::LoadDataIntoIndexThreaded(vector<SeqDataSet>& myFiles, vect
 	mSignatureCounter = 0;
 	mInstanceCounter = 0;
 
-	threads.clear();
+	vector<std::thread> threads;
 	threads.push_back( std::thread(&MinHashEncoder::finisher,this,myMinHashCache));
 	for (int i=0;i<graphWorkers;i++){
 		threads.push_back( std::thread(&MinHashEncoder::worker_Graph2Signature,this));
@@ -326,7 +333,7 @@ void MinHashEncoder::LoadDataIntoIndexThreaded(vector<SeqDataSet>& myFiles, vect
 			cv1.notify_all();
 		}
 
-	} // leave block only if threads are finished and joined, destroys joiner
+	} // by leaving this block threads get joined by destruction of joiner
 
 	// threads finished
 
@@ -337,15 +344,17 @@ void MinHashEncoder::LoadDataIntoIndexThreaded(vector<SeqDataSet>& myFiles, vect
 		throw range_error("ERROR in MinHashEncoder::LoadData: something went wrong; no instances/signatures produced");
 	} else
 		cout << "Instances/signatures produced " << mInstanceCounter << endl;
+}
 
-	mpData->SetDataSize(mInstanceCounter);
+unsigned MinHashEncoder::GetLoadedInstances() {
+	return mInstanceCounter;
 }
 
 vector<unsigned>& MinHashEncoder::ComputeHashSignature(unsigned aID) {
 	if (mMinHashCache.size()>0 && mMinHashCache[aID].size() > 0)
 		return mMinHashCache[aID];
 	else {
-		throw range_error("ERROR internal MinHashCache is not filled!");
+		throw range_error("ERROR: MinHashCache is not filled!");
 	}
 }
 
@@ -394,7 +403,6 @@ vector<unsigned> MinHashEncoder::ComputeHashSignature(SVector& aX) {
 		return signatureFinal;
 	}
 }
-
 
 void NeighborhoodIndex::UpdateInverseIndex(vector<unsigned>& aSignature, unsigned aIndex) {
 	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k) { //for every hash value

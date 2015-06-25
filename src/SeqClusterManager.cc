@@ -18,7 +18,7 @@ SeqClusterManager::SeqClusterManager(Parameters* apParameters, Data* apData)
 	vector<SeqDataSet> myList;
 	myList.push_back(mySet);
 
-	mNearestNeighbor.mMinHashEncoder.LoadDataIntoIndexThreaded(myList,NULL);
+	mNearestNeighbor.mMinHashEncoder.LoadData_Threaded(myList,NULL);
 	//mpData->SetDataSize(mNearestNeighbor.mMinHashEncoder.mInstanceCounter);
 
 	mNearestNeighbor.CacheReset();
@@ -45,7 +45,7 @@ void SeqClusterManager::DenseCluster() {
 
 	} else {
 
-		for (uint i=0; i<mpData->Size(); i++){
+		for (uint i=0; i<mNearestNeighbor.mMinHashEncoder.GetLoadedInstances(); i++){
 			mDenseCenterIdxList.push_back(i);
 		}
 	}
@@ -85,7 +85,7 @@ void SeqClusterManager::DenseCluster() {
 	vector<unsigned> neighborhood_list;
 	unsigned collisions = 0;
 	double density = 0;
-	vector<long int> adjacencyList(mpData->Size());
+	vector<long int> adjacencyList(mNearestNeighbor.mMinHashEncoder.GetLoadedInstances());
 
 	for (unsigned k = 0; k < adjacencyList.size(); ++k) {
 		adjacencyList[k] = -1;

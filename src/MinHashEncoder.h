@@ -9,10 +9,7 @@
 #include "Parameters.h"
 #include "Data.h"
 #include "BaseManager.h"
-//#include <sparsehash/dense_hash_map>
-//#include <sparsehash/sparse_hash_map>
 #include "sparsehash-2.0.2/sparsehash/sparse_hash_map"
-//#include <unordered_map>
 
 using namespace std;
 
@@ -24,23 +21,6 @@ public:
 		CLUSTER, CLASSIFY
 	};
 
-	typedef INDEXTypeE INDEXType;
-
-	vector<SeqDataSet>	mIndexDataSets;
-	std::tr1::unordered_map<string, unsigned> name2idxMap;
-	vector<string> idx2nameMap;
-
-protected:
-
-	INDEXType	indexType;
-
-	Parameters* mpParameters;
-	Data* mpData;
-
-	vector<vector<unsigned> > mMinHashCache;
-	unsigned numKeys;
-	unsigned numFullBins;
-
 	struct workQueueS {
 		vector<GraphClass> gr;
 		vector<vector<unsigned> > sigs;
@@ -49,21 +29,37 @@ protected:
 		SeqDataSet* dataSet;
 	};
 
+	typedef INDEXTypeE INDEXType;
 	typedef std::shared_ptr<SeqDataSet> SeqDataSetP;
 	typedef std::shared_ptr<workQueueS> workQueueT;
+
+	vector<SeqDataSet>	mIndexDataSets;
+	std::tr1::unordered_map<string, unsigned> name2idxMap;
+	vector<string>	idx2nameMap;
+
+	Parameters* mpParameters;
+	Data* mpData;
+
+protected:
+
+	INDEXType	indexType;
+
+	unsigned numKeys;
+	unsigned numFullBins;
+
+private:
+	vector<vector<unsigned> > mMinHashCache;
 
 	mutable std::mutex mutm;
 	mutable std::mutex mut1;
 	mutable std::mutex mut2;
 	mutable std::mutex mut3;
 
-
 	std::condition_variable cvm;
 	std::condition_variable cv1;
 	std::condition_variable cv2;
 	std::condition_variable cv3;
 
-	vector<std::thread> threads;
 	threadsafe_queue<SeqDataSetP> readFile_queue;
 	threadsafe_queue<workQueueT> graph_queue;
 	threadsafe_queue<workQueueT> sig_queue;
@@ -75,25 +71,26 @@ protected:
 
 	unsigned mHashBitMask;
 
-	void worker_readFiles(int numWorkers);
-	void worker_Graph2Signature();
-	void finisher(vector<vector<unsigned> >* myCache);
-	void generate_feature_vector(const GraphClass& aG, SVector& x);
-	vector<unsigned> HashFuncNSPDK(const string& aString, unsigned aStart, unsigned aMaxRadius, unsigned aBitMask);
-	unsigned HashFuncNSPDK(const vector<unsigned>& aList, unsigned aBitMask);
+	void 					worker_readFiles(int numWorkers);
+	void					worker_Graph2Signature();
+	void 					finisher(vector<vector<unsigned> >* myCache);
+	void 					generate_feature_vector(const GraphClass& aG, SVector& x);
+	vector<unsigned>	HashFuncNSPDK(const string& aString, unsigned aStart, unsigned aMaxRadius, unsigned aBitMask);
+	unsigned 			HashFuncNSPDK(const vector<unsigned>& aList, unsigned aBitMask);
 
 public:
+
 	MinHashEncoder(Parameters* apParameters, Data* apData, INDEXType apIndexType=CLUSTER);
-	virtual ~MinHashEncoder();
+	virtual	~MinHashEncoder();
+	void		Init(Parameters* apParameters, Data* apData, INDEXType apIndexType=CLUSTER);
 
-	void Init(Parameters* apParameters, Data* apData, INDEXType apIndexType=CLUSTER);
-	virtual void UpdateInverseIndex(vector<unsigned>& aSignature, unsigned aIndex) {};
-	void CleanUpInverseIndex();
-	void LoadDataIntoIndexThreaded(vector<SeqDataSet>& myFiles, vector<vector<unsigned> >* myCache);
+	virtual void 		UpdateInverseIndex(vector<unsigned>& aSignature, unsigned aIndex) {};
+	virtual void 		finishUpdate(workQueueT& myData, vector<vector<unsigned> >* myCache) {};
+
+	void 					LoadData_Threaded(vector<SeqDataSet>& myFiles, vector<vector<unsigned> >* myCache);
+	unsigned				GetLoadedInstances();
 	vector<unsigned>& ComputeHashSignature(unsigned aID);
-	vector<unsigned> ComputeHashSignature(SVector& aX);
-	vector<unsigned> ComputeHashSignatureSize(vector<unsigned>& aSignature);
-
+	vector<unsigned>	ComputeHashSignature(SVector& aX);
 };
 
 class NeighborhoodIndex : public MinHashEncoder

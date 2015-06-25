@@ -15,14 +15,18 @@
 
 #include <math.h>
 
-class SeqClassifyManager: public BaseManager {
+class SeqClassifyManager: public HistogramIndex {
 
 public:
 	SeqClassifyManager(Parameters* apParameters, Data* apData);
 
-	HistogramIndex mHistogramIndex;
 	unsigned mNumSequences;
+	valarray<double> metaHist;
+	valarray<double> metaHistNum;
+	unsigned classifiedInstances;
+	ProgressBar pb;
 
+	void finishUpdate(workQueueT& myData,vector<vector<unsigned> >* myCache);
 	void Exec();
 	void ClassifySeqs();
 

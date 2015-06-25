@@ -236,7 +236,9 @@ bool Data::SetGraphFromFASTAFile(istream& in, GraphClass& oG, string& currSeq, u
 		unsigned currSize = win;
 		// case no window/shift
 		if (win==0){
-			currSize = currSeq.size();
+			uint clipSize = 0;
+			currSize = currSeq.size()-(2*clipSize);
+			pos = clipSize;
 		} else if (win>currSeq.size()-pos) {
 			// case seq left is smaller than win
 			currSize=currSeq.size()-pos;
@@ -297,15 +299,6 @@ bool Data::SetGraphFromStringFile(istream& in, GraphClass& oG) {
 	return success_status;
 }
 
-
-unsigned Data::Size() {
-	//return mVectorList.size();
-	return mDataSize;
-}
-
-void Data::SetDataSize(unsigned aSize){
-	mDataSize=aSize;
-}
 
 void Data::LoadStringList(string aFileName, vector<string>& oList, uint numTokens) {
 	oList.clear();

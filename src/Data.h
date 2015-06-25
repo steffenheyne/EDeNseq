@@ -26,8 +26,6 @@ class Data {
 public:
 	Parameters* mpParameters;
 
-protected:
-	unsigned mDataSize;
 public:
 	Data();
 	void Init(Parameters* apParameters);
@@ -38,8 +36,7 @@ public:
 	bool SetGraphFromStringFile(istream& in, GraphClass& oG);
 	string GetNextFastaSeq(istream& in,string& header);
 	bool SetGraphFromSeq(GraphClass& oG, string& currSeq);
-	unsigned Size();
-	void SetDataSize(unsigned aSize);
+
 	void LoadStringList(string aFileName, vector<string>& oList, uint numTokens);
 };
 
