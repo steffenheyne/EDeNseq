@@ -37,14 +37,6 @@ inline vector<unsigned> MinHashEncoder::HashFuncNSPDK(const string& aString, uns
 	return code_list;
 }
 
-inline unsigned MinHashEncoder::HashFuncNSPDK(const vector<unsigned>& aList, unsigned aBitMask) {
-	unsigned int hash = 0xAAAAAAAA;
-	for (std::size_t i = 0; i < aList.size(); i++) {
-		hash ^= ((i & 1) == 0) ? ((hash << 7) ^ aList[i] * (hash >> 3)) : (~(((hash << 11) + aList[i]) ^ (hash >> 5)));
-	}
-	return hash & aBitMask;
-}
-
 void MinHashEncoder::generate_feature_vector(const GraphClass& aG, SVector& x) {
 	//assume there is a mMinRadius and a mMinDistance
 	unsigned mRadius = mpParameters->mRadius;
@@ -252,6 +244,7 @@ void MinHashEncoder::finisher(vector<vector<unsigned> >* myCache){
 				}
 			}
 
+			// virtual function call that can be overloaded in child classes to do specific stuff
 			if ( (!myData->dataSet->updateIndex) && (!myData->dataSet->updateSigCache) ) {
 				finishUpdate(myData, myCache);
 			}

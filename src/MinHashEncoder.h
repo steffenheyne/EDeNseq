@@ -76,7 +76,6 @@ private:
 	void 					finisher(vector<vector<unsigned> >* myCache);
 	void 					generate_feature_vector(const GraphClass& aG, SVector& x);
 	vector<unsigned>	HashFuncNSPDK(const string& aString, unsigned aStart, unsigned aMaxRadius, unsigned aBitMask);
-	unsigned 			HashFuncNSPDK(const vector<unsigned>& aList, unsigned aBitMask);
 
 public:
 
