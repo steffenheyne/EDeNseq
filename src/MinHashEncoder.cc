@@ -4,7 +4,8 @@ MinHashEncoder::~MinHashEncoder(){
 
 }
 
-MinHashEncoder::MinHashEncoder(Parameters* apParameters, Data* apData, INDEXType apIndexType) {
+MinHashEncoder::MinHashEncoder(Parameters* apParameters, Data* apData, INDEXType apIndexType)
+{
 	Init(apParameters, apData, apIndexType);
 }
 
@@ -95,81 +96,185 @@ void MinHashEncoder::generate_feature_vector(const GraphClass& aG, SVector& x) {
 void MinHashEncoder::worker_readFiles(int numWorkers){
 
 	int file_instances = 0;
+	unsigned currMetaIdx = 0;
+	std::tr1::unordered_map<string, uint8_t> seq_names_seen;
+
 	while (!done){
 
-		SeqDataSetP myData;
-		unique_lock<mutex> lk(mut1);
-		cv1.wait(lk,[&]{if ( ( (done) ||  ((mInstanceCounter <= mSignatureCounter) && (readFile_queue.try_pop(myData))))) return true; else return false;});
-		lk.unlock();
-		if (file_instances != 0) cout << " instances produced from file " << file_instances << endl;
+		SeqFileP myData;
+		bool succ = readFile_queue.try_pop(myData);
 
-		if (!done && myData->filename != ""){
+		if (!done && succ && myData->filename != ""){
 
-			cout << endl << "read next file " << myData->filename << " index " << myData->idx << " " << " sig_all_counter " << mSignatureCounter << " inst_counter "<< mInstanceCounter << " thread " << std::this_thread::get_id() << endl;
+			cout << endl << "read next file " << myData->filename << " sig_all_counter " << mSignatureCounter << " inst_counter "<< mInstanceCounter << " thread " << std::this_thread::get_id() << endl;
 			igzstream fin;
 			fin.open(myData->filename.c_str(),std::ios::in);
 
 			if (!fin)
 				throw range_error("ERROR Data::LoadData: Cannot open file: " + myData->filename);
 
-			bool valid_input = true;
 			file_instances = 0;
+
+			unsigned pos = 0;
+			unsigned end = 0;
+			bool valid_input = false; // set to false so that we get new seq in first iter in while further down
 			string currSeq;
-			unsigned pos;
+			string currFullSeq;
+			string currSeqName;
 
-			while (  valid_input ) {
+			std::pair<Data::BEDdataIt,Data::BEDdataIt> annoEntries;
+			Data::BEDdataIt it;
 
-				unsigned maxB = max(100,(int)log2((double)mSignatureCounter)*50);
+			while (!fin.eof()) {
+
+				unsigned maxB = max(100,(int)log2((double)mSignatureCounter)*100);
 				unsigned currBuff = rand()%(maxB*3 - maxB + 1) + maxB;
-
-				workQueueS myDataChunk;
-				myDataChunk.gr.resize(currBuff);
-				myDataChunk.names.resize(currBuff);
-				myDataChunk.offset= mInstanceCounter; // offset goes over all files
-				myDataChunk.dataSet = &(*myData);
-
 				unsigned i = 0;
-				while (i < currBuff && !fin.eof() && valid_input) {
+				multimap<string,uint>::iterator feat;
+				unsigned idx  = 0;
 
-					switch (myData->filetype) {
-					case FASTA:
-						mpData->SetGraphFromFASTAFile(fin, myDataChunk.gr.at(i),currSeq, pos, myDataChunk.names.at(i));
-						break;
-					case STRINGSEQ:
-						mpData->SetGraphFromFile(fin, myDataChunk.gr.at(i));
-						break;
-					default:
-						throw range_error("ERROR Data::LoadData: file type not recognized: " + myData->filetype);
-					}
+				workQueueP myDataChunk = std::make_shared<workQueueS>();
+				myDataChunk->gr.resize(currBuff);
+				myDataChunk->names.resize(currBuff);
+				myDataChunk->idx.resize(currBuff);
+				myDataChunk->offset = mInstanceCounter;
+				myDataChunk->seqFile = myData;
 
-					if (myDataChunk.gr.at(i).IsEmpty()) {
+				while ( ((i<currBuff) && !fin.eof())  ) {
+
+					//cout << "valid? " << valid_input << " name :" << currSeqName << ": pos " << pos << " end " << end <<  endl;
+					if (!valid_input) {
+						if  ( it == annoEntries.second ) {
+							// last seq is finished, get next seq from file
+							switch (myData->filetype) {
+							case FASTA:
+								mpData->GetNextFastaSeq(fin, currFullSeq, currSeqName);
+								if (!fin.eof() && seq_names_seen.count(currSeqName) > 0) {
+									throw range_error("Sequence names are not unique in FASTA file! "+currSeqName);
+								} else
+									seq_names_seen.insert(make_pair(currSeqName,1));
+								break;
+							case STRINGSEQ:
+								mpData->GetNextStringSeq(fin, currFullSeq, currSeqName);
+								break;
+							default:
+								throw range_error("ERROR Data::LoadData: file type not recognized: " + myData->filetype);
+							}
+
+							//cout << endl << " next found Seq length " << currFullSeq.size() << ":" << currSeqName << ": " << endl;
+
+							// if we have bed entries for that seq, find them and set iterator to first bed entry
+							if (myData->dataBED && myData->dataBED->find(currSeqName) != myData->dataBED->end()){
+								annoEntries = myData->dataBED->equal_range(currSeqName);
+								it = annoEntries.first;
+							} else if (myData->dataBED){
+								cout << "no bed entry found!"<< endl;
+								// bed is present, but no entry for current seq found -> we take next seq
+								valid_input = false;
+								continue;
+							} else {
+								// no bed is present, then we set start/end to full seq, eg. in case for clutsering
+								pos=0;
+								end=currFullSeq.size();
+							}
+						}
+
+						// update index?
+						// check under which value a current seq/window is inserted in inverse index
+						// we only use these cases if there is a valid bed entry (SEQ_FEATURE/SEQ_NAME)
+						switch (myData->updateIndex){
+						// use seq name as value for inverse index
+						case SEQ_NAME:
+							feat = mFeature2IndexValue.find(currSeqName);
+							if (feat != mFeature2IndexValue.end()){
+								idx = feat->second;
+							} else {
+								currMetaIdx++;
+								idx=currMetaIdx;
+								mFeature2IndexValue.insert(make_pair(currSeqName,idx));
+							}
+							break;
+							// use given value/name in BED file col4 as  value for inverse index
+						case SEQ_FEATURE:
+							feat = mFeature2IndexValue.find(it->second.NAME);
+							if (feat != mFeature2IndexValue.end()){
+								idx = feat->second;
+							} else {
+								currMetaIdx++;
+								idx=currMetaIdx;
+								mFeature2IndexValue.insert(make_pair(it->second.NAME,idx));
+							}
+							break;
+						default:
+							break;
+						}
+
+						if ( it != annoEntries.second ) {
+							pos = it->second.START;
+							end = it->second.END;
+							cout << endl << "BED entry found for seq name " << currSeqName << " " << it->second.NAME << " MetaIdx "<< idx << " " << pos << "-"<< end << endl;
+							it++;
+						}
+
+						// check if start/end is within bounds of found seq
+						if (pos>currSeq.size() || end > currFullSeq.size())
+							throw range_error(" BED entry start/end is outside current seq ");
+
+						// apply current seq start/end
+						currSeq = currFullSeq.substr(pos,end-pos);
+
+					} // valid_input?
+
+					//cout << i << " " << currBuff<< " "<< pos << " " << currSeqName<<  " " << currSeq.size() << endl;
+					mpData->SetGraphFromSeq2(myDataChunk->gr.at(i),currSeq, pos);
+
+					if (myDataChunk->gr.at(i).IsEmpty()) {
 						valid_input = false;
 					} else {
+						valid_input = true;
 						mInstanceCounter++;
 						file_instances++;
-						if (myDataChunk.names.at(i) == "") {
-							myDataChunk.names.at(i) = std::to_string(mInstanceCounter);
+
+						myDataChunk->names.at(i) = currSeqName;
+						if (myDataChunk->names.at(i) == "") {
+							myDataChunk->names.at(i) = std::to_string(mInstanceCounter);
 						}
+
+						switch (myData->updateIndex){
+						case NONE:
+						case SEQ_WINDOW:
+							idx = mInstanceCounter;
+							break;
+						default:
+							break;
+						}
+
+						myDataChunk->idx.at(i) = idx;
 						i++;
 					}
-				}
-				myDataChunk.gr.resize(i);
-				myDataChunk.names.resize(i);
+				} // while buffer not full or eof
 
-				//cout << " instances read " << mInstanceCounter << " " << myDataChunk.gr.size() << " buffer " << currBuff << " full..." << graph_queue.size() << " " << std::this_thread::get_id() << endl;
+				if (i==0)
+					continue;
+
+				myDataChunk->idx.resize(i);
+				myDataChunk->gr.resize(i);
+				myDataChunk->names.resize(i);
+
+				graph_queue.push(myDataChunk);
+				cv2.notify_all();
+				//cout << " instances read " << mInstanceCounter << " " << myDataChunk->gr.size() << " buffer " << currBuff << " full..." << graph_queue.size() << " " << currSeq.size()<< " "<< currSeqName << endl;
+
 				if (graph_queue.size()>=numWorkers*100){
 					unique_lock<mutex> lk(mut2);
 					cv2.wait(lk,[&]{if ((done) || (graph_queue.size()<=numWorkers*20)) return true; else return false;});
 					lk.unlock();
 				}
-
-				graph_queue.push(std::make_shared<workQueueS> (myDataChunk));
-				cv2.notify_all();
 			}
 			fin.close();
+			cout << files_done << " " << mInstanceCounter << " " << mSignatureCounter << " instances produced from file " << file_instances << endl;
+
 			files_done++;
-			myData->numSequences = file_instances;
-			cvm.notify_all();
 		}
 	}
 }
@@ -178,7 +283,7 @@ void MinHashEncoder::worker_Graph2Signature(){
 
 	while (!done){
 
-		workQueueT myData;
+		workQueueP myData;
 		unique_lock<mutex> lk(mut2);
 		cv2.wait(lk,[&]{if ( (done) ||  (graph_queue.try_pop( (myData) )) ) return true; else return false;});
 		lk.unlock();
@@ -187,7 +292,7 @@ void MinHashEncoder::worker_Graph2Signature(){
 			cv2.notify_all();
 			myData->sigs.resize(myData->gr.size());
 
-			//cout << "  graph2sig thread got chunk " << myData->gr.size() << " offset " << myData->offset << " idx " << myData->dataSet->idx <<  " " << mpParameters->mHashBitSize << endl;
+			//cout << "  graph2sig thread got chunk " << myData->gr.size() << " offset " << myData->offset << " " << mpParameters->mHashBitSize << endl;
 
 			for (unsigned j = 0; j < myData->gr.size(); j++) {
 				SVector x(pow(2, mpParameters->mHashBitSize));
@@ -202,51 +307,39 @@ void MinHashEncoder::worker_Graph2Signature(){
 	}
 }
 
-void MinHashEncoder::finisher(vector<vector<unsigned> >* myCache){
+void MinHashEncoder::finisher(){
 	ProgressBar progress_bar(1000);
 	while (!done){
 
-		workQueueT myData;
+		workQueueP myData;
 		unique_lock<mutex> lk(mut3);
 		cv3.wait(lk,[&]{if ( (done) || (sig_queue.try_pop( (myData) ))) return true; else return false;});
 		lk.unlock();
 
 		if (!done && myData->sigs.size()>0) {
 
-			if (myData->dataSet->updateIndex){
-
-				switch (indexType) {
-				case CLUSTER:
-					for (unsigned j = 0; j < myData->sigs.size(); j++) {
-						UpdateInverseIndex(myData->sigs[j], myData->offset+j);
-					}
-					break;
-				case CLASSIFY:
-					for (unsigned j = 0; j < myData->sigs.size(); j++) {
-						UpdateInverseIndex(myData->sigs[j], myData->dataSet->idx);
-					}
-					break;
-				default:
-					throw range_error("Cannot update index! Index Type not recognized.");
+			if (myData->seqFile->updateIndex != NONE){
+				for (unsigned j = 0; j < myData->sigs.size(); j++) {
+					UpdateInverseIndex(myData->sigs[j], myData->idx[j]);
 				}
 			}
 
 			uint chunkSize = myData->sigs.size();
-			if (myData->dataSet->updateSigCache){
-				if (myCache->size()<myData->offset + chunkSize) {
-					myCache->resize(myData->offset + chunkSize);
+			if (myData->seqFile->updateSigCache){
+				if (myData->seqFile->sigCache->size()<myData->offset + chunkSize) {
+					myData->seqFile->sigCache->resize(myData->offset + chunkSize);
 					idx2nameMap.resize(myData->offset + chunkSize);
 				}
 				for (unsigned j = 0; j < chunkSize; j++) {
-					myCache->at(myData->offset+j) = myData->sigs[j];
+					myData->seqFile->sigCache->at(myData->offset+j) = myData->sigs[j];
 					name2idxMap.insert(make_pair(myData->names[j],myData->offset+j));
 					idx2nameMap.at(myData->offset+j) = myData->names[j];
 				}
 			}
 
 			// virtual function call that can be overloaded in child classes to do specific stuff
-			if ( (!myData->dataSet->updateIndex) && (!myData->dataSet->updateSigCache) ) {
-				finishUpdate(myData, myCache);
+			if ( (myData->seqFile->updateIndex==NONE) && (!myData->seqFile->updateSigCache) ) {
+				finishUpdate(myData);
 			}
 
 			mSignatureCounter += chunkSize;
@@ -259,26 +352,22 @@ void MinHashEncoder::finisher(vector<vector<unsigned> >* myCache){
 	}
 }
 
-void MinHashEncoder::LoadData_Threaded(vector<SeqDataSet>& myFiles, vector<vector<unsigned> >* myCache){
+void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 
-
-	uint numIndexUpdates = 0;
 	for (unsigned i=0;i<myFiles.size(); i++){
-		readFile_queue.push(std::make_shared<SeqDataSet>(myFiles[i]));
-		if (myFiles[i].updateIndex)
-			numIndexUpdates++;
+		readFile_queue.push(std::make_shared<SeqFileT>(myFiles[i]));
 	}
 
 	// check which cache to use for signatures
 	// use either external MinHash cache or class member
-	vector<vector<unsigned> >* myMinHashCache;
-	if (myCache != NULL) {
-		myMinHashCache = myCache;
-	} else {
-		// use standard cache
-		myMinHashCache = &mMinHashCache;
-	}
-	myMinHashCache->clear();
+	//	vector<vector<unsigned> >* myMinHashCache;
+	//	if (myCache != NULL) {
+	//		myMinHashCache = myCache;
+	//	} else {
+	//		// use standard cache
+	//		myMinHashCache = &mMinHashCache;
+	//	}
+	//	myMinHashCache->clear();
 
 	cout << "Using " << mpParameters->mNumHashFunctions << " hash functions (with factor " << mpParameters->mNumRepeatsHashFunction << " for single minhash)" << endl;
 	cout << "Using " << mpParameters->mNumHashShingles << " as hash shingle factor" << endl;
@@ -286,7 +375,6 @@ void MinHashEncoder::LoadData_Threaded(vector<SeqDataSet>& myFiles, vector<vecto
 	cout << "Using feature distance " << mpParameters->mMinDistance<<".."<<mpParameters->mDistance << endl;
 	cout << "Using sequence window  " << mpParameters->mSeqWindow<<" shift"<<mpParameters->mSeqShift << endl;
 	cout << "Computing MinHash signatures on the fly while reading " << myFiles.size() << " file(s)..." << endl;
-	cout << "Update inverse index with " << numIndexUpdates << " file(s)..." << endl;
 
 	// threaded producer-consumer model for signature creation and index update
 	// created threads:
@@ -306,7 +394,7 @@ void MinHashEncoder::LoadData_Threaded(vector<SeqDataSet>& myFiles, vector<vecto
 	mInstanceCounter = 0;
 
 	vector<std::thread> threads;
-	threads.push_back( std::thread(&MinHashEncoder::finisher,this,myMinHashCache));
+	threads.push_back( std::thread(&MinHashEncoder::finisher,this));
 	for (int i=0;i<graphWorkers;i++){
 		threads.push_back( std::thread(&MinHashEncoder::worker_Graph2Signature,this));
 	}
@@ -329,8 +417,7 @@ void MinHashEncoder::LoadData_Threaded(vector<SeqDataSet>& myFiles, vector<vecto
 	} // by leaving this block threads get joined by destruction of joiner
 
 	// threads finished
-
-	if (numIndexUpdates>0)
+	if (numKeys>0)
 		cout << endl << "Inverse index ratio of overfull bins (maxSizeBin): " << ((double)numFullBins)/((double)numKeys) << " "<< numFullBins << "/" << numKeys << " instances " << mInstanceCounter << endl;
 
 	if (mInstanceCounter == 0) {
@@ -344,8 +431,8 @@ unsigned MinHashEncoder::GetLoadedInstances() {
 }
 
 vector<unsigned>& MinHashEncoder::ComputeHashSignature(unsigned aID) {
-	if (mMinHashCache.size()>0 && mMinHashCache[aID].size() > 0)
-		return mMinHashCache[aID];
+	if (mMinHashCache && mMinHashCache->size()>0 && mMinHashCache->at(aID).size() > 0)
+		return mMinHashCache->at(aID);
 	else {
 		throw range_error("ERROR: MinHashCache is not filled!");
 	}
@@ -396,6 +483,18 @@ vector<unsigned> MinHashEncoder::ComputeHashSignature(SVector& aX) {
 		return signatureFinal;
 	}
 }
+
+void NeighborhoodIndex::NeighborhoodCacheReset() {
+	cout << "... nearest neighbor cache reset ..." << endl;
+	mNeighborhoodCache.clear();
+	mNeighborhoodCacheExt.clear();
+	mNeighborhoodCacheInfo.clear();
+
+	mNeighborhoodCache.resize(GetLoadedInstances());
+	mNeighborhoodCacheExt.resize(GetLoadedInstances());
+	mNeighborhoodCacheInfo.resize(GetLoadedInstances());
+}
+
 
 void NeighborhoodIndex::UpdateInverseIndex(vector<unsigned>& aSignature, unsigned aIndex) {
 	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k) { //for every hash value
@@ -487,6 +586,42 @@ vector<unsigned> NeighborhoodIndex::TrimNeighborhood(umap_uint_int& aNeighborhoo
 	return neighborhood_list;
 }
 
+vector<unsigned> NeighborhoodIndex::ComputeNeighborhood(const unsigned aID, unsigned& collisions, double& density) {
+
+	vector<unsigned> neighborhood_list;
+
+	if (mNeighborhoodCache[aID].size() != 0) {
+		neighborhood_list = mNeighborhoodCache[aID];
+		pair<unsigned, double> tmp = mNeighborhoodCacheInfo[aID];
+		collisions = tmp.first;
+		density = tmp.second;
+	} else {
+		vector<unsigned> signature = ComputeHashSignature(aID);
+		vector<unsigned> neighborhood_list = ComputeApproximateNeighborhood(signature, collisions, density);
+		mNeighborhoodCacheInfo[aID] = make_pair(collisions,density);
+		mNeighborhoodCache[aID] = neighborhood_list;
+	}
+	return neighborhood_list;
+}
+
+umap_uint_int NeighborhoodIndex::ComputeNeighborhoodExt(unsigned aID, unsigned& collisions, double& density) {
+	//cache neighborhoods (if opted for)
+	umap_uint_int neighborhood_list;
+	if (mNeighborhoodCacheExt[aID].size() != 0) {
+		neighborhood_list = mNeighborhoodCacheExt[aID];
+		pair<unsigned, double> tmp = mNeighborhoodCacheInfo[aID];
+		collisions = tmp.first;
+		density = tmp.second;
+	} else {
+		vector<unsigned> signature = ComputeHashSignature(aID);
+		umap_uint_int neighborhood_list = ComputeApproximateNeighborhoodExt(signature, collisions, density);
+		mNeighborhoodCacheExt[aID] = neighborhood_list;
+		mNeighborhoodCacheInfo[aID] = make_pair(collisions,density);
+	}
+	return neighborhood_list;
+}
+
+
 double NeighborhoodIndex::ComputeApproximateSim(const unsigned& aID, const unsigned& bID) {
 
 	vector<unsigned> signatureA = ComputeHashSignature(aID);
@@ -520,44 +655,44 @@ pair<unsigned,unsigned> NeighborhoodIndex::ComputeApproximateSim(const unsigned&
 	return tmp;
 }
 
-void HistogramIndex::SetHistogramSize(unsigned size){
+void HistogramIndex::SetHistogramSize(binKeyTy size){
 	mHistogramSize = size;
 }
 
 
-unsigned HistogramIndex::GetHistogramSize(){
+HistogramIndex::binKeyTy HistogramIndex::GetHistogramSize(){
 	return mHistogramSize;
 }
 
 
-bool compare(const SeqDataSet& first, const SeqDataSet& second) {
+//bool compare(const Data::SeqFileT& first, const Data::SeqFileT& second) {
+//
+//	return (first.uIdx<second.uIdx);
+//}
 
-	return (first.uIdx<second.uIdx);
-}
-
-void  HistogramIndex::PrepareIndexDataSets(vector<SeqDataSet>& myFileList){
-
-	if (!myFileList.size())
-		throw range_error("ERROR no datasets to prepare ...");
-
-	sort(myFileList.begin(),myFileList.end(),compare);
-
-	// check if we have datasets to update the index
-	uint bin = 0;
-	uint userIdx = myFileList[0].uIdx;
-	for (unsigned i=0;i<myFileList.size(); i++){
-		if (myFileList[i].updateIndex){
-			if ( myFileList[i].uIdx != userIdx )
-				bin++;
-			mHistBin2DatasetIdx.insert(make_pair(bin,i));
-			userIdx = myFileList[i].uIdx;
-			myFileList[i].idx = bin;
-			mIndexDataSets.push_back(myFileList[i]);
-			//cout << "bin" << bin << " " << userIdx << " "<<myFileList[i].idx << " " << myFileList[i].uIdx << endl;
-		}
-	}
-	SetHistogramSize(bin+1);
-}
+//void  HistogramIndex::PrepareIndexDataSets(vector<SeqDataSet>& myFileList){
+//
+//	if (!myFileList.size())
+//		throw range_error("ERROR no datasets to prepare ...");
+//
+//	sort(myFileList.begin(),myFileList.end(),compare);
+//
+//	// check if we have datasets to update the index
+//	uint bin = 0;
+//	uint userIdx = myFileList[0].uIdx;
+//	for (unsigned i=0;i<myFileList.size(); i++){
+//		if (myFileList[i].updateIndex){
+//			if ( myFileList[i].uIdx != userIdx )
+//				bin++;
+//			mHistBin2DatasetIdx.insert(make_pair(bin,i));
+//			userIdx = myFileList[i].uIdx;
+//			myFileList[i].idx = bin;
+//			mIndexDataSets.push_back(myFileList[i]);
+//			//cout << "bin" << bin << " " << userIdx << " "<<myFileList[i].idx << " " << myFileList[i].uIdx << endl;
+//		}
+//	}
+//	SetHistogramSize(bin+1);
+//}
 
 void HistogramIndex::UpdateInverseIndex(vector<unsigned>& aSignature, unsigned aIndex) {
 	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k) { //for every hash value
@@ -574,16 +709,26 @@ void HistogramIndex::UpdateInverseIndex(vector<unsigned>& aSignature, unsigned a
 				numKeys++; // just for bin statistics
 			} else if (mInverseIndex[k][key][mInverseIndex[k][key][0]] != (binKeyTy)aIndex){
 
-				binKeyTy newSize = (mInverseIndex[k][key][0])+1;
-				binKeyTy * fooNew;
-				fooNew = new binKeyTy[newSize+1];
+				// find pos for insert, assume sorted array
+				binKeyTy i = mInverseIndex[k][key][0];
+				while ((mInverseIndex[k][key][i]> aIndex) && (i>1)){
+					i--;
+				}
 
-				memcpy(fooNew,mInverseIndex[k][key],newSize*sizeof(binKeyTy));
-				fooNew[0] = newSize;
-				fooNew[newSize] = (binKeyTy)aIndex;
+				// only insert if element is not there
+				if (mInverseIndex[k][key][i]<aIndex){
+					binKeyTy newSize = (mInverseIndex[k][key][0])+1;
+					binKeyTy * fooNew;
+					fooNew = new binKeyTy[newSize+1];
 
-				delete[] mInverseIndex[k][key];
-				mInverseIndex[k][key] = fooNew;
+					memcpy(fooNew,mInverseIndex[k][key],(i+1)*sizeof(binKeyTy));
+					fooNew[i+1] = (binKeyTy)aIndex;
+					memcpy(&fooNew[i+2],&mInverseIndex[k][key][i+1],(mInverseIndex[k][key][0]-i)*sizeof(binKeyTy));
+					fooNew[0] = newSize;
+
+					delete[] mInverseIndex[k][key];
+					mInverseIndex[k][key] = fooNew;
+				}
 			}
 		}
 	}

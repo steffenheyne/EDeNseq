@@ -5,23 +5,23 @@
 //---------------------------------------------------------------------------------------------------
 // Sequence clustering via approximate neighborhood density
 SeqClusterManager::SeqClusterManager(Parameters* apParameters, Data* apData)
-:BaseManager(apParameters, apData), mNearestNeighbor(apParameters, apData)
+: NeighborhoodIndex(apParameters, apData)
 {
-	SeqDataSet mySet;
+	mMinHashCache = std::make_shared<Data::SigCacheT>();
+	SeqFileT mySet;
+
 	mySet.filename = mpParameters->mInputDataFileName.c_str();
-	mySet.idx = 1;
 	mySet.filetype = mpParameters->mFileTypeCode;
 	mySet.desc = "approx_cluster_set";
-	mySet.updateIndex=true;
+	mySet.updateIndex=SEQ_WINDOW;
 	mySet.updateSigCache=true;
+	mySet.sigCache = mMinHashCache;
 
-	vector<SeqDataSet> myList;
+	vector<SeqFileT> myList;
 	myList.push_back(mySet);
+	LoadData_Threaded(myList);
 
-	mNearestNeighbor.mMinHashEncoder.LoadData_Threaded(myList,NULL);
-	//mpData->SetDataSize(mNearestNeighbor.mMinHashEncoder.mInstanceCounter);
-
-	mNearestNeighbor.CacheReset();
+	NeighborhoodCacheReset();
 }
 
 void SeqClusterManager::Exec() {
@@ -40,12 +40,12 @@ void SeqClusterManager::DenseCluster() {
 		mpData->LoadStringList(mpParameters->mDenseCenterNamesFile,centerNames,1);
 		for (uint i=0;i<centerNames.size();i++){
 			//cout << "name " << centerNames[i] << " map: "<< mNearestNeighbor.mMinHashEncoder.name2idxMap[centerNames[i]] << endl;
-			mDenseCenterIdxList.push_back(mNearestNeighbor.mMinHashEncoder.name2idxMap[centerNames[i]]);
+			mDenseCenterIdxList.push_back(name2idxMap[centerNames[i]]);
 		}
 
 	} else {
 
-		for (uint i=0; i<mNearestNeighbor.mMinHashEncoder.GetLoadedInstances(); i++){
+		for (uint i=0; i<GetLoadedInstances(); i++){
 			mDenseCenterIdxList.push_back(i);
 		}
 	}
@@ -66,8 +66,7 @@ void SeqClusterManager::DenseCluster() {
 			vector<unsigned> neighborhood_list;
 			unsigned collisions = 0;
 			double density = 0;
-			neighborhood_list = mNearestNeighbor.ComputeNeighborhood(ii,collisions,density);
-
+			neighborhood_list = ComputeNeighborhood(ii,collisions,density);
 			double score = density * neighborhood_list.size();
 			DensityList[i]= make_pair(-score,ii);
 			if (collisions >= mpParameters->mNumHashFunctions) fullCollisions++;
@@ -85,7 +84,7 @@ void SeqClusterManager::DenseCluster() {
 	vector<unsigned> neighborhood_list;
 	unsigned collisions = 0;
 	double density = 0;
-	vector<long int> adjacencyList(mNearestNeighbor.mMinHashEncoder.GetLoadedInstances());
+	vector<long int> adjacencyList(GetLoadedInstances());
 
 	for (unsigned k = 0; k < adjacencyList.size(); ++k) {
 		adjacencyList[k] = -1;
@@ -96,7 +95,7 @@ void SeqClusterManager::DenseCluster() {
 		unsigned ii = DensityList[i].second;
 		// cluster seed seq is not yet (-1) part of any cluster
 		if ( adjacencyList[ii] == -1 ) {
-			neighborhood_list = mNearestNeighbor.ComputeNeighborhood(ii,collisions,density);
+			neighborhood_list = ComputeNeighborhood(ii,collisions,density);
 
 			// count not clustered instances of neighborhood(ii)
 			// and also the cluster-frequency of already clustered instances
@@ -174,7 +173,7 @@ void SeqClusterManager::DenseCluster() {
 		for (	unsigned i = 0; i < DensityList.size(); ++i) {
 			unsigned ii = DensityList[i].second;
 			out_n.mOut << ii << ":" << -DensityList[i].first <<  "    ";
-			neighborhood_list = mNearestNeighbor.ComputeNeighborhood(ii,collisions,density);
+			neighborhood_list = ComputeNeighborhood(ii,collisions,density);
 			for (vector<unsigned>::const_iterator it = neighborhood_list.begin(); it != neighborhood_list.end(); ++it) {
 				out_n.mOut << *it << " ";
 			}

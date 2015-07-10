@@ -2,19 +2,18 @@
 #ifndef CLUSTER_MANAGER_H
 #define CLUSTER_MANAGER_H
 
-#include "NearestNeighbor.h"
 #include "MinHashEncoder.h"
 
 
 using namespace std;
 
-class SeqClusterManager: public BaseManager {
+class SeqClusterManager : public NeighborhoodIndex {
 public:
 	SeqClusterManager(Parameters* apParameters, Data* apData);
    void Exec();
 protected:
    //SeqDataSet mDataSet;
-   NearestNeighbor mNearestNeighbor;
+   //NearestNeighbor mNearestNeighbor;
    void DenseCluster();
 };
 

@@ -21,19 +21,40 @@ public:
 		CLUSTER, CLASSIFY
 	};
 
+	enum INDEXupdatesE {
+			SEQ_WINDOW, SEQ_NAME, SEQ_FEATURE, NONE
+	};
+
+	typedef INDEXupdatesE INDEXupdatesT;
+
+	struct SeqFileS {
+		string filename;
+		string desc;
+		InputFileType filetype;
+		unsigned numSequences;
+		INDEXupdatesT updateIndex;
+		bool updateSigCache;
+		Data::SigCacheP sigCache;
+		Data::BEDdataP	dataBED;
+
+	};
+
+	typedef SeqFileS SeqFileT;
+	typedef std::shared_ptr<SeqFileT> SeqFileP;
+	typedef vector<SeqFileT> SeqFilesT;
+
 	struct workQueueS {
 		vector<GraphClass> gr;
-		vector<vector<unsigned> > sigs;
+		Data::SigCacheT sigs;
 		vector<string> names;
+		vector<unsigned> idx;
 		unsigned offset;
-		SeqDataSet* dataSet;
+		SeqFileP seqFile;
 	};
 
 	typedef INDEXTypeE INDEXType;
-	typedef std::shared_ptr<SeqDataSet> SeqDataSetP;
-	typedef std::shared_ptr<workQueueS> workQueueT;
+	typedef std::shared_ptr<workQueueS> workQueueP;
 
-	vector<SeqDataSet>	mIndexDataSets;
 	std::tr1::unordered_map<string, unsigned> name2idxMap;
 	vector<string>	idx2nameMap;
 
@@ -46,9 +67,11 @@ protected:
 
 	unsigned numKeys;
 	unsigned numFullBins;
+	Data::SigCacheP mMinHashCache;
+	multimap<uint, string> mIndexValue2Feature;
+	multimap<string, uint> mFeature2IndexValue;
 
 private:
-	vector<vector<unsigned> > mMinHashCache;
 
 	mutable std::mutex mutm;
 	mutable std::mutex mut1;
@@ -60,9 +83,9 @@ private:
 	std::condition_variable cv2;
 	std::condition_variable cv3;
 
-	threadsafe_queue<SeqDataSetP> readFile_queue;
-	threadsafe_queue<workQueueT> graph_queue;
-	threadsafe_queue<workQueueT> sig_queue;
+	threadsafe_queue<SeqFileP> readFile_queue;
+	threadsafe_queue<workQueueP> graph_queue;
+	threadsafe_queue<workQueueP> sig_queue;
 
 	std::atomic_bool done;
 	std::atomic_int files_done;
@@ -73,7 +96,7 @@ private:
 
 	void 					worker_readFiles(int numWorkers);
 	void					worker_Graph2Signature();
-	void 					finisher(vector<vector<unsigned> >* myCache);
+	void 					finisher();
 	void 					generate_feature_vector(const GraphClass& aG, SVector& x);
 	vector<unsigned>	HashFuncNSPDK(const string& aString, unsigned aStart, unsigned aMaxRadius, unsigned aBitMask);
 
@@ -84,9 +107,8 @@ public:
 	void		Init(Parameters* apParameters, Data* apData, INDEXType apIndexType=CLUSTER);
 
 	virtual void 		UpdateInverseIndex(vector<unsigned>& aSignature, unsigned aIndex) {};
-	virtual void 		finishUpdate(workQueueT& myData, vector<vector<unsigned> >* myCache) {};
-
-	void 					LoadData_Threaded(vector<SeqDataSet>& myFiles, vector<vector<unsigned> >* myCache);
+	virtual void 		finishUpdate(workQueueP& myData) {};
+	void 					LoadData_Threaded(SeqFilesT& myFiles);
 	unsigned				GetLoadedInstances();
 	vector<unsigned>& ComputeHashSignature(unsigned aID);
 	vector<unsigned>	ComputeHashSignature(SVector& aX);
@@ -94,6 +116,16 @@ public:
 
 class NeighborhoodIndex : public MinHashEncoder
 {
+private:
+
+	// inverse index
+	typedef unsigned binKeyTy;
+	typedef vector<binKeyTy>	indexBinTy;
+	typedef std::tr1::unordered_map<unsigned,indexBinTy> indexSingleTy;
+	typedef vector<indexSingleTy> indexTy;
+
+	const binKeyTy MAXBINKEY = std::numeric_limits<binKeyTy>::max();
+
 public:
 	NeighborhoodIndex(Parameters* apParameters, Data* apData)
 		:MinHashEncoder(apParameters,apData,CLUSTER)
@@ -104,22 +136,20 @@ public:
 		}
 	}
 
-	// inverse index
-	typedef unsigned binKeyTy;
-	typedef vector<binKeyTy>	indexBinTy;
-	typedef std::tr1::unordered_map<unsigned,indexBinTy> indexSingleTy;
-	typedef vector<indexSingleTy> indexTy;
-
-	const binKeyTy MAXBINKEY = std::numeric_limits<binKeyTy>::max();
+	vector<vector<unsigned> > 			mNeighborhoodCache;
+	vector<umap_uint_int> 				mNeighborhoodCacheExt;
+	vector<pair<unsigned,double> >	mNeighborhoodCacheInfo;
 
 	indexTy mInverseIndex;
-
+	void 				  NeighborhoodCacheReset();
 	void 				  UpdateInverseIndex(vector<unsigned>& aSignature, unsigned aIndex);
 	void             ComputeApproximateNeighborhoodCore(const vector<unsigned>& aSignature, umap_uint_int& neighborhood, unsigned& collisions);
 	umap_uint_int    ComputeApproximateNeighborhoodExt(const vector<unsigned>& aSignature, unsigned& collisions, double& density);
 	vector<unsigned> ComputeApproximateNeighborhood(const vector<unsigned>& aSignature, unsigned& collisions, double& density);
 
 	vector<unsigned> TrimNeighborhood(umap_uint_int& aNeighborhood, unsigned collisions, double& density);
+	vector<unsigned> ComputeNeighborhood(const unsigned aID, unsigned& collisions, double& density);
+	umap_uint_int 	  ComputeNeighborhoodExt(unsigned aID, unsigned& collisions, double& density);
 	double           ComputeApproximateSim(const unsigned& aID, const unsigned& bID);
 	pair<unsigned,unsigned> ComputeApproximateSim(const unsigned& aID, const vector<unsigned>& bSignature);
 
@@ -127,19 +157,22 @@ public:
 
 class HistogramIndex : public MinHashEncoder
 {
+
 public:
-
-	unsigned mHistogramSize;
-
 	typedef uint16_t binKeyTy;
 	typedef binKeyTy* indexBinTy;
 
 //	typedef std::tr1::unordered_map<unsigned, indexBinTy> indexSingleTy;
 //	typedef google::dense_hash_map<unsigned, indexBinTy> indexSingleTy;
 	typedef google::sparse_hash_map<unsigned, indexBinTy> indexSingleTy;
-	typedef vector<indexSingleTy> indexTy;
 
+	typedef vector<indexSingleTy> indexTy;
 	const binKeyTy MAXBINKEY = std::numeric_limits<binKeyTy>::max();
+
+	binKeyTy mHistogramSize;
+	multimap<uint, uint> mHistBin2DatasetIdx;
+
+	indexTy mInverseIndex;
 
 	HistogramIndex(Parameters* apParameters, Data* apData)
 		:MinHashEncoder(apParameters,apData,CLASSIFY)
@@ -147,17 +180,15 @@ public:
 		mInverseIndex.clear();
 		for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k){
 			mInverseIndex.push_back(indexSingleTy());
+			mInverseIndex.back().resize(100000000);
 			//mInverseIndex.back().set_empty_key(0);
 		}
 
 	}
 
-	multimap<uint, uint> mHistBin2DatasetIdx;
-	indexTy mInverseIndex;
-
-	unsigned	GetHistogramSize();
-	void  SetHistogramSize(unsigned size);
-	void	PrepareIndexDataSets(vector<SeqDataSet>& myFileList);
+	binKeyTy	GetHistogramSize();
+	void  SetHistogramSize(binKeyTy size);
+//	void	PrepareIndexDataSets(vector<SeqDataSet>& myFileList);
 	void	UpdateInverseIndex(vector<unsigned>& aSignature, unsigned aIndex);
 	void  ComputeHistogram(const vector<unsigned>& aSignature, std::valarray<double>& hist, unsigned& emptyBins);
 	void	writeBinaryIndex2(ostream &out, const indexTy& index);

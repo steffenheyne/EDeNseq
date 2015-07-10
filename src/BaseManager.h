@@ -4,7 +4,7 @@
 
 //#include "Utility.h"
 #include "Parameters.h"
-#include "Data.h"
+//#include "Data.h"
 //#include "Kernel.h"
 
 using namespace std;
@@ -19,10 +19,13 @@ using namespace std;
 class BaseManager {
 protected:
 	Parameters* mpParameters;
-	Data* mpData;
+//	Data* mpData;
 public:
-	BaseManager(Parameters* apParameters, Data* apData);
-	void Init(Parameters* apParameters, Data* apData);
+//	BaseManager(Parameters* apParameters, Data* apData);
+//	void Init(Parameters* apParameters, Data* apData);
+	BaseManager(Parameters* apParameters);
+	void Init(Parameters* apParameters);
+
 };
 
 #endif /* BASE_MANAGER_H */

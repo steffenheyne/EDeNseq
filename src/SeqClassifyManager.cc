@@ -10,33 +10,39 @@
 
 
 SeqClassifyManager::SeqClassifyManager(Parameters* apParameters, Data* apData):
-HistogramIndex(apParameters, apData),pb(1000) //,mHistogramIndex(apParameters, apData)
+HistogramIndex(apParameters,apData),pb(1000) //,mHistogramIndex(apPa
 {
 	classifiedInstances = 0;
-	//	mpParameters = apParameters;
-	//	mpData=apData;
 }
 
 
 void SeqClassifyManager::Exec() {
 
 	// load and prepare index list file to get files for indexing
-	vector<SeqDataSet> fileList = mpData->LoadIndexDataList(mpParameters->mIndexDataList.c_str());
-	string indexName = mpParameters->mIndexDataList;
-	const unsigned pos = mpParameters->mIndexDataList.find_last_of("/");
+	//	vector<SeqDataSet> fileList = mpData->LoadIndexDataList(mpParameters->mIndexDataList.c_str());
+	SeqFilesT myList;
+	SeqFileT mySet;
+	mySet.filename       = mpParameters->mIndexSeqFile;
+	mySet.filetype       = FASTA;
+	mySet.updateIndex    = SEQ_FEATURE;
+	mySet.updateSigCache = false;
+	Data::BEDdataP indexBED = mpData->LoadBEDfile(mpParameters->mIndexBedFile.c_str());
+	mySet.dataBED = indexBED;
+	myList.push_back(mySet);
+	string indexName = mpParameters->mIndexBedFile;
+	const unsigned pos = mpParameters->mIndexBedFile.find_last_of("/");
 	if (std::string::npos != pos)
-		indexName = mpParameters->mIndexDataList.substr(pos+1);
-	PrepareIndexDataSets(fileList);
+		indexName = mpParameters->mIndexBedFile.substr(pos+1);
 
 	// create/load new inverse MinHash index against that we can classify other sequences
-	if (!std::ifstream(mpParameters->mIndexDataList+".bhi").good()){
+	if (!std::ifstream(mpParameters->mIndexBedFile+".bhi").good()){
 		cout << endl << " *** Creating inverse index *** "<< endl << endl;
 
-		LoadData_Threaded(fileList,NULL);
+		LoadData_Threaded(myList);
 
 		// write index
 		if (!mpParameters->mNoIndexCacheFile){
-			cout << "inverse index file : " << mpParameters->mIndexDataList+".bhi" << endl;
+			cout << "inverse index file : " << mpParameters->mIndexBedFile+".bhi" << endl;
 			cout << " write index file ... ";
 			OutputManager om((indexName+".bhi").c_str(), mpParameters->mDirectoryPath);
 			writeBinaryIndex2(om.mOut,mInverseIndex);
@@ -48,13 +54,13 @@ void SeqClassifyManager::Exec() {
 
 		// read existing index file (*.bhi)
 		cout << endl << " *** Read inverse index *** "<< endl << endl;
-		cout << "inverse index file : " << mpParameters->mIndexDataList+".bhi" << endl << "read index ..." << endl;
-		bool indexState = readBinaryIndex2(mpParameters->mIndexDataList+".bhi",mInverseIndex);
+		cout << "inverse index file : " << mpParameters->mIndexBedFile+".bhi" << endl << "read index ..." << endl;
+		bool indexState = readBinaryIndex2(mpParameters->mIndexBedFile+".bhi",mInverseIndex);
 		cout << "finished! ";
 		if (indexState == true){
 			cout << " Index OK!" << endl;
 		} else
-			throw range_error("Cannot read index from file " + mpParameters->mIndexDataList+".bhi");
+			throw range_error("Cannot read index from file " + mpParameters->mIndexBedFile+".bhi");
 	}
 
 	ClassifySeqs();
@@ -66,8 +72,7 @@ inline double indicator(double i) {if (i>0) return 1; else return 0;}
 
 inline double minSim(double i) {if (i<0.1) return 0; else return i;}
 
-
-void SeqClassifyManager::finishUpdate(workQueueT& myData,vector<vector<unsigned> >* myCache) {
+void SeqClassifyManager::finishUpdate(workQueueP& myData) {
 
 	for (unsigned j = 0; j < myData->sigs.size(); j++) {
 
@@ -104,17 +109,14 @@ void SeqClassifyManager::finishUpdate(workQueueT& myData,vector<vector<unsigned>
 void SeqClassifyManager::ClassifySeqs(){
 
 	// prepare sequence set for classification
-	SeqDataSet mySet;
+	SeqFileT mySet;
 	mySet.filename = mpParameters->mInputDataFileName.c_str();
-	mySet.uIdx = 1;
-	mySet.idx = 0;
 	mySet.filetype = mpParameters->mFileTypeCode;
 	mySet.desc = "seqs_to_classify";
-	mySet.updateIndex=false;
+	mySet.updateIndex=NONE;
 	mySet.updateSigCache=false;
-	vector<SeqDataSet> myList;
+	vector<SeqFileT> myList;
 	myList.push_back(mySet);
-	mpParameters->mSeqWindow = 0;
 	cout << endl << " *** Read sequences for classification and create their MinHash signatures *** " << endl << endl;
 
 	metaHist.resize(GetHistogramSize());
@@ -122,8 +124,11 @@ void SeqClassifyManager::ClassifySeqs(){
 	metaHistNum.resize(GetHistogramSize());
 	metaHistNum *= 0;
 
+	// currently we classify the whole seq always
+	mpParameters->mSeqWindow = 0;
+
 	pb.Begin();
-	LoadData_Threaded(myList,NULL);
+	LoadData_Threaded(myList);
 
 	// metahistogram
 	cout << endl << endl << "META histogram - classified seqs: " << setprecision(3) << (double)classifiedInstances/((double)GetLoadedInstances()) << " (" << classifiedInstances << ")" << endl;
@@ -138,9 +143,9 @@ void SeqClassifyManager::ClassifySeqs(){
 		std::pair< std::multimap<uint,uint>::iterator, std::multimap<uint,uint>::iterator > ret;
 		ret = mHistBin2DatasetIdx.equal_range(sortedHist[j].second);
 		cout << setprecision(2) << j+1 << "\t" << -sortedHist[j].first << "\t" << setprecision(10) << metaHistNum[sortedHist[j].second] << "\t" << sortedHist[j].second << "\t";
-		for (std::multimap<uint,uint>::iterator it = ret.first; it != ret.second; ++it ){
-			cout << mIndexDataSets[it->second].desc <<";";
-		}
+//		for (std::multimap<uint,uint>::iterator it = ret.first; it != ret.second; ++it ){
+//			cout << mIndexDataSets[it->second].desc <<";";
+//		}
 		cout << endl;
 	}
 	cout << "SUM\t"<< metaHist.sum() << endl << endl;

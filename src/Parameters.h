@@ -86,7 +86,8 @@ public:
 	double mMaxFractionOfDataset;
 
 	// MetaGenome
-	string mIndexDataList;
+	string mIndexBedFile;
+	string mIndexSeqFile;
 	bool mNoIndexCacheFile;
 	unsigned mSeqWindow;
 	double mSeqShift;

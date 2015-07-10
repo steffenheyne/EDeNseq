@@ -26,7 +26,7 @@ public:
 	unsigned classifiedInstances;
 	ProgressBar pb;
 
-	void finishUpdate(workQueueT& myData,vector<vector<unsigned> >* myCache);
+	void finishUpdate(workQueueP& myData);
 	void Exec();
 	void ClassifySeqs();
 

@@ -593,8 +593,8 @@ void Parameters::SetupOptions() {
 	{
 		ParameterType param;
 		param.mShortSwitch = "";
-		param.mLongSwitch = "index_data_file";
-		param.mShortDescription = "MinHash histogram reverse index is build from this data; <IDX> <FILENAME> per line";
+		param.mLongSwitch = "index_bed";
+		param.mShortDescription = "MinHash histogram reverse index is build from this data; The 4th col of BED entry denotes the bin in the histogram";
 		param.mTypeCode = STRING;
 		param.mValue = "";
 		mOptionList.insert(make_pair(param.mLongSwitch, param));
@@ -604,6 +604,20 @@ void Parameters::SetupOptions() {
 			vec.push_back(&p);
 		}
 	}
+	{
+			ParameterType param;
+			param.mShortSwitch = "";
+			param.mLongSwitch = "index_seqs";
+			param.mShortDescription = "MinHash histogram reverse index is build from this data; contains the corresponding seqs for regions given in BED file (--index_bed)";
+			param.mTypeCode = STRING;
+			param.mValue = "";
+			mOptionList.insert(make_pair(param.mLongSwitch, param));
+			{
+				vector<ParameterType*>& vec = mActionOptionList[CLASSIFY];
+				ParameterType& p = mOptionList[param.mLongSwitch];
+				vec.push_back(&p);
+			}
+		}
 	{
 		ParameterType param;
 		param.mShortSwitch = "";
@@ -746,8 +760,10 @@ void Parameters::Init(int argc, const char** argv) {
 			mNumThreads = stream_cast<double>(param.mValue);
 		if (param.mLongSwitch == "max_fraction_of_dataset")
 			mMaxFractionOfDataset = stream_cast<double>(param.mValue);
-		if (param.mLongSwitch == "index_data_file")
-			mIndexDataList = param.mValue;
+		if (param.mLongSwitch == "index_bed")
+			mIndexBedFile = param.mValue;
+		if (param.mLongSwitch == "index_seqs")
+			mIndexSeqFile = param.mValue;
 		if (param.mLongSwitch == "seq_shift")
 			mSeqShift = stream_cast<double>(param.mValue);
 		if (param.mLongSwitch == "seq_window")

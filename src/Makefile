@@ -55,7 +55,7 @@ SeqClassifyManager.o:SeqClassifyManager.cc SeqClassifyManager.h MinHashEncoder.h
 
 SeqClusterManager.o:SeqClusterManager.h MinHashEncoder.h MinHashEncoder.cc
 
-NearestNeighbor.o:NearestNeighbor.h MinHashEncoder.h BaseManager.cc
+#NearestNeighbor.o:NearestNeighbor.h MinHashEncoder.h BaseManager.cc
 
 MinHashEncoder.o:MinHashEncoder.h Data.h
 

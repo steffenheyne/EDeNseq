@@ -38,7 +38,7 @@ public:
 
 		switch (mParameters.mActionCode) {
 		case CLASSIFY:{
-			SeqClassifyManager seq_classify_manager(&mParameters,&mData);
+			SeqClassifyManager seq_classify_manager(&mParameters, &mData);
 			seq_classify_manager.Exec();
 		}
 		break;
