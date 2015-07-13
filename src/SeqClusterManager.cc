@@ -8,17 +8,19 @@ SeqClusterManager::SeqClusterManager(Parameters* apParameters, Data* apData)
 : NeighborhoodIndex(apParameters, apData)
 {
 	mMinHashCache = std::make_shared<Data::SigCacheT>();
-	SeqFileT mySet;
+	mIndexDataSet = std::make_shared<SeqFileT>();
 
-	mySet.filename = mpParameters->mInputDataFileName.c_str();
-	mySet.filetype = mpParameters->mFileTypeCode;
-	mySet.desc = "approx_cluster_set";
-	mySet.updateIndex=SEQ_WINDOW;
-	mySet.updateSigCache=true;
-	mySet.sigCache = mMinHashCache;
+	mIndexDataSet->filename = mpParameters->mInputDataFileName.c_str();
+	mIndexDataSet->filetype = mpParameters->mFileTypeCode;
+	//mySet.desc = "approx_cluster_set";
+	mIndexDataSet->updateIndex=SEQ_WINDOW;
+	mIndexDataSet->updateSigCache=true;
+	mIndexDataSet->sigCache = mMinHashCache;
 
-	vector<SeqFileT> myList;
-	myList.push_back(mySet);
+
+
+	SeqFilesT myList;
+	myList.push_back(mIndexDataSet);
 	LoadData_Threaded(myList);
 
 	NeighborhoodCacheReset();

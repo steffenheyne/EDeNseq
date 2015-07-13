@@ -22,13 +22,18 @@ void SeqClassifyManager::Exec() {
 	//	vector<SeqDataSet> fileList = mpData->LoadIndexDataList(mpParameters->mIndexDataList.c_str());
 	SeqFilesT myList;
 	SeqFileT mySet;
-	mySet.filename       = mpParameters->mIndexSeqFile;
-	mySet.filetype       = FASTA;
-	mySet.updateIndex    = SEQ_FEATURE;
-	mySet.updateSigCache = false;
+
+	mySet.filename          = mpParameters->mIndexSeqFile;
+	mySet.filetype          = FASTA;
+	mySet.updateIndex       = SEQ_FEATURE;
+	mySet.updateSigCache    = false;
 	Data::BEDdataP indexBED = mpData->LoadBEDfile(mpParameters->mIndexBedFile.c_str());
-	mySet.dataBED = indexBED;
-	myList.push_back(mySet);
+	mySet.dataBED           = indexBED;
+	mySet.lastMetaIdx       = 0;
+
+	mIndexDataSet = std::make_shared<SeqFileT>(mySet);
+
+	myList.push_back(mIndexDataSet);
 	string indexName = mpParameters->mIndexBedFile;
 	const unsigned pos = mpParameters->mIndexBedFile.find_last_of("/");
 	if (std::string::npos != pos)
@@ -39,6 +44,7 @@ void SeqClassifyManager::Exec() {
 		cout << endl << " *** Creating inverse index *** "<< endl << endl;
 
 		LoadData_Threaded(myList);
+		SetHistogramSize(mIndexDataSet->lastMetaIdx);
 
 		// write index
 		if (!mpParameters->mNoIndexCacheFile){
@@ -95,13 +101,13 @@ void SeqClassifyManager::finishUpdate(workQueueP& myData) {
 		//#ifdef USEMULTITHREAD
 		//#pragma omp critical
 		//#endif
-		/*	if (emptyBins<mpParameters->mNumHashFunctions){
-			cout << i << ":"<< emptyBins << "  \t";
-			for (unsigned j=0; j<hist.size();j++){
-				cout << setprecision(2) << hist[j] << "\t";
+		if (emptyBins<mpParameters->mNumHashFunctions){
+		//	cout << j << ":"<< emptyBins << "  \t";
+			for (unsigned i=0; i<hist.size();i++){
+		//		cout << setprecision(2) << hist[i] << "\t";
 			}
-			cout << endl;
-		}*/
+		//	cout << endl;
+		}
 	}
 
 }
@@ -109,15 +115,19 @@ void SeqClassifyManager::finishUpdate(workQueueP& myData) {
 void SeqClassifyManager::ClassifySeqs(){
 
 	// prepare sequence set for classification
-	SeqFileT mySet;
-	mySet.filename = mpParameters->mInputDataFileName.c_str();
-	mySet.filetype = mpParameters->mFileTypeCode;
-	mySet.desc = "seqs_to_classify";
-	mySet.updateIndex=NONE;
-	mySet.updateSigCache=false;
-	vector<SeqFileT> myList;
+	SeqFileP mySet = std::make_shared<SeqFileT>();
+	mySet->filename = mpParameters->mInputDataFileName.c_str();
+	mySet->filetype = mpParameters->mFileTypeCode;
+	//mySet.desc = "seqs_to_classify";
+	mySet->updateIndex=NONE;
+	mySet->updateSigCache=false;
+
+	SeqFilesT myList;
 	myList.push_back(mySet);
 	cout << endl << " *** Read sequences for classification and create their MinHash signatures *** " << endl << endl;
+
+	cout << "hist size: " << GetHistogramSize() << endl;
+	//SetHistogramSize(mIndexDataSet->lastMetaIdx);
 
 	metaHist.resize(GetHistogramSize());
 	metaHist *= 0;

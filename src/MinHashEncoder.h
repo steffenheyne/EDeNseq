@@ -29,19 +29,18 @@ public:
 
 	struct SeqFileS {
 		string filename;
-		string desc;
 		InputFileType filetype;
 		unsigned numSequences;
 		INDEXupdatesT updateIndex;
 		bool updateSigCache;
 		Data::SigCacheP sigCache;
 		Data::BEDdataP	dataBED;
-
+		unsigned lastMetaIdx;
 	};
 
 	typedef SeqFileS SeqFileT;
 	typedef std::shared_ptr<SeqFileT> SeqFileP;
-	typedef vector<SeqFileT> SeqFilesT;
+	typedef vector<SeqFileP> SeqFilesT;
 
 	struct workQueueS {
 		vector<GraphClass> gr;
@@ -60,6 +59,8 @@ public:
 
 	Parameters* mpParameters;
 	Data* mpData;
+
+	SeqFileP mIndexDataSet;
 
 protected:
 

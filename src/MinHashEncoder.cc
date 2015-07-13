@@ -96,7 +96,7 @@ void MinHashEncoder::generate_feature_vector(const GraphClass& aG, SVector& x) {
 void MinHashEncoder::worker_readFiles(int numWorkers){
 
 	int file_instances = 0;
-	unsigned currMetaIdx = 0;
+	//unsigned currMetaIdx = 0;
 	std::tr1::unordered_map<string, uint8_t> seq_names_seen;
 
 	while (!done){
@@ -117,7 +117,9 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 
 			unsigned pos = 0;
 			unsigned end = 0;
-			bool valid_input = false; // set to false so that we get new seq in first iter in while further down
+			unsigned idx  = 0;
+
+			bool valid_input = false; // set to false so that we get new seq in while further down directly
 			string currSeq;
 			string currFullSeq;
 			string currSeqName;
@@ -130,8 +132,6 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 				unsigned maxB = max(100,(int)log2((double)mSignatureCounter)*100);
 				unsigned currBuff = rand()%(maxB*3 - maxB + 1) + maxB;
 				unsigned i = 0;
-				multimap<string,uint>::iterator feat;
-				unsigned idx  = 0;
 
 				workQueueP myDataChunk = std::make_shared<workQueueS>();
 				myDataChunk->gr.resize(currBuff);
@@ -161,14 +161,15 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 								throw range_error("ERROR Data::LoadData: file type not recognized: " + myData->filetype);
 							}
 
-							//cout << endl << " next found Seq length " << currFullSeq.size() << ":" << currSeqName << ": " << endl;
-
+							if (myData->updateIndex!= NONE){
+								cout << endl << " next found Seq length " << currFullSeq.size() << ":" << currSeqName << ": " << endl;
+							}
 							// if we have bed entries for that seq, find them and set iterator to first bed entry
 							if (myData->dataBED && myData->dataBED->find(currSeqName) != myData->dataBED->end()){
 								annoEntries = myData->dataBED->equal_range(currSeqName);
 								it = annoEntries.first;
 							} else if (myData->dataBED){
-								cout << "no bed entry found!"<< endl;
+								cout << "no bed entry found! "<< seq_names_seen.size()<< endl;
 								// bed is present, but no entry for current seq found -> we take next seq
 								valid_input = false;
 								continue;
@@ -176,12 +177,14 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 								// no bed is present, then we set start/end to full seq, eg. in case for clutsering
 								pos=0;
 								end=currFullSeq.size();
+								//cout << "no BED data present! "<< currSeqName << " " << pos << "-" << end << endl;
 							}
 						}
 
 						// update index?
 						// check under which value a current seq/window is inserted in inverse index
 						// we only use these cases if there is a valid bed entry (SEQ_FEATURE/SEQ_NAME)
+						multimap<string,uint>::iterator feat;
 						switch (myData->updateIndex){
 						// use seq name as value for inverse index
 						case SEQ_NAME:
@@ -189,26 +192,29 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 							if (feat != mFeature2IndexValue.end()){
 								idx = feat->second;
 							} else {
-								currMetaIdx++;
-								idx=currMetaIdx;
+								myData->lastMetaIdx++;
+								idx=myData->lastMetaIdx;
 								mFeature2IndexValue.insert(make_pair(currSeqName,idx));
 							}
 							break;
-							// use given value/name in BED file col4 as  value for inverse index
+						// use given value/name in BED file col4 as  value for inverse index
 						case SEQ_FEATURE:
 							feat = mFeature2IndexValue.find(it->second.NAME);
 							if (feat != mFeature2IndexValue.end()){
 								idx = feat->second;
 							} else {
-								currMetaIdx++;
-								idx=currMetaIdx;
+								myData->lastMetaIdx++;
+								idx=myData->lastMetaIdx;
 								mFeature2IndexValue.insert(make_pair(it->second.NAME,idx));
 							}
+							//cout << "update SEQ_FEATURE idx=" << idx << " " << it->second.NAME << endl;
 							break;
 						default:
 							break;
 						}
 
+						// only true if we have a found a BED entry for current seq
+						// set region according to BED entry
 						if ( it != annoEntries.second ) {
 							pos = it->second.START;
 							end = it->second.END;
@@ -272,9 +278,8 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 				}
 			}
 			fin.close();
-			cout << files_done << " " << mInstanceCounter << " " << mSignatureCounter << " instances produced from file " << file_instances << endl;
-
 			files_done++;
+			cout << files_done << " " << mInstanceCounter << " " << mSignatureCounter << " instances produced from file " << file_instances << endl;
 		}
 	}
 }
@@ -355,19 +360,8 @@ void MinHashEncoder::finisher(){
 void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 
 	for (unsigned i=0;i<myFiles.size(); i++){
-		readFile_queue.push(std::make_shared<SeqFileT>(myFiles[i]));
+		readFile_queue.push(myFiles[i]);
 	}
-
-	// check which cache to use for signatures
-	// use either external MinHash cache or class member
-	//	vector<vector<unsigned> >* myMinHashCache;
-	//	if (myCache != NULL) {
-	//		myMinHashCache = myCache;
-	//	} else {
-	//		// use standard cache
-	//		myMinHashCache = &mMinHashCache;
-	//	}
-	//	myMinHashCache->clear();
 
 	cout << "Using " << mpParameters->mNumHashFunctions << " hash functions (with factor " << mpParameters->mNumRepeatsHashFunction << " for single minhash)" << endl;
 	cout << "Using " << mpParameters->mNumHashShingles << " as hash shingle factor" << endl;
@@ -729,6 +723,12 @@ void HistogramIndex::UpdateInverseIndex(vector<unsigned>& aSignature, unsigned a
 					delete[] mInverseIndex[k][key];
 					mInverseIndex[k][key] = fooNew;
 				}
+//				cout << "bin " << key << " k " <<  k << " aIdx "<< aIndex << "\t";
+//				for (unsigned j=0; j<=mInverseIndex[k][key][0];j++){
+//					cout << mInverseIndex[k][key][j] <<"\t";
+//				}
+//				cout << endl;
+
 			}
 		}
 	}
@@ -740,14 +740,13 @@ void HistogramIndex::ComputeHistogram(const vector<unsigned>& aSignature, std::v
 	hist.resize(GetHistogramSize());
 	hist *= 0;
 	emptyBins = 0;
-
 	for (unsigned k = 0; k < aSignature.size(); ++k) {
 		if (mInverseIndex[k].count(aSignature[k]) > 0) {
 
 			std::valarray<double> t(0.0, hist.size());
 
 			for (uint i=1;i<=mInverseIndex[k][aSignature[k]][0];i++){
-				t[mInverseIndex[k][aSignature[k]][i]]=1;
+				t[mInverseIndex[k][aSignature[k]][i]-1]=1;
 			}
 
 			hist += t;
@@ -771,6 +770,8 @@ void HistogramIndex::writeBinaryIndex2(ostream &out, const indexTy& index) {
 	out.write((const char*) &mpParameters->mNumRepeatsHashFunction, sizeof(unsigned));
 	out.write((const char*) &mpParameters->mSeqWindow, sizeof(unsigned));
 	out.write(reinterpret_cast<char *>(&mpParameters->mSeqShift), sizeof(mpParameters->mSeqShift));
+	unsigned tmp = GetHistogramSize();
+	out.write((const char*) &tmp, sizeof(unsigned));
 
 	unsigned numHashFunc = index.size();
 	out.write((const char*) &numHashFunc, sizeof(unsigned));
@@ -795,7 +796,7 @@ void HistogramIndex::writeBinaryIndex2(ostream &out, const indexTy& index) {
 bool HistogramIndex::readBinaryIndex2(string filename, indexTy &index){
 	igzstream fin;
 	fin.open(filename.c_str());
-
+	unsigned tmp;
 	fin.read((char*) &mpParameters->mHashBitSize, sizeof(unsigned));
 	fin.read((char*) &mpParameters->mRandomSeed, sizeof(unsigned));
 	fin.read((char*) &mpParameters->mRadius, sizeof(unsigned));
@@ -806,6 +807,8 @@ bool HistogramIndex::readBinaryIndex2(string filename, indexTy &index){
 	fin.read((char*) &mpParameters->mNumRepeatsHashFunction, sizeof(unsigned));
 	fin.read((char*) &mpParameters->mSeqWindow, sizeof(unsigned));
 	fin.read( reinterpret_cast<char*>( &mpParameters->mSeqShift ), sizeof mpParameters->mSeqShift);
+	fin.read((char*) &tmp, sizeof(unsigned));
+	SetHistogramSize(tmp);
 
 	cout << " shift "<< mpParameters->mSeqShift << endl;
 

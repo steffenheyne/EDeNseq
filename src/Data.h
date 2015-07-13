@@ -14,7 +14,6 @@ class Data {
 public:
 	typedef vector<vector<unsigned> > SigCacheT;
 	typedef std::shared_ptr<SigCacheT> SigCacheP;
-	//typedef SigCacheT *SigCacheP;
 
 	struct BEDentryS {
 		// cols 1-6 from file
@@ -26,8 +25,6 @@ public:
 		char	STRAND;
 		// col7 and beyond
 		string INFO;
-		// histogram bin, will be set during indexing
-		uint idx;
 	};
 
 	typedef BEDentryS BEDentryT;
