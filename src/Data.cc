@@ -47,15 +47,23 @@ Data::BEDdataP Data::LoadBEDfile(string filename){
 	fin.open(filename.c_str());
 	if (!fin)
 		throw range_error("ERROR LoadData: Cannot open index data file: " + filename);
+
 	while (!fin.eof() && valid_input) {
 		BEDentryT myEnt;
 		if (fin >> myEnt.SEQ >> myEnt.START >> myEnt.END >> myEnt.NAME >> myEnt.SCORE >> myEnt.STRAND){
 			cout << "BED " << myEnt.SEQ << "\t" <<  myEnt.START << "\t" <<  myEnt.END << "\t" <<  myEnt.NAME << "\t" <<  myEnt.SCORE << "\t" <<  myEnt.STRAND << endl;
+
+			getline(fin, line);
+			istringstream iss(line,istringstream::in);
+			string col;
+			while (iss >> col) {
+				myEnt.COLS.push_back(col);
+			}
 			myBED->insert(make_pair(myEnt.SEQ,myEnt));
 		}
-		getline(fin, line);
 	}
 	fin.close();
+
 	if (!myBED->size())
 		throw range_error("ERROR LoadIndexData: No data found in " + filename + "!");
 
@@ -90,8 +98,8 @@ void Data::GetNextFastaSeq(istream& in,string& currSeq, string& header) {
 		currSeq.erase(std::remove(currSeq.begin(), currSeq.end(), ' '),currSeq.end());
 		std::transform(currSeq.begin(), currSeq.end(), currSeq.begin(), ::toupper);
 		const unsigned pos = header.find_first_of(" ");
-			if (std::string::npos != pos)
-				header = header.substr(0,pos);
+		if (std::string::npos != pos)
+			header = header.substr(0,pos);
 		in.unget();
 		if (currSeq.size()==0 || header.size()==0)
 			throw range_error("ERROR FASTA reader - empty Sequence or header found! Header:"+header);
@@ -134,10 +142,10 @@ bool Data::SetGraphFromSeq2(GraphClass& oG, string& currSeq, unsigned& pos) {
 		if ((win>0) && (currSeq.size()-pos-shift>=win)){
 			pos += shift;
 		} else if ((currSeq.size()-shift-pos<win ) || (win == 0))
-			{
-				currSeq="";
-				pos = 0;
-			}
+		{
+			currSeq="";
+			pos = 0;
+		}
 		success_status = true;
 	}
 	return success_status;

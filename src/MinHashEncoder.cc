@@ -149,10 +149,11 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 							switch (myData->filetype) {
 							case FASTA:
 								mpData->GetNextFastaSeq(fin, currFullSeq, currSeqName);
-								if (!fin.eof() && seq_names_seen.count(currSeqName) > 0) {
+								if (!fin.eof() && myData->updateIndex!= NONE && seq_names_seen.count(currSeqName) > 0) {
 									throw range_error("Sequence names are not unique in FASTA file! "+currSeqName);
-								} else
+								} else if (myData->updateIndex!= NONE) {
 									seq_names_seen.insert(make_pair(currSeqName,1));
+								}
 								break;
 							case STRINGSEQ:
 								mpData->GetNextStringSeq(fin, currFullSeq, currSeqName);
@@ -232,6 +233,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 					} // valid_input?
 
 					//cout << i << " " << currBuff<< " "<< pos << " " << currSeqName<<  " " << currSeq.size() << endl;
+					// fill the current chunk
 					mpData->SetGraphFromSeq2(myDataChunk->gr.at(i),currSeq, pos);
 
 					if (myDataChunk->gr.at(i).IsEmpty()) {
@@ -269,11 +271,12 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 
 				graph_queue.push(myDataChunk);
 				cv2.notify_all();
-				//cout << " instances read " << mInstanceCounter << " " << myDataChunk->gr.size() << " buffer " << currBuff << " full..." << graph_queue.size() << " " << currSeq.size()<< " "<< currSeqName << endl;
-
-				if (graph_queue.size()>=numWorkers*100){
+				if (mInstanceCounter%1000000 <=currBuff){
+					cout << endl << " instances read " << mInstanceCounter << " " << myDataChunk->gr.size() << " buffer " << currBuff << " full..." << graph_queue.size() << " " << currSeq.size()<< " "<< currSeqName << endl;
+				}
+				if (graph_queue.size()>=numWorkers*25){
 					unique_lock<mutex> lk(mut2);
-					cv2.wait(lk,[&]{if ((done) || (graph_queue.size()<=numWorkers*20)) return true; else return false;});
+					cv2.wait(lk,[&]{if ((done) || (graph_queue.size()<=numWorkers*10)) return true; else return false;});
 					lk.unlock();
 				}
 			}
@@ -348,9 +351,12 @@ void MinHashEncoder::finisher(){
 			}
 
 			mSignatureCounter += chunkSize;
-			//cout << "    finisher updated index with " << chunkSize << " signatures all_sigs=" <<  mSignatureCounter << " inst=" << mInstanceCounter << " sigQueue=" << sig_queue.size() << endl;
+			myData.reset();
+			if (mSignatureCounter%1000000 <= chunkSize){
+				cout << endl << "    finisher updated index with " << chunkSize << " signatures all_sigs=" <<  mSignatureCounter << " inst=" << mInstanceCounter << " sigQueue=" << sig_queue.size() << endl;
+			}
+			progress_bar.Count(mSignatureCounter);
 		}
-		progress_bar.Count(mSignatureCounter);
 		cv1.notify_all();
 		cv2.notify_all();
 		cvm.notify_all();

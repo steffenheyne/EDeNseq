@@ -101,13 +101,13 @@ void SeqClassifyManager::finishUpdate(workQueueP& myData) {
 		//#ifdef USEMULTITHREAD
 		//#pragma omp critical
 		//#endif
-		if (emptyBins<mpParameters->mNumHashFunctions){
+	//	if (emptyBins<mpParameters->mNumHashFunctions){
 		//	cout << j << ":"<< emptyBins << "  \t";
-			for (unsigned i=0; i<hist.size();i++){
+	//		for (unsigned i=0; i<hist.size();i++){
 		//		cout << setprecision(2) << hist[i] << "\t";
-			}
+	//		}
 		//	cout << endl;
-		}
+	//	}
 	}
 
 }
@@ -118,7 +118,6 @@ void SeqClassifyManager::ClassifySeqs(){
 	SeqFileP mySet = std::make_shared<SeqFileT>();
 	mySet->filename = mpParameters->mInputDataFileName.c_str();
 	mySet->filetype = mpParameters->mFileTypeCode;
-	//mySet.desc = "seqs_to_classify";
 	mySet->updateIndex=NONE;
 	mySet->updateSigCache=false;
 
@@ -127,7 +126,6 @@ void SeqClassifyManager::ClassifySeqs(){
 	cout << endl << " *** Read sequences for classification and create their MinHash signatures *** " << endl << endl;
 
 	cout << "hist size: " << GetHistogramSize() << endl;
-	//SetHistogramSize(mIndexDataSet->lastMetaIdx);
 
 	metaHist.resize(GetHistogramSize());
 	metaHist *= 0;

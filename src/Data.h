@@ -24,7 +24,7 @@ public:
 		double SCORE;
 		char	STRAND;
 		// col7 and beyond
-		string INFO;
+		vector<string> COLS;
 	};
 
 	typedef BEDentryS BEDentryT;
