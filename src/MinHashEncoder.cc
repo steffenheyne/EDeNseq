@@ -163,7 +163,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 							}
 
 							if (myData->updateIndex!= NONE){
-								cout << endl << " next found Seq length " << currFullSeq.size() << ":" << currSeqName << ": " << endl;
+								cout << endl << " next found Seq " <<  seq_names_seen.size() << " length " << currFullSeq.size() << ":" << currSeqName << ": " << endl;
 							}
 							// if we have bed entries for that seq, find them and set iterator to first bed entry
 							if (myData->dataBED && myData->dataBED->find(currSeqName) != myData->dataBED->end()){
@@ -287,7 +287,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 	}
 }
 
-void MinHashEncoder::worker_Graph2Signature(){
+void MinHashEncoder::worker_Graph2Signature(int numWorkers){
 
 	while (!done){
 
@@ -307,7 +307,11 @@ void MinHashEncoder::worker_Graph2Signature(){
 				generate_feature_vector(myData->gr[j], x);
 				myData->sigs[j] = ComputeHashSignature(x);
 			}
-
+			if (sig_queue.size()>=numWorkers*25){
+				unique_lock<mutex> lk(mut2);
+				cv2.wait(lk,[&]{if ((done) || (sig_queue.size()<=numWorkers*10)) return true; else return false;});
+				lk.unlock();
+			}
 			sig_queue.push(myData);
 			cv2.notify_all();
 			cv3.notify_all();
@@ -396,7 +400,7 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 	vector<std::thread> threads;
 	threads.push_back( std::thread(&MinHashEncoder::finisher,this));
 	for (int i=0;i<graphWorkers;i++){
-		threads.push_back( std::thread(&MinHashEncoder::worker_Graph2Signature,this));
+		threads.push_back( std::thread(&MinHashEncoder::worker_Graph2Signature,this,graphWorkers));
 	}
 	threads.push_back( std::thread(&MinHashEncoder::worker_readFiles,this,graphWorkers));
 

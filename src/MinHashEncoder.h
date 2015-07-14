@@ -96,7 +96,7 @@ private:
 	unsigned mHashBitMask;
 
 	void 					worker_readFiles(int numWorkers);
-	void					worker_Graph2Signature();
+	void					worker_Graph2Signature(int numWorkers);
 	void 					finisher();
 	void 					generate_feature_vector(const GraphClass& aG, SVector& x);
 	vector<unsigned>	HashFuncNSPDK(const string& aString, unsigned aStart, unsigned aMaxRadius, unsigned aBitMask);
