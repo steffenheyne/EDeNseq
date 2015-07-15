@@ -69,7 +69,7 @@ protected:
 	unsigned numKeys;
 	unsigned numFullBins;
 	Data::SigCacheP mMinHashCache;
-	multimap<uint, string> mIndexValue2Feature;
+	multimap<uint, Data::BEDentryP> mIndexValue2Feature;
 	multimap<string, uint> mFeature2IndexValue;
 
 private:
@@ -171,7 +171,7 @@ public:
 	const binKeyTy MAXBINKEY = std::numeric_limits<binKeyTy>::max();
 
 	binKeyTy mHistogramSize;
-	multimap<uint, uint> mHistBin2DatasetIdx;
+	//multimap<uint, uint> mHistBin2DatasetIdx;
 
 	indexTy mInverseIndex;
 

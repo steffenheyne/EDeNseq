@@ -26,9 +26,9 @@ public:
 		// col7 and beyond
 		vector<string> COLS;
 	};
-
 	typedef BEDentryS BEDentryT;
-	typedef multimap<string, BEDentryT> BEDdataT;
+	typedef std::shared_ptr<BEDentryS> BEDentryP;
+	typedef multimap<string, BEDentryP> BEDdataT;
 	typedef BEDdataT::iterator BEDdataIt;
 	typedef std::shared_ptr<BEDdataT> BEDdataP;
 

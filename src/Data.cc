@@ -49,17 +49,17 @@ Data::BEDdataP Data::LoadBEDfile(string filename){
 		throw range_error("ERROR LoadData: Cannot open index data file: " + filename);
 
 	while (!fin.eof() && valid_input) {
-		BEDentryT myEnt;
-		if (fin >> myEnt.SEQ >> myEnt.START >> myEnt.END >> myEnt.NAME >> myEnt.SCORE >> myEnt.STRAND){
-			cout << "BED " << myEnt.SEQ << "\t" <<  myEnt.START << "\t" <<  myEnt.END << "\t" <<  myEnt.NAME << "\t" <<  myEnt.SCORE << "\t" <<  myEnt.STRAND << endl;
+		BEDentryP myEnt = std::make_shared<BEDentryT>();
+		if (fin >> myEnt->SEQ >> myEnt->START >> myEnt->END >> myEnt->NAME >> myEnt->SCORE >> myEnt->STRAND){
+			cout << "BED " << myEnt->SEQ << "\t" <<  myEnt->START << "\t" <<  myEnt->END << "\t" <<  myEnt->NAME << "\t" <<  myEnt->SCORE << "\t" <<  myEnt->STRAND << endl;
 
 			getline(fin, line);
 			istringstream iss(line,istringstream::in);
 			string col;
 			while (iss >> col) {
-				myEnt.COLS.push_back(col);
+				myEnt->COLS.push_back(col);
 			}
-			myBED->insert(make_pair(myEnt.SEQ,myEnt));
+			myBED->insert(make_pair(myEnt->SEQ,myEnt));
 		}
 	}
 	fin.close();
@@ -89,6 +89,7 @@ void Data::GetNextFastaSeq(istream& in,string& currSeq, string& header) {
 
 	char c = in.peek();
 	currSeq.clear();
+	header.clear();
 
 	if (!in.eof() && c != EOF && c=='>' ){
 		getline(in, header,'>');

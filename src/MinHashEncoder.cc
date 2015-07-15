@@ -149,7 +149,9 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 							switch (myData->filetype) {
 							case FASTA:
 								mpData->GetNextFastaSeq(fin, currFullSeq, currSeqName);
-								if (!fin.eof() && myData->updateIndex!= NONE && seq_names_seen.count(currSeqName) > 0) {
+								if (fin.eof() )
+									continue;
+								if (myData->updateIndex!= NONE && seq_names_seen.count(currSeqName) > 0) {
 									throw range_error("Sequence names are not unique in FASTA file! "+currSeqName);
 								} else if (myData->updateIndex!= NONE) {
 									seq_names_seen.insert(make_pair(currSeqName,1));
@@ -157,13 +159,15 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 								break;
 							case STRINGSEQ:
 								mpData->GetNextStringSeq(fin, currFullSeq, currSeqName);
+								if (fin.eof() )
+									continue;
 								break;
 							default:
 								throw range_error("ERROR Data::LoadData: file type not recognized: " + myData->filetype);
 							}
 
 							if (myData->updateIndex!= NONE){
-								cout << endl << " next found Seq " <<  seq_names_seen.size() << " length " << currFullSeq.size() << ":" << currSeqName << ": " << endl;
+								cout << endl << " next found Seq #" <<  seq_names_seen.size() << " length " << currFullSeq.size() << ":" << currSeqName << ": " << endl;
 							}
 							// if we have bed entries for that seq, find them and set iterator to first bed entry
 							if (myData->dataBED && myData->dataBED->find(currSeqName) != myData->dataBED->end()){
@@ -200,13 +204,13 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 							break;
 						// use given value/name in BED file col4 as  value for inverse index
 						case SEQ_FEATURE:
-							feat = mFeature2IndexValue.find(it->second.NAME);
+							feat = mFeature2IndexValue.find(it->second->NAME);
 							if (feat != mFeature2IndexValue.end()){
 								idx = feat->second;
 							} else {
 								myData->lastMetaIdx++;
 								idx=myData->lastMetaIdx;
-								mFeature2IndexValue.insert(make_pair(it->second.NAME,idx));
+								mFeature2IndexValue.insert(make_pair(it->second->NAME,idx));
 							}
 							//cout << "update SEQ_FEATURE idx=" << idx << " " << it->second.NAME << endl;
 							break;
@@ -217,9 +221,10 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 						// only true if we have a found a BED entry for current seq
 						// set region according to BED entry
 						if ( it != annoEntries.second ) {
-							pos = it->second.START;
-							end = it->second.END;
-							cout << endl << "BED entry found for seq name " << currSeqName << " " << it->second.NAME << " MetaIdx "<< idx << " " << pos << "-"<< end << endl;
+							pos = it->second->START;
+							end = it->second->END;
+							mIndexValue2Feature.insert(make_pair(idx,it->second));
+							cout << endl << "BED entry found for seq name " << currSeqName << " " << it->second->NAME << " MetaIdx "<< idx << " " << pos << "-"<< end << endl;
 							it++;
 						}
 
