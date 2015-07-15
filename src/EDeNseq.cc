@@ -29,6 +29,7 @@ public:
 		mParameters.Init(argc, argv);
 		srand(mParameters.mRandomSeed);
 		mData.Init(&mParameters);
+		omp_set_num_threads(mParameters.mNumThreads);
 	}
 
 	void Exec() {

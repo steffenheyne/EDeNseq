@@ -181,7 +181,7 @@ public:
 		mInverseIndex.clear();
 		for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k){
 			mInverseIndex.push_back(indexSingleTy());
-			mInverseIndex.back().resize(100000000);
+			mInverseIndex.back().resize(500000000);
 			//mInverseIndex.back().set_empty_key(0);
 		}
 
