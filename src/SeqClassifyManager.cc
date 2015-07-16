@@ -194,16 +194,11 @@ void SeqClassifyManager::ClassifySeqs(){
 	sort(sortedHist.begin(), sortedHist.end());
 
 	for (unsigned j=0; j<sortedHist.size();j++){
-		//std::pair< std::multimap<uint,uint>::iterator, std::multimap<uint,uint>::iterator > ret;
-		//	ret = mHistBin2DatasetIdx.equal_range(sortedHist[j].second);
 		multimap<uint, Data::BEDentryP>::iterator it = mIndexValue2Feature.find(sortedHist[j].second+1);
 		uint num = mIndexValue2Feature.count(sortedHist[j].second+1);
 		cout << setprecision(2) << j+1 << "\t" << -sortedHist[j].first << "\t" << setprecision(10) << metaHistNum[sortedHist[j].second] << "\t" << sortedHist[j].second+1 << "\t";
 		if (it != mIndexValue2Feature.end()) cout << "feature\t"<< it->second->NAME << "\t#features=" << num;
 		if (it != mIndexValue2Feature.end() && it->second->COLS.size()>=2) cout << "\t" << it->second->COLS[1];
-		//		for (std::multimap<uint,uint>::iterator it = ret.first; it != ret.second; ++it ){
-		//			cout << mIndexDataSets[it->second].desc <<";";
-		//		}
 		cout << endl;
 	}
 	cout << "SUM\t"<< metaHist.sum() << endl << endl;
