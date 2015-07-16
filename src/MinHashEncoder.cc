@@ -357,10 +357,11 @@ void MinHashEncoder::finisher(){
 			// virtual function call that can be overloaded in child classes to do specific stuff
 			if ( (myData->seqFile->updateIndex==NONE) && (!myData->seqFile->updateSigCache) ) {
 				finishUpdate(myData);
+			} else {
+				myData.reset();
 			}
 
 			mSignatureCounter += chunkSize;
-			myData.reset();
 			if (mSignatureCounter%1000000 <= chunkSize){
 				cout << endl << "    finisher updated index with " << chunkSize << " signatures all_sigs=" <<  mSignatureCounter << " inst=" << mInstanceCounter << " sigQueue=" << sig_queue.size() << endl;
 			}
@@ -415,7 +416,7 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 		unique_lock<mutex> lk(mutm);
 		cv1.notify_all();
 		while(!done){
-			cvm.wait(lk,[&]{if ( (files_done<(int)myFiles.size()) || (mSignatureCounter < mInstanceCounter)) return false; else return true;});
+			cvm.wait(lk,[&]{if ( (files_done<myFiles.size()) || (mSignatureCounter < mInstanceCounter)) return false; else return true;});
 			lk.unlock();
 			done=true;
 			cv3.notify_all();

@@ -30,12 +30,13 @@ public:
 	struct SeqFileS {
 		string filename;
 		InputFileType filetype;
-		unsigned numSequences;
+		//unsigned numSequences;
 		INDEXupdatesT updateIndex;
 		bool updateSigCache;
 		Data::SigCacheP sigCache;
 		Data::BEDdataP	dataBED;
 		unsigned lastMetaIdx;
+		ogzstream* out_results_fh;
 	};
 
 	typedef SeqFileS SeqFileT;
@@ -71,6 +72,7 @@ protected:
 	Data::SigCacheP mMinHashCache;
 	multimap<uint, Data::BEDentryP> mIndexValue2Feature;
 	multimap<string, uint> mFeature2IndexValue;
+	std::atomic_uint mSignatureCounter;
 
 private:
 
@@ -89,9 +91,8 @@ private:
 	threadsafe_queue<workQueueP> sig_queue;
 
 	std::atomic_bool done;
-	std::atomic_int files_done;
-	std::atomic_int mInstanceCounter;
-	std::atomic_int mSignatureCounter;
+	std::atomic_uint files_done;
+	std::atomic_uint mInstanceCounter;
 
 	unsigned mHashBitMask;
 
@@ -192,6 +193,7 @@ public:
 //	void	PrepareIndexDataSets(vector<SeqDataSet>& myFileList);
 	void	UpdateInverseIndex(vector<unsigned>& aSignature, unsigned aIndex);
 	void  ComputeHistogram(const vector<unsigned>& aSignature, std::valarray<double>& hist, unsigned& emptyBins);
+//	void  ComputeHistogram(const vector<unsigned>& aSignature, std::valarray<double>& hist, unsigned& emptyBins, std::vector<pair<binKeyTy,unsigned> >& histPairs);
 	void	writeBinaryIndex2(ostream &out, const indexTy& index);
 	bool	readBinaryIndex2(string filename, indexTy& index);
 };

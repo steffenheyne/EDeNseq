@@ -12,7 +12,6 @@
 SeqClassifyManager::SeqClassifyManager(Parameters* apParameters, Data* apData):
 HistogramIndex(apParameters,apData),pb(1000) //,mHistogramIndex(apPa
 {
-	classifiedInstances = 0;
 }
 
 
@@ -80,13 +79,33 @@ inline double minSim(double i) {if (i<0.1) return 0; else return i;}
 
 void SeqClassifyManager::finishUpdate(workQueueP& myData) {
 
+	ogzstream *fout = myData->seqFile->out_results_fh;
+
 	for (unsigned j = 0; j < myData->sigs.size(); j++) {
 
 		valarray<double> hist;
 		unsigned emptyBins = 0;
+
 		ComputeHistogram(myData->sigs[j],hist,emptyBins);
 
 		unsigned sum = hist.sum();
+		unsigned max = hist.max();
+
+		if (sum!=0)
+			mClassifiedInstances++;
+		*fout << myData->names[j] << "\t"<<mpParameters->mNumHashFunctions-emptyBins << "\t" << sum << "\t";
+		string values;
+		string maxVals;
+		for (unsigned i=0; i<hist.size();i++){
+			if (hist[i]>0) values += std::to_string(i+1)+ ":" +std::to_string((int)hist[i])+"\t";
+			if (hist[i]==max && max!=0) maxVals += std::to_string(i+1)+",";
+		}
+		if (max!=0) {
+			*fout << "MAX:"<<max<<":"<<maxVals<< "\t";
+			*fout << values;
+		}
+		*fout << endl;
+
 		hist /= sum;
 		//hist /= mpParameters->mNumHashFunctions-emptyBins;
 		hist = hist.apply(changeNAN);
@@ -94,35 +113,58 @@ void SeqClassifyManager::finishUpdate(workQueueP& myData) {
 
 		metaHist += hist;
 		metaHistNum += hist.apply(indicator);
-
-		if (sum!=0)
-			classifiedInstances++;
-//		pb.Count();
-		//#ifdef USEMULTITHREAD
-		//#pragma omp critical
-		//#endif
-	//	if (emptyBins<mpParameters->mNumHashFunctions){
-		//	cout << j << ":"<< emptyBins << "  \t";
-	//		for (unsigned i=0; i<hist.size();i++){
-		//		cout << setprecision(2) << hist[i] << "\t";
-	//		}
-		//	cout << endl;
-	//	}
 	}
-
 }
+
+//void SeqClassifyManager::OutputResults() {
+//	while (!done_output){
+//
+//		workQueueP myData;
+//		unique_lock<mutex> lk(mut4);
+//		cv4.wait(lk,[&]{if ( (done_output) || (finish_queue.try_pop( (myData) ))) return true; else return false;});
+//		lk.unlock();
+//
+//		if (!done_output && myData->sigs.size()>0) {
+//			cout << "results "<< myData->offset << endl;
+//			mClassifiedInstances += myData->sigs.size();
+//
+//		}
+//		cvr.notify_all();
+//	}
+//}
 
 void SeqClassifyManager::ClassifySeqs(){
 
 	// prepare sequence set for classification
 	SeqFileP mySet = std::make_shared<SeqFileT>();
-	mySet->filename = mpParameters->mInputDataFileName.c_str();
+	mySet->filename = mpParameters->mInputDataFileName;
 	mySet->filetype = mpParameters->mFileTypeCode;
 	mySet->updateIndex=NONE;
 	mySet->updateSigCache=false;
 
+	string resultsName = mpParameters->mInputDataFileName;
+	const unsigned pos = mpParameters->mInputDataFileName.find_last_of("/");
+	if (std::string::npos != pos)
+		resultsName = mpParameters->mInputDataFileName.substr(pos+1);
+
+	ogzstream fout((mpParameters->mDirectoryPath+resultsName+".classified.tab.gz").c_str(),std::ios::out);
+	//OutputManager out_results((resultsName+".classified.tab").c_str(), mpParameters->mDirectoryPath);
+	mySet->out_results_fh = &fout;
+
+	for (unsigned j=1; j<=GetHistogramSize();j++){
+		multimap<uint, Data::BEDentryP>::iterator it = mIndexValue2Feature.find(j);
+		uint num = mIndexValue2Feature.count(j);
+		fout << "#HIST_IDX\t"<< j;
+		if (it != mIndexValue2Feature.end()) fout << "\t" << "feature\t"<< it->second->NAME << "\t#BED_features\t" << num;
+		if (it != mIndexValue2Feature.end() && it->second->COLS.size()>=2) fout << "\t" << it->second->COLS[1];
+		fout << endl;
+	}
+
+	fout << "#SEQNAME\tHASH_SIG_HITS\tHIST_SUM\tHIST_VALUES"<< endl;
+
 	SeqFilesT myList;
 	myList.push_back(mySet);
+
 	cout << endl << " *** Read sequences for classification and create their MinHash signatures *** " << endl << endl;
 
 	cout << "hist size: " << GetHistogramSize() << endl;
@@ -135,11 +177,15 @@ void SeqClassifyManager::ClassifySeqs(){
 	// currently we classify the whole seq always
 	mpParameters->mSeqWindow = 0;
 
+	mClassifiedInstances = 0;
+
 	pb.Begin();
 	LoadData_Threaded(myList);
+	cout << "Load finished " << mSignatureCounter << " " << mClassifiedInstances<< endl;
+	fout.close();
 
 	// metahistogram
-	cout << endl << endl << "META histogram - classified seqs: " << setprecision(3) << (double)classifiedInstances/((double)GetLoadedInstances()) << " (" << classifiedInstances << ")" << endl;
+	cout << endl << endl << "META histogram - classified seqs: " << setprecision(3) << (double)mClassifiedInstances/((double)GetLoadedInstances()) << " (" << mClassifiedInstances << ")" << endl;
 	metaHist = metaHist/metaHist.sum();
 	vector<pair<double,uint> > sortedHist;
 	for (unsigned j=0; j<metaHist.size();j++){
@@ -148,16 +194,16 @@ void SeqClassifyManager::ClassifySeqs(){
 	sort(sortedHist.begin(), sortedHist.end());
 
 	for (unsigned j=0; j<sortedHist.size();j++){
-		std::pair< std::multimap<uint,uint>::iterator, std::multimap<uint,uint>::iterator > ret;
-	//	ret = mHistBin2DatasetIdx.equal_range(sortedHist[j].second);
+		//std::pair< std::multimap<uint,uint>::iterator, std::multimap<uint,uint>::iterator > ret;
+		//	ret = mHistBin2DatasetIdx.equal_range(sortedHist[j].second);
 		multimap<uint, Data::BEDentryP>::iterator it = mIndexValue2Feature.find(sortedHist[j].second+1);
 		uint num = mIndexValue2Feature.count(sortedHist[j].second+1);
-		cout << setprecision(2) << j+1 << "\t" << -sortedHist[j].first << "\t" << setprecision(10) << metaHistNum[sortedHist[j].second] << "\t" << sortedHist[j].second << "\t";
+		cout << setprecision(2) << j+1 << "\t" << -sortedHist[j].first << "\t" << setprecision(10) << metaHistNum[sortedHist[j].second] << "\t" << sortedHist[j].second+1 << "\t";
 		if (it != mIndexValue2Feature.end()) cout << "feature\t"<< it->second->NAME << "\t#features=" << num;
-		if (it->second->COLS.size()>=2) cout << "\t" << it->second->COLS[1];
+		if (it != mIndexValue2Feature.end() && it->second->COLS.size()>=2) cout << "\t" << it->second->COLS[1];
 		//		for (std::multimap<uint,uint>::iterator it = ret.first; it != ret.second; ++it ){
-//			cout << mIndexDataSets[it->second].desc <<";";
-//		}
+		//			cout << mIndexDataSets[it->second].desc <<";";
+		//		}
 		cout << endl;
 	}
 	cout << "SUM\t"<< metaHist.sum() << endl << endl;
