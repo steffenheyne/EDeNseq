@@ -71,7 +71,7 @@ protected:
 	unsigned numFullBins;
 	Data::SigCacheP mMinHashCache;
 	multimap<uint, Data::BEDentryP> mIndexValue2Feature;
-	multimap<string, uint> mFeature2IndexValue;
+	map<string, uint> mFeature2IndexValue;
 	std::atomic_uint mSignatureCounter;
 
 private:
@@ -172,8 +172,6 @@ public:
 	const binKeyTy MAXBINKEY = std::numeric_limits<binKeyTy>::max();
 
 	binKeyTy mHistogramSize;
-	//multimap<uint, uint> mHistBin2DatasetIdx;
-
 	indexTy mInverseIndex;
 
 	HistogramIndex(Parameters* apParameters, Data* apData)

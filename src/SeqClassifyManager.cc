@@ -19,9 +19,8 @@ void SeqClassifyManager::Exec() {
 
 	// load and prepare index list file to get files for indexing
 	//	vector<SeqDataSet> fileList = mpData->LoadIndexDataList(mpParameters->mIndexDataList.c_str());
-	SeqFilesT myList;
-	SeqFileT mySet;
 
+	SeqFileT mySet;
 	mySet.filename          = mpParameters->mIndexSeqFile;
 	mySet.filetype          = FASTA;
 	mySet.updateIndex       = SEQ_FEATURE;
@@ -32,7 +31,6 @@ void SeqClassifyManager::Exec() {
 
 	mIndexDataSet = std::make_shared<SeqFileT>(mySet);
 
-	myList.push_back(mIndexDataSet);
 	string indexName = mpParameters->mIndexBedFile;
 	const unsigned pos = mpParameters->mIndexBedFile.find_last_of("/");
 	if (std::string::npos != pos)
@@ -41,7 +39,8 @@ void SeqClassifyManager::Exec() {
 	// create/load new inverse MinHash index against that we can classify other sequences
 	if (!std::ifstream(mpParameters->mIndexBedFile+".bhi").good()){
 		cout << endl << " *** Creating inverse index *** "<< endl << endl;
-
+		SeqFilesT myList;
+		myList.push_back(mIndexDataSet);
 		LoadData_Threaded(myList);
 		SetHistogramSize(mIndexDataSet->lastMetaIdx);
 
@@ -64,6 +63,33 @@ void SeqClassifyManager::Exec() {
 		cout << "finished! ";
 		if (indexState == true){
 			cout << " Index OK!" << endl;
+
+			// update IndexValue2Feature map from provided Index BED file
+			for (Data::BEDdataIt it=mIndexDataSet->dataBED->begin(); it!=mIndexDataSet->dataBED->end(); ++it ) {
+				map<string, uint>::iterator It2 = mFeature2IndexValue.find(it->second->NAME);
+				if (It2 != mFeature2IndexValue.end()){
+					mIndexValue2Feature.insert(make_pair(It2->second,it->second));
+				}
+			}
+
+			// just a sanity check if provided index BED matches features present in index
+			for (map<string,uint>::iterator it=mFeature2IndexValue.begin();it!=mFeature2IndexValue.end();++it){
+				if (mIndexValue2Feature.count(it->second)==0){
+					cout << "Provided index BED file " << indexName << " does not contain feature " << it->first << endl;
+					cout << "Create dummy feature for it! "<<endl;
+					Data::BEDentryP myBED = std::make_shared<Data::BEDentryT>();
+					myBED->SEQ = "UNKNOWN_FEAT_"+ it->first;
+					myBED->START=0;
+					myBED->END=1;
+					myBED->NAME=it->first;
+					myBED->SCORE=0;
+					myBED->STRAND='.';
+					myBED->COLS.push_back("DUMMY_BED_ENTRY_FOR_FEATURE_"+it->first);
+					myBED->COLS.push_back("DUMMY_BED_ENTRY_FOR_FEATURE_"+it->first);
+					mIndexValue2Feature.insert(make_pair(it->second,myBED));
+				}
+			}
+
 		} else
 			throw range_error("Cannot read index from file " + mpParameters->mIndexBedFile+".bhi");
 	}
@@ -116,22 +142,6 @@ void SeqClassifyManager::finishUpdate(workQueueP& myData) {
 	}
 }
 
-//void SeqClassifyManager::OutputResults() {
-//	while (!done_output){
-//
-//		workQueueP myData;
-//		unique_lock<mutex> lk(mut4);
-//		cv4.wait(lk,[&]{if ( (done_output) || (finish_queue.try_pop( (myData) ))) return true; else return false;});
-//		lk.unlock();
-//
-//		if (!done_output && myData->sigs.size()>0) {
-//			cout << "results "<< myData->offset << endl;
-//			mClassifiedInstances += myData->sigs.size();
-//
-//		}
-//		cvr.notify_all();
-//	}
-//}
 
 void SeqClassifyManager::ClassifySeqs(){
 
@@ -148,22 +158,16 @@ void SeqClassifyManager::ClassifySeqs(){
 		resultsName = mpParameters->mInputDataFileName.substr(pos+1);
 
 	ogzstream fout((mpParameters->mDirectoryPath+resultsName+".classified.tab.gz").c_str(),std::ios::out);
-	//OutputManager out_results((resultsName+".classified.tab").c_str(), mpParameters->mDirectoryPath);
 	mySet->out_results_fh = &fout;
 
-	for (unsigned j=1; j<=GetHistogramSize();j++){
-		multimap<uint, Data::BEDentryP>::iterator it = mIndexValue2Feature.find(j);
-		uint num = mIndexValue2Feature.count(j);
-		fout << "#HIST_IDX\t"<< j;
-		if (it != mIndexValue2Feature.end()) fout << "\t" << "feature\t"<< it->second->NAME << "\t#BED_features\t" << num;
-		if (it != mIndexValue2Feature.end() && it->second->COLS.size()>=2) fout << "\t" << it->second->COLS[1];
+	// write header to output results file
+	for (std::map<string,uint>::iterator it = mFeature2IndexValue.begin(); it != mFeature2IndexValue.end();++it) {
+		fout << "#HIST_IDX\t"<< it->second << "\t" << "feature\t"<< it->first;
+		multimap<uint,Data::BEDentryP>::iterator it2 = mIndexValue2Feature.find(it->second);
+		if (it2 != mIndexValue2Feature.end() && it2->second->COLS.size()>=2) fout << "\t" << it2->second->COLS[1];
 		fout << endl;
 	}
-
 	fout << "#SEQNAME\tHASH_SIG_HITS\tHIST_SUM\tHIST_VALUES"<< endl;
-
-	SeqFilesT myList;
-	myList.push_back(mySet);
 
 	cout << endl << " *** Read sequences for classification and create their MinHash signatures *** " << endl << endl;
 
@@ -180,6 +184,8 @@ void SeqClassifyManager::ClassifySeqs(){
 	mClassifiedInstances = 0;
 
 	pb.Begin();
+	SeqFilesT myList;
+	myList.push_back(mySet);
 	LoadData_Threaded(myList);
 	cout << "Load finished " << mSignatureCounter << " " << mClassifiedInstances<< endl;
 	fout.close();

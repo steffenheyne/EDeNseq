@@ -202,7 +202,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 								mFeature2IndexValue.insert(make_pair(currSeqName,idx));
 							}
 							break;
-						// use given value/name in BED file col4 as  value for inverse index
+							// use given value/name in BED file col4 as  value for inverse index
 						case SEQ_FEATURE:
 							feat = mFeature2IndexValue.find(it->second->NAME);
 							if (feat != mFeature2IndexValue.end()){
@@ -238,6 +238,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 					} // valid_input?
 
 					//cout << i << " " << currBuff<< " "<< pos << " " << currSeqName<<  " " << currSeq.size() << endl;
+
 					// fill the current chunk
 					mpData->SetGraphFromSeq2(myDataChunk->gr.at(i),currSeq, pos);
 
@@ -739,11 +740,11 @@ void HistogramIndex::UpdateInverseIndex(vector<unsigned>& aSignature, unsigned a
 					delete[] mInverseIndex[k][key];
 					mInverseIndex[k][key] = fooNew;
 				}
-//				cout << "bin " << key << " k " <<  k << " aIdx "<< aIndex << "\t";
-//				for (unsigned j=0; j<=mInverseIndex[k][key][0];j++){
-//					cout << mInverseIndex[k][key][j] <<"\t";
-//				}
-//				cout << endl;
+				//				cout << "bin " << key << " k " <<  k << " aIdx "<< aIndex << "\t";
+				//				for (unsigned j=0; j<=mInverseIndex[k][key][0];j++){
+				//					cout << mInverseIndex[k][key][j] <<"\t";
+				//				}
+				//				cout << endl;
 
 			}
 		}
@@ -789,6 +790,19 @@ void HistogramIndex::writeBinaryIndex2(ostream &out, const indexTy& index) {
 	unsigned tmp = GetHistogramSize();
 	out.write((const char*) &tmp, sizeof(unsigned));
 
+	if (mFeature2IndexValue.size() != GetHistogramSize()){
+		throw range_error("Ups! Histogramsize is different to mFeature2IndexValue.size()");
+	}
+
+	std::pair<string,uint> highest = *mFeature2IndexValue.rbegin();          // last element
+	std::map<string,uint>::iterator it = mFeature2IndexValue.begin();
+	do {
+		out.write((const char*) &(it->second), sizeof(unsigned));
+		tmp = it->first.size();
+		out.write((const char*) &(tmp), sizeof(unsigned));
+		out.write(const_cast<char*>(it->first.c_str()), it->first.size());
+	} while ( mFeature2IndexValue.value_comp()(*it++, highest) );
+
 	unsigned numHashFunc = index.size();
 	out.write((const char*) &numHashFunc, sizeof(unsigned));
 	for (typename indexTy::const_iterator it = index.begin(); it!= index.end(); it++){
@@ -826,7 +840,18 @@ bool HistogramIndex::readBinaryIndex2(string filename, indexTy &index){
 	fin.read((char*) &tmp, sizeof(unsigned));
 	SetHistogramSize(tmp);
 
-	cout << " shift "<< mpParameters->mSeqShift << endl;
+	mFeature2IndexValue.clear();
+	for (unsigned idx=1;idx<=GetHistogramSize();idx++){
+		unsigned hist_idx;
+		unsigned size;
+
+		fin.read((char*) &hist_idx, sizeof(unsigned));
+		fin.read((char*) &size, sizeof(unsigned));
+		string feature;
+		feature.resize(size);
+		fin.read(const_cast<char*>(feature.c_str()), size);
+		mFeature2IndexValue.insert(make_pair(feature,hist_idx));
+	}
 
 	unsigned numHashFunc = 0;
 	fin.read((char*) &numHashFunc, sizeof(unsigned));

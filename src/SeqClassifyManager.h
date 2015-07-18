@@ -29,12 +29,6 @@ public:
 	threadsafe_queue<workQueueP> finish_queue;
 	std::atomic_bool done_output;
 
-//	std::condition_variable cv4;
-//	std::condition_variable cvr;
-//	mutable std::mutex mut4;
-//	mutable std::mutex mutr;
-
-	//void OutputResults();
 	void finishUpdate(workQueueP& myData);
 	void Exec();
 	void ClassifySeqs();
