@@ -539,6 +539,20 @@ void Parameters::SetupOptions() {
 		}
 	}
 	{
+			ParameterType param;
+			param.mShortSwitch = "";
+			param.mLongSwitch = "seq_clip";
+			param.mShortDescription = "Clip this number of NT from each side of the seq, only applies if seq_window = 0, useful for seqs for classification to match seq_window of index";
+			param.mTypeCode = POSITIVE_INTEGER;
+			mOptionList.insert(make_pair(param.mLongSwitch, param));
+			{
+				param.mValue = "0";
+				vector<ParameterType*>& vec = mActionOptionList[CLASSIFY];
+				ParameterType& p = mOptionList[param.mLongSwitch];
+				vec.push_back(&p);
+			}
+		}
+	{
 		ParameterType param;
 		param.mShortSwitch = "";
 		param.mLongSwitch = "seq_shift";
@@ -768,6 +782,8 @@ void Parameters::Init(int argc, const char** argv) {
 			mSeqShift = stream_cast<double>(param.mValue);
 		if (param.mLongSwitch == "seq_window")
 			mSeqWindow = stream_cast<unsigned>(param.mValue);
+		if (param.mLongSwitch == "seq_clip")
+			mSeqClip = stream_cast<unsigned>(param.mValue);
 		if (param.mLongSwitch == "min_radius")
 			mMinRadius = stream_cast<unsigned>(param.mValue);
 		if (param.mLongSwitch == "min_distance")

@@ -183,6 +183,7 @@ void SeqClassifyManager::ClassifySeqs(){
 	metaHistNum *= 0;
 
 	// currently we classify the whole seq always
+	// seq_clip can be  applied
 	mpParameters->mSeqWindow = 0;
 	mClassifiedInstances = 0;
 

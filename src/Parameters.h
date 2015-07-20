@@ -91,6 +91,7 @@ public:
 	bool mNoIndexCacheFile;
 	unsigned mSeqWindow;
 	double mSeqShift;
+	unsigned mSeqClip;
 	unsigned mMinRadius;
 	unsigned mMinDistance;
 	string mDenseCenterNamesFile;

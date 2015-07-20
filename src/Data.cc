@@ -123,7 +123,7 @@ bool Data::SetGraphFromSeq2(GraphClass& oG, string& currSeq, unsigned& pos) {
 		unsigned currSize = win;
 		// case no window/shift
 		if (win==0){
-			unsigned clipSize = 0;
+			unsigned clipSize = mpParameters->mSeqClip;
 			currSize = currSeq.size()-(2*clipSize);
 			pos = clipSize;
 		} else if (win>currSeq.size()-pos) {
