@@ -437,7 +437,7 @@ void Parameters::SetupOptions() {
 		ParameterType param;
 		param.mShortSwitch = "";
 		param.mLongSwitch = "num_repeat_hash_functions";
-		param.mShortDescription = "Further split up feature space and repeat MinHash <VALUE> times for each slot. 0 is normal MinHash, equal to max=NumHashFunctions*NumHashShingles";
+		param.mShortDescription = "Further split up feature space and repeat MinHash <VALUE> times for each slot. 1 is normal MinHash, 0 uses maximal repeated hash functions (equal to max=NumHashFunctions*NumHashShingles)";
 		param.mTypeCode = POSITIVE_INTEGER;
 		param.mValue = "0";
 		mOptionList.insert(make_pair(param.mLongSwitch, param));
@@ -539,19 +539,19 @@ void Parameters::SetupOptions() {
 		}
 	}
 	{
-			ParameterType param;
-			param.mShortSwitch = "";
-			param.mLongSwitch = "seq_clip";
-			param.mShortDescription = "Clip this number of NT from each side of the seq, only applies if seq_window = 0, useful for seqs for classification to match seq_window of index";
-			param.mTypeCode = POSITIVE_INTEGER;
-			mOptionList.insert(make_pair(param.mLongSwitch, param));
-			{
-				param.mValue = "0";
-				vector<ParameterType*>& vec = mActionOptionList[CLASSIFY];
-				ParameterType& p = mOptionList[param.mLongSwitch];
-				vec.push_back(&p);
-			}
+		ParameterType param;
+		param.mShortSwitch = "";
+		param.mLongSwitch = "seq_clip";
+		param.mShortDescription = "Clip this number of NT from each side of the seq, only applies if seq_window = 0, useful for seqs for classification to match seq_window of index";
+		param.mTypeCode = POSITIVE_INTEGER;
+		mOptionList.insert(make_pair(param.mLongSwitch, param));
+		{
+			param.mValue = "0";
+			vector<ParameterType*>& vec = mActionOptionList[CLASSIFY];
+			ParameterType& p = mOptionList[param.mLongSwitch];
+			vec.push_back(&p);
 		}
+	}
 	{
 		ParameterType param;
 		param.mShortSwitch = "";
@@ -619,19 +619,19 @@ void Parameters::SetupOptions() {
 		}
 	}
 	{
-			ParameterType param;
-			param.mShortSwitch = "";
-			param.mLongSwitch = "index_seqs";
-			param.mShortDescription = "MinHash histogram reverse index is build from this data; contains the corresponding seqs for regions given in BED file (--index_bed)";
-			param.mTypeCode = STRING;
-			param.mValue = "";
-			mOptionList.insert(make_pair(param.mLongSwitch, param));
-			{
-				vector<ParameterType*>& vec = mActionOptionList[CLASSIFY];
-				ParameterType& p = mOptionList[param.mLongSwitch];
-				vec.push_back(&p);
-			}
+		ParameterType param;
+		param.mShortSwitch = "";
+		param.mLongSwitch = "index_seqs";
+		param.mShortDescription = "MinHash histogram reverse index is build from this data; contains the corresponding seqs for regions given in BED file (--index_bed)";
+		param.mTypeCode = STRING;
+		param.mValue = "";
+		mOptionList.insert(make_pair(param.mLongSwitch, param));
+		{
+			vector<ParameterType*>& vec = mActionOptionList[CLASSIFY];
+			ParameterType& p = mOptionList[param.mLongSwitch];
+			vec.push_back(&p);
 		}
+	}
 	{
 		ParameterType param;
 		param.mShortSwitch = "";
