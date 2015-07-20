@@ -96,7 +96,6 @@ void MinHashEncoder::generate_feature_vector(const GraphClass& aG, SVector& x) {
 void MinHashEncoder::worker_readFiles(int numWorkers){
 
 	int file_instances = 0;
-	//unsigned currMetaIdx = 0;
 	std::tr1::unordered_map<string, uint8_t> seq_names_seen;
 
 	while (!done){
@@ -179,7 +178,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 								valid_input = false;
 								continue;
 							} else {
-								// no bed is present, then we set start/end to full seq, eg. in case for clutsering
+								// no bed is present, then we set start/end to full seq, eg. in case for clustering
 								pos=0;
 								end=currFullSeq.size();
 								//cout << "no BED data present! "<< currSeqName << " " << pos << "-" << end << endl;
@@ -379,12 +378,13 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 	for (unsigned i=0;i<myFiles.size(); i++){
 		readFile_queue.push(myFiles[i]);
 	}
-
+	cout << "Using " << mpParameters->mHashBitSize << " bits to encode features" << endl;
+	cout << "Using " << mpParameters->mRandomSeed << " as random seed" << endl;
 	cout << "Using " << mpParameters->mNumHashFunctions << " hash functions (with factor " << mpParameters->mNumRepeatsHashFunction << " for single minhash)" << endl;
 	cout << "Using " << mpParameters->mNumHashShingles << " as hash shingle factor" << endl;
 	cout << "Using feature radius   " << mpParameters->mMinRadius<<".."<<mpParameters->mRadius << endl;
 	cout << "Using feature distance " << mpParameters->mMinDistance<<".."<<mpParameters->mDistance << endl;
-	cout << "Using sequence window  " << mpParameters->mSeqWindow<<" shift"<<mpParameters->mSeqShift << endl;
+	cout << "Using sequence window  " << mpParameters->mSeqWindow<<" shift "<<mpParameters->mSeqShift << " clip " << mpParameters->mSeqClip << endl;
 	cout << "Computing MinHash signatures on the fly while reading " << myFiles.size() << " file(s)..." << endl;
 
 	// threaded producer-consumer model for signature creation and index update
