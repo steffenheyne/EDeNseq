@@ -30,7 +30,6 @@ public:
 	struct SeqFileS {
 		string filename;
 		InputFileType filetype;
-		//unsigned numSequences;
 		INDEXupdatesT updateIndex;
 		bool updateSigCache;
 		Data::SigCacheP sigCache;

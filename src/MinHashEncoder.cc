@@ -223,7 +223,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 						if ( it != annoEntries.second ) {
 							pos = it->second->START;
 							end = it->second->END;
-							mIndexValue2Feature.insert(make_pair(idx,it->second));
+							//mIndexValue2Feature.insert(make_pair(idx,it->second));
 							cout << endl << "BED entry found for seq name " << currSeqName << " " << it->second->NAME << " MetaIdx "<< idx << " " << pos << "-"<< end << endl;
 							it++;
 						}
