@@ -138,7 +138,7 @@ bool Data::SetGraphFromSeq2(GraphClass& oG, string& currSeq, unsigned& pos) {
 			SetGraphFromSeq( seq ,oG);
 			//cout << currSeq.size() << " " << currSize << " eof? " << in.eof() << " pos " << pos << " win " << win << " " << seq << endl;
 		} else
-			throw range_error("ERROR FASTA reader! Too short sequence found.");
+			throw range_error("ERROR FASTA reader! Too short sequence found. " + std::to_string(pos));
 
 		if ((win>0) && (currSeq.size()-pos-shift>=win)){
 			pos += shift;

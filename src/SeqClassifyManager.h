@@ -32,7 +32,7 @@ public:
 	void finishUpdate(workQueueP& myData);
 	void Exec();
 	void ClassifySeqs();
-
+	ogzstream* PrepareResultsFile();
 };
 
 #endif /* SEQCLASSIFYMANAGER_H_ */

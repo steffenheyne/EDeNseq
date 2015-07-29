@@ -284,6 +284,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 					cv2.wait(lk,[&]{if ((done) || (graph_queue.size()<=numWorkers*10)) return true; else return false;});
 					lk.unlock();
 				}
+				cv2.notify_all();
 			}
 			fin.close();
 			files_done++;
@@ -302,7 +303,6 @@ void MinHashEncoder::worker_Graph2Signature(int numWorkers){
 		lk.unlock();
 
 		if (!done && myData->gr.size()>0) {
-			cv2.notify_all();
 			myData->sigs.resize(myData->gr.size());
 
 			//cout << "  graph2sig thread got chunk " << myData->gr.size() << " offset " << myData->offset << " " << mpParameters->mHashBitSize << endl;
@@ -318,9 +318,9 @@ void MinHashEncoder::worker_Graph2Signature(int numWorkers){
 				lk.unlock();
 			}
 			sig_queue.push(myData);
-			cv2.notify_all();
-			cv3.notify_all();
 		}
+		cv2.notify_all();
+		cv3.notify_all();
 	}
 }
 

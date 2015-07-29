@@ -149,6 +149,9 @@ void SeqClassifyManager::finishUpdate(workQueueP& myData) {
 
 void SeqClassifyManager::ClassifySeqs(){
 
+	cout << endl << " *** Read sequences for classification and create their MinHash signatures *** " << endl << endl;
+	cout << "hist size: " << GetHistogramSize() << endl;
+
 	// prepare sequence set for classification
 	SeqFileP mySet = std::make_shared<SeqFileT>();
 	mySet->filename = mpParameters->mInputDataFileName;
@@ -156,26 +159,8 @@ void SeqClassifyManager::ClassifySeqs(){
 	mySet->updateIndex=NONE;
 	mySet->updateSigCache=false;
 
-	// output file for results
-	string resultsName = mpParameters->mInputDataFileName;
-	const unsigned pos = mpParameters->mInputDataFileName.find_last_of("/");
-	if (std::string::npos != pos)
-		resultsName = mpParameters->mInputDataFileName.substr(pos+1);
-
-	ogzstream fout((mpParameters->mDirectoryPath+resultsName+".classified.tab.gz").c_str(),std::ios::out);
-	mySet->out_results_fh = &fout;
-
-	// write header to output results file
-	for (std::map<string,uint>::iterator it = mFeature2IndexValue.begin(); it != mFeature2IndexValue.end();++it) {
-		fout << "#HIST_IDX\t"<< it->second << "\t" << "feature\t"<< it->first;
-		multimap<uint,Data::BEDentryP>::iterator it2 = mIndexValue2Feature.find(it->second);
-		if (it2 != mIndexValue2Feature.end() && it2->second->COLS.size()>=2) fout << "\t" << it2->second->COLS[1];
-		fout << endl;
-	}
-	fout << "#SEQNAME\tHITS\tSUM\tMAX\tIDX\tVALS\tMAX_IDX"<< endl;
-
-	cout << endl << " *** Read sequences for classification and create their MinHash signatures *** " << endl << endl;
-	cout << "hist size: " << GetHistogramSize() << endl;
+	// get results file handle
+	mySet->out_results_fh = PrepareResultsFile();
 
 	metaHist.resize(GetHistogramSize());
 	metaHist *= 0;
@@ -183,7 +168,7 @@ void SeqClassifyManager::ClassifySeqs(){
 	metaHistNum *= 0;
 
 	// currently we classify the whole seq always
-	// seq_clip can be  applied
+	// seq_clip can be applied to make them similar to used --seq_window for inverse index
 	mpParameters->mSeqWindow = 0;
 	mClassifiedInstances = 0;
 
@@ -191,10 +176,14 @@ void SeqClassifyManager::ClassifySeqs(){
 	SeqFilesT myList;
 	myList.push_back(mySet);
 	LoadData_Threaded(myList);
-	cout << "Load finished " << mSignatureCounter << " " << mClassifiedInstances<< endl;
-	fout.close();
+	cout << "Classification finished - signatures=" << mSignatureCounter << " classified=" << mClassifiedInstances<< endl;
+	mySet->out_results_fh->close();
 
+	/////////////////////////////////////////////////////////////////////////////
+	// classification finished
+	/////////////////////////////////////////////////////////////////////////////
 
+	// output just some simple results
 	// metahistogram
 	cout << endl << endl << "META histogram - classified seqs: " << setprecision(3) << (double)mClassifiedInstances/((double)GetLoadedInstances()) << " (" << mClassifiedInstances << ")" << endl;
 	metaHist = metaHist/metaHist.sum();
@@ -228,4 +217,38 @@ void SeqClassifyManager::ClassifySeqs(){
 	for (unsigned i=0; i<indexHist.size();i++){
 		cout << " index bin size " << i+1 << "\t" << indexHist[i] << "\t" << setprecision(5) << indexHist[i]/indexHist.sum() << endl;
 	}
+}
+
+ogzstream* SeqClassifyManager::PrepareResultsFile(){
+
+	string resultsName = mpParameters->mInputDataFileName;
+	const unsigned pos = mpParameters->mInputDataFileName.find_last_of("/");
+	if (std::string::npos != pos)
+		resultsName = mpParameters->mInputDataFileName.substr(pos+1);
+
+	ogzstream* fout = new ogzstream((mpParameters->mDirectoryPath+resultsName+".classified.tab.gz").c_str(),std::ios::out);
+	// write header to output results file
+	// parameters
+	*fout << "#PARAM\tHASHBITSIZE\t" << mpParameters->mHashBitSize << endl;
+	*fout << "#PARAM\tRANDOMSEED\t" << mpParameters->mRandomSeed << endl;
+	*fout << "#PARAM\tNUMHASHFUNC\t" << mpParameters->mNumHashFunctions << endl;
+	*fout << "#PARAM\tNUMREPEATHASHFUNC\t" << mpParameters->mNumRepeatsHashFunction << endl;
+	*fout << "#PARAM\tNUMHASHSHINGLES\t" << mpParameters->mNumHashShingles << endl;
+	*fout << "#PARAM\tMINRADIUS\t" <<mpParameters->mMinRadius << endl;
+	*fout << "#PARAM\tRADIUS\t" <<mpParameters->mRadius << endl;
+	*fout << "#PARAM\tMINDISTANCE\t" << mpParameters->mMinDistance<< endl;
+	*fout << "#PARAM\tDISTANCE\t" <<mpParameters->mDistance << endl;
+	*fout << "#PARAM\tSEQWINDOW\t" << mpParameters->mSeqWindow<< endl;
+	*fout << "#PARAM\tSEQSHIFT\t" <<mpParameters->mSeqShift << endl;
+	*fout << "#PARAM\tSEQCLIP\t" <<mpParameters->mSeqClip << endl;
+
+	// mapping table histogram idx -> feature
+	for (std::map<string,uint>::iterator it = mFeature2IndexValue.begin(); it != mFeature2IndexValue.end();++it) {
+		*fout << "#HIST_IDX\t"<< it->second << "\t" << "feature\t"<< it->first;
+		multimap<uint,Data::BEDentryP>::iterator it2 = mIndexValue2Feature.find(it->second);
+		if (it2 != mIndexValue2Feature.end() && it2->second->COLS.size()>=2) *fout << "\t" << it2->second->COLS[1];
+		*fout << endl;
+	}
+	*fout << "#SEQNAME\tHITS\tSUM\tMAX\tIDX\tVALS\tMAX_IDX"<< endl;
+	return fout;
 }

@@ -544,9 +544,9 @@ void Parameters::SetupOptions() {
 		param.mLongSwitch = "seq_clip";
 		param.mShortDescription = "Clip this number of NT from each side of the seq, only applies if seq_window = 0, useful for seqs for classification to match seq_window of index";
 		param.mTypeCode = POSITIVE_INTEGER;
+		param.mValue = "0";
 		mOptionList.insert(make_pair(param.mLongSwitch, param));
 		{
-			param.mValue = "0";
 			vector<ParameterType*>& vec = mActionOptionList[CLASSIFY];
 			ParameterType& p = mOptionList[param.mLongSwitch];
 			vec.push_back(&p);
@@ -752,6 +752,8 @@ void Parameters::Init(int argc, const char** argv) {
 			mKernelType = param.mValue;
 		if (param.mShortSwitch == "s")
 			mSuffix = param.mValue;
+		if (param.mLongSwitch == "random_seed")
+			mRandomSeed = stream_cast<unsigned>(param.mValue);
 		if (param.mShortSwitch == "r")
 			mRadius = stream_cast<unsigned>(param.mValue);
 		if (param.mShortSwitch == "d")
