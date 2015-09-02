@@ -9,11 +9,12 @@ using namespace std;
 
 class SeqClusterManager : public NeighborhoodIndex {
 public:
+
 	SeqClusterManager(Parameters* apParameters, Data* apData);
    void Exec();
 protected:
    //SeqDataSet mDataSet;
-   //NearestNeighbor mNearestNeighbor;
+   void finishUpdate(workQueueP& myData);
    void DenseCluster();
 };
 

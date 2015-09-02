@@ -12,12 +12,9 @@ SeqClusterManager::SeqClusterManager(Parameters* apParameters, Data* apData)
 
 	mIndexDataSet->filename = mpParameters->mInputDataFileName.c_str();
 	mIndexDataSet->filetype = mpParameters->mFileTypeCode;
-	//mySet.desc = "approx_cluster_set";
 	mIndexDataSet->updateIndex=SEQ_WINDOW;
 	mIndexDataSet->updateSigCache=true;
 	mIndexDataSet->sigCache = mMinHashCache;
-
-
 
 	SeqFilesT myList;
 	myList.push_back(mIndexDataSet);
@@ -25,6 +22,39 @@ SeqClusterManager::SeqClusterManager(Parameters* apParameters, Data* apData)
 
 	NeighborhoodCacheReset();
 }
+
+void SeqClusterManager::finishUpdate(workQueueP& myData) {
+
+	if (myData->seqFile->updateSigCache){
+
+		unsigned chunkSize 	= myData->sigs.size();
+		unsigned offset 		= myData->idx[0]-1;
+		cout << "offset" << offset << " chunk" << chunkSize << endl;
+		if (myData->seqFile->sigCache->size() < offset + chunkSize) {
+			myData->seqFile->sigCache->resize( offset + chunkSize);
+			idx2nameMap.resize(offset + chunkSize);
+		}
+
+		for (unsigned j = 0; j < chunkSize; j++) {
+			myData->seqFile->sigCache->at(offset+j) = myData->sigs[j];
+			name2idxMap.insert(make_pair(myData->names[j], offset+j));
+			idx2nameMap.at(offset+j) = myData->names[j];
+		}
+
+
+//		if (myData->seqFile->sigCache->size()<myData->offset + chunkSize) {
+//			myData->seqFile->sigCache->resize(myData->offset + chunkSize);
+//			idx2nameMap.resize(myData->offset + chunkSize);
+//		}
+//
+//		for (unsigned j = 0; j < chunkSize; j++) {
+//			myData->seqFile->sigCache->at(myData->offset+j) = myData->sigs[j];
+//			name2idxMap.insert(make_pair(myData->names[j],myData->offset+j));
+//			idx2nameMap.at(myData->offset+j) = myData->names[j];
+//		}
+	}
+}
+
 
 void SeqClusterManager::Exec() {
 	ProgressBar pb(1000);
@@ -68,6 +98,7 @@ void SeqClusterManager::DenseCluster() {
 			vector<unsigned> neighborhood_list;
 			unsigned collisions = 0;
 			double density = 0;
+			cout << "here" << endl;
 			neighborhood_list = ComputeNeighborhood(ii,collisions,density);
 			double score = density * neighborhood_list.size();
 			DensityList[i]= make_pair(-score,ii);
