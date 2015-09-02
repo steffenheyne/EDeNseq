@@ -10,7 +10,7 @@
 using namespace std;
 
 class Data {
-	
+
 public:
 	typedef vector<vector<unsigned> > SigCacheT;
 	typedef std::shared_ptr<SigCacheT> SigCacheP;
@@ -38,20 +38,21 @@ public:
 public:
 	Data() {};
 	Data(Parameters* apParamters);
-	void Init(Parameters* apParameters);
-	//	vector<SeqDataSet> LoadIndexDataList(string filename);
-	BEDdataP 			LoadBEDfile(string filename);
 
-	//	void SetGraphFromFile(istream& in, GraphClass& oG);
-	//	bool SetGraphFromFASTAFile(istream& in, GraphClass& oG, string& currSeq, unsigned& pos, string& name);
+	void Init(Parameters* apParameters);
+
+	BEDdataP	LoadBEDfile(string filename);
+	bool SetGraphFromSeq2(GraphClass& oG, string& currSeq, unsigned& pos, bool& lastGr);
 	bool SetGraphFromSeq(string& seq, GraphClass& oG);
-	bool SetGraphFromSeq2(GraphClass& oG, string& currSeq, unsigned& pos);
-	//	bool SetGraphFromStringFile(istream& in, GraphClass& oG);
 	void GetNextFastaSeq(istream& in,string& currSeq, string& header);
 	void GetNextStringSeq(istream& in,string& currSeq, string& header);
-	//	bool SetGraphFromSeq(GraphClass& oG, string& currSeq);
-
 	void LoadStringList(string aFileName, vector<string>& oList, uint numTokens);
+
+	//	vector<SeqDataSet> LoadIndexDataList(string filename);
+	//	void SetGraphFromFile(istream& in, GraphClass& oG);
+	//	bool SetGraphFromFASTAFile(istream& in, GraphClass& oG, string& currSeq, unsigned& pos, string& name);
+	//bool SetGraphFromSeq(GraphClass& oG, string& currSeq);
+	//	bool SetGraphFromStringFile(istream& in, GraphClass& oG);
 };
 
 #endif /* DATA_H */
