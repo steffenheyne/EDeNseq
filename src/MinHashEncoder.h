@@ -29,6 +29,8 @@ public:
 
 	struct SeqFileS {
 		string filename;
+		string filename_BED;
+		string filename_index;
 		InputFileType filetype;
 		INDEXupdatesT updateIndex;
 		bool updateSigCache;
@@ -38,29 +40,26 @@ public:
 		ogzstream* out_results_fh;
 	};
 
-	typedef SeqFileS SeqFileT;
-	typedef std::shared_ptr<SeqFileT> SeqFileP;
-	typedef vector<SeqFileP> SeqFilesT;
+	typedef SeqFileS 							SeqFileT;
+	typedef std::shared_ptr<SeqFileT> 	SeqFileP;
+	typedef vector<SeqFileP> 				SeqFilesT;
 
 	struct workQueueS {
 		vector<GraphClass> gr;
 		Data::SigCacheT sigs;
 		vector<string> names;
 		vector<unsigned> idx;
-		unsigned offset;
+		//unsigned offset;
 		SeqFileP seqFile;
 	};
 
 	typedef INDEXTypeE INDEXType;
 	typedef std::shared_ptr<workQueueS> workQueueP;
 
-	std::tr1::unordered_map<string, unsigned> name2idxMap;
-	vector<string>	idx2nameMap;
-
 	Parameters* mpParameters;
-	Data* mpData;
+	Data* 		mpData;
 
-	SeqFileP mIndexDataSet;
+	SeqFileP 	mIndexDataSet;
 
 protected:
 
@@ -68,7 +67,7 @@ protected:
 
 	unsigned numKeys;
 	unsigned numFullBins;
-	Data::SigCacheP mMinHashCache;
+
 	multimap<uint, Data::BEDentryP> mIndexValue2Feature;
 	map<string, uint> mFeature2IndexValue;
 	std::atomic_uint mSignatureCounter;
@@ -111,7 +110,7 @@ public:
 	virtual void 		finishUpdate(workQueueP& myData) {};
 	void 					LoadData_Threaded(SeqFilesT& myFiles);
 	unsigned				GetLoadedInstances();
-	vector<unsigned>& ComputeHashSignature(unsigned aID);
+
 	vector<unsigned>	ComputeHashSignature(SVector& aX);
 };
 
@@ -137,12 +136,17 @@ public:
 		}
 	}
 
+	indexTy 									mInverseIndex;
+	Data::SigCacheP 						mMinHashCache;
 	vector<vector<unsigned> > 			mNeighborhoodCache;
 	vector<umap_uint_int> 				mNeighborhoodCacheExt;
 	vector<pair<unsigned,double> >	mNeighborhoodCacheInfo;
 
-	indexTy mInverseIndex;
+	std::tr1::unordered_map<string, unsigned> name2idxMap;
+	vector<string>	idx2nameMap;
+
 	void 				  NeighborhoodCacheReset();
+	vector<unsigned>& ComputeHashSignature(unsigned aID);
 	void 				  UpdateInverseIndex(vector<unsigned>& aSignature, unsigned aIndex);
 	void             ComputeApproximateNeighborhoodCore(const vector<unsigned>& aSignature, umap_uint_int& neighborhood, unsigned& collisions);
 	umap_uint_int    ComputeApproximateNeighborhoodExt(const vector<unsigned>& aSignature, unsigned& collisions, double& density);

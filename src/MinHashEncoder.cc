@@ -22,6 +22,8 @@ void MinHashEncoder::Init(Parameters* apParameters, Data* apData, INDEXType apIn
 		mpParameters->mNumRepeatsHashFunction = mpParameters->mNumHashShingles * mpParameters->mNumHashFunctions;
 	}
 
+	if (mpParameters->mSeqWindow != 0 && mpParameters->mSeqShift == 0)
+
 	cout << "MinHashEncoder object created of indexType " << indexType << endl;
 }
 
@@ -131,15 +133,16 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 				unsigned maxB = max(100,(int)log2((double)mSignatureCounter)*100);
 				unsigned currBuff = rand()%(maxB*3 - maxB + 1) + maxB;
 				unsigned i = 0;
+				bool lastSeqGr = false; // indicates that we have the last fragment from current seq
 
 				workQueueP myDataChunk = std::make_shared<workQueueS>();
 				myDataChunk->gr.resize(currBuff);
 				myDataChunk->names.resize(currBuff);
 				myDataChunk->idx.resize(currBuff);
-				myDataChunk->offset = mInstanceCounter;
+				//myDataChunk->offset = mInstanceCounter;
 				myDataChunk->seqFile = myData;
 
-				while ( ((i<currBuff) && !fin.eof())  ) {
+				while ( ((i<currBuff) && !fin.eof()) || (myData->updateIndex==NONE && i>=currBuff && lastSeqGr == false) ) {
 
 					//cout << "valid? " << valid_input << " name :" << currSeqName << ": pos " << pos << " end " << end <<  endl;
 					if (!valid_input) {
@@ -236,11 +239,14 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 
 					} // valid_input?
 
-					//cout << i << " " << currBuff<< " "<< pos << " " << currSeqName<<  " " << currSeq.size() << endl;
 
+					if (i>=currBuff){
+						myDataChunk->gr.resize(i+1);
+						myDataChunk->names.resize(i+1);
+						myDataChunk->idx.resize(i+1);
+					}
 					// fill the current chunk
-					mpData->SetGraphFromSeq2(myDataChunk->gr.at(i),currSeq, pos);
-
+					mpData->SetGraphFromSeq2(myDataChunk->gr.at(i),currSeq, pos, lastSeqGr);
 					if (myDataChunk->gr.at(i).IsEmpty()) {
 						valid_input = false;
 					} else {
@@ -264,9 +270,12 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 
 						myDataChunk->idx.at(i) = idx;
 						i++;
-					}
-				} // while buffer not full or eof
 
+						// if (i-1==currBuff){ lastName=
+					}
+					//cout << "Gr: " << myDataChunk->gr.size() << " "<< i << " " << currBuff<< " "<< pos << " " << currSeqName<<  " " << currSeq.size() << " " << lastSeqGr << endl;
+				} // while buffer not full or eof
+				//cout << "Gr: " << myDataChunk->gr.size() << " "<< i << " " << currBuff<< " "<< pos << " " << currSeqName<<  " " << currSeq.size() << " " << lastSeqGr << endl;
 				if (i==0)
 					continue;
 
@@ -335,31 +344,16 @@ void MinHashEncoder::finisher(){
 
 		if (!done && myData->sigs.size()>0) {
 
+			uint chunkSize = myData->sigs.size();
+
 			if (myData->seqFile->updateIndex != NONE){
 				for (unsigned j = 0; j < myData->sigs.size(); j++) {
 					UpdateInverseIndex(myData->sigs[j], myData->idx[j]);
 				}
-			}
-
-			uint chunkSize = myData->sigs.size();
-			if (myData->seqFile->updateSigCache){
-				if (myData->seqFile->sigCache->size()<myData->offset + chunkSize) {
-					myData->seqFile->sigCache->resize(myData->offset + chunkSize);
-					idx2nameMap.resize(myData->offset + chunkSize);
-				}
-				for (unsigned j = 0; j < chunkSize; j++) {
-					myData->seqFile->sigCache->at(myData->offset+j) = myData->sigs[j];
-					name2idxMap.insert(make_pair(myData->names[j],myData->offset+j));
-					idx2nameMap.at(myData->offset+j) = myData->names[j];
-				}
-			}
-
+			} //else {
 			// virtual function call that can be overloaded in child classes to do specific stuff
-			if ( (myData->seqFile->updateIndex==NONE) && (!myData->seqFile->updateSigCache) ) {
 				finishUpdate(myData);
-			} else {
-				myData.reset();
-			}
+			//}
 
 			mSignatureCounter += chunkSize;
 			if (mSignatureCounter%1000000 <= chunkSize){
@@ -384,7 +378,7 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 	cout << "Using " << mpParameters->mNumHashShingles << " as hash shingle factor" << endl;
 	cout << "Using feature radius   " << mpParameters->mMinRadius<<".."<<mpParameters->mRadius << endl;
 	cout << "Using feature distance " << mpParameters->mMinDistance<<".."<<mpParameters->mDistance << endl;
-	cout << "Using sequence window  " << mpParameters->mSeqWindow<<" shift "<<mpParameters->mSeqShift << " clip " << mpParameters->mSeqClip << endl;
+	cout << "Using sequence window  " << mpParameters->mSeqWindow<<" shift "<<mpParameters->mSeqShift << " ("<< (unsigned)std::max((double)1,(double)mpParameters->mSeqWindow*mpParameters->mSeqShift) << ") clip " << mpParameters->mSeqClip << endl;
 	cout << "Computing MinHash signatures on the fly while reading " << myFiles.size() << " file(s)..." << endl;
 
 	// threaded producer-consumer model for signature creation and index update
@@ -441,13 +435,6 @@ unsigned MinHashEncoder::GetLoadedInstances() {
 	return mInstanceCounter;
 }
 
-vector<unsigned>& MinHashEncoder::ComputeHashSignature(unsigned aID) {
-	if (mMinHashCache && mMinHashCache->size()>0 && mMinHashCache->at(aID).size() > 0)
-		return mMinHashCache->at(aID);
-	else {
-		throw range_error("ERROR: MinHashCache is not filled!");
-	}
-}
 
 vector<unsigned> MinHashEncoder::ComputeHashSignature(SVector& aX) {
 
@@ -504,6 +491,16 @@ void NeighborhoodIndex::NeighborhoodCacheReset() {
 	mNeighborhoodCache.resize(GetLoadedInstances());
 	mNeighborhoodCacheExt.resize(GetLoadedInstances());
 	mNeighborhoodCacheInfo.resize(GetLoadedInstances());
+}
+
+
+vector<unsigned>& NeighborhoodIndex::ComputeHashSignature(unsigned aID) {
+	cout << "here2" << aID << endl;
+	if (mMinHashCache && mMinHashCache->size()>0 && mMinHashCache->at(aID).size() > 0)
+		return mMinHashCache->at(aID);
+	else {
+		throw range_error("ERROR: MinHashCache is not filled!");
+	}
 }
 
 
@@ -786,7 +783,7 @@ void HistogramIndex::writeBinaryIndex2(ostream &out, const indexTy& index) {
 	out.write((const char*) &mpParameters->mNumHashShingles, sizeof(unsigned));
 	out.write((const char*) &mpParameters->mNumRepeatsHashFunction, sizeof(unsigned));
 	out.write((const char*) &mpParameters->mSeqWindow, sizeof(unsigned));
-	out.write(reinterpret_cast<char *>(&mpParameters->mSeqShift), sizeof(mpParameters->mSeqShift));
+	out.write(reinterpret_cast<char *>(&mpParameters->mIndexSeqShift), sizeof(mpParameters->mIndexSeqShift));
 	unsigned tmp = GetHistogramSize();
 	out.write((const char*) &tmp, sizeof(unsigned));
 
@@ -836,7 +833,7 @@ bool HistogramIndex::readBinaryIndex2(string filename, indexTy &index){
 	fin.read((char*) &mpParameters->mNumHashShingles, sizeof(unsigned));
 	fin.read((char*) &mpParameters->mNumRepeatsHashFunction, sizeof(unsigned));
 	fin.read((char*) &mpParameters->mSeqWindow, sizeof(unsigned));
-	fin.read( reinterpret_cast<char*>( &mpParameters->mSeqShift ), sizeof mpParameters->mSeqShift);
+	fin.read( reinterpret_cast<char*>( &mpParameters->mIndexSeqShift ), sizeof mpParameters->mIndexSeqShift);
 	fin.read((char*) &tmp, sizeof(unsigned));
 	SetHistogramSize(tmp);
 
