@@ -187,23 +187,28 @@ void Parameters::SetupOptions() {
 		param.mValue = "";
 		param.mCloseValuesList.push_back("CLUSTER");
 		param.mCloseValuesList.push_back("CLASSIFY");
+		param.mCloseValuesList.push_back("TEST");
 
 
 		mOptionList.insert(make_pair(param.mLongSwitch, param));
 
 		mActionOptionList.insert(make_pair(CLUSTER, vector<ParameterType*>()));
 		mActionOptionList.insert(make_pair(CLASSIFY, vector<ParameterType*>()));
+		mActionOptionList.insert(make_pair(TEST, vector<ParameterType*>()));
 
 		string txt;
 		txt = "Neighborhood Subgraph Pairwise Decomposition Kernel see: Fabrizio Costa, Kurt De Grave, ''Fast Neighborhood Subgraph Pairwise Distance Kernel'', Proceedings of the 27th International Conference on Machine Learning (ICML-2010), Haifa, Israel, 2010.";
 		mActionReferences.insert(make_pair(CLUSTER, txt));
 		mActionReferences.insert(make_pair(CLASSIFY, txt));
+		mActionReferences.insert(make_pair(TEST, txt));
 		//Summaries
 		txt = "Extract explicit feature representation using graph kernel decomposition.\n"
 				"And nearest neighbors are efficiently identified with a locality sensitive hashing technique.";
 		mActionSummary.insert(make_pair(CLUSTER, txt));
 		txt = "Clustering/classification of genomic and metagenomic sequences with locality sensitive hashing technique.";
 		mActionSummary.insert(make_pair(CLASSIFY, txt));
+		txt = "Clustering/classification test for development.";
+		mActionSummary.insert(make_pair(TEST, txt));
 	}
 	{
 		ParameterType param;
@@ -223,6 +228,11 @@ void Parameters::SetupOptions() {
 			ParameterType& p = mOptionList[param.mLongSwitch];
 			vec.push_back(&p);
 		}
+		{
+			vector<ParameterType*>& vec = mActionOptionList[TEST];
+			ParameterType& p = mOptionList[param.mLongSwitch];
+			vec.push_back(&p);
+		}
 	}
 	{
 		ParameterType param;
@@ -239,6 +249,11 @@ void Parameters::SetupOptions() {
 		}
 		{
 			vector<ParameterType*>& vec = mActionOptionList[CLASSIFY];
+			ParameterType& p = mOptionList[param.mLongSwitch];
+			vec.push_back(&p);
+		}
+		{
+			vector<ParameterType*>& vec = mActionOptionList[TEST];
 			ParameterType& p = mOptionList[param.mLongSwitch];
 			vec.push_back(&p);
 		}
@@ -262,6 +277,11 @@ void Parameters::SetupOptions() {
 		}
 		{
 			vector<ParameterType*>& vec = mActionOptionList[CLASSIFY];
+			ParameterType& p = mOptionList[param.mLongSwitch];
+			vec.push_back(&p);
+		}
+		{
+			vector<ParameterType*>& vec = mActionOptionList[TEST];
 			ParameterType& p = mOptionList[param.mLongSwitch];
 			vec.push_back(&p);
 		}
@@ -289,6 +309,11 @@ void Parameters::SetupOptions() {
 			ParameterType& p = mOptionList[param.mLongSwitch];
 			vec.push_back(&p);
 		}
+		{
+			vector<ParameterType*>& vec = mActionOptionList[TEST];
+			ParameterType& p = mOptionList[param.mLongSwitch];
+			vec.push_back(&p);
+		}
 	}
 	{
 		ParameterType param;
@@ -305,6 +330,11 @@ void Parameters::SetupOptions() {
 		}
 		{
 			vector<ParameterType*>& vec = mActionOptionList[CLASSIFY];
+			ParameterType& p = mOptionList[param.mLongSwitch];
+			vec.push_back(&p);
+		}
+		{
+			vector<ParameterType*>& vec = mActionOptionList[TEST];
 			ParameterType& p = mOptionList[param.mLongSwitch];
 			vec.push_back(&p);
 		}
@@ -327,6 +357,11 @@ void Parameters::SetupOptions() {
 			ParameterType& p = mOptionList[param.mLongSwitch];
 			vec.push_back(&p);
 		}
+		{
+			vector<ParameterType*>& vec = mActionOptionList[TEST];
+			ParameterType& p = mOptionList[param.mLongSwitch];
+			vec.push_back(&p);
+		}
 	}
 	{
 		ParameterType param;
@@ -343,6 +378,11 @@ void Parameters::SetupOptions() {
 		}
 		{
 			vector<ParameterType*>& vec = mActionOptionList[CLASSIFY];
+			ParameterType& p = mOptionList[param.mLongSwitch];
+			vec.push_back(&p);
+		}
+		{
+			vector<ParameterType*>& vec = mActionOptionList[TEST];
 			ParameterType& p = mOptionList[param.mLongSwitch];
 			vec.push_back(&p);
 		}
@@ -365,6 +405,11 @@ void Parameters::SetupOptions() {
 			ParameterType& p = mOptionList[param.mLongSwitch];
 			vec.push_back(&p);
 		}
+		{
+			vector<ParameterType*>& vec = mActionOptionList[TEST];
+			ParameterType& p = mOptionList[param.mLongSwitch];
+			vec.push_back(&p);
+		}
 	}
 	{
 		ParameterType param;
@@ -381,6 +426,11 @@ void Parameters::SetupOptions() {
 		}
 		{
 			vector<ParameterType*>& vec = mActionOptionList[CLASSIFY];
+			ParameterType& p = mOptionList[param.mLongSwitch];
+			vec.push_back(&p);
+		}
+		{
+			vector<ParameterType*>& vec = mActionOptionList[TEST];
 			ParameterType& p = mOptionList[param.mLongSwitch];
 			vec.push_back(&p);
 		}
@@ -418,6 +468,11 @@ void Parameters::SetupOptions() {
 			ParameterType& p = mOptionList[param.mLongSwitch];
 			vec.push_back(&p);
 		}
+		{
+			vector<ParameterType*>& vec = mActionOptionList[TEST];
+			ParameterType& p = mOptionList[param.mLongSwitch];
+			vec.push_back(&p);
+		}
 	}
 	{
 		ParameterType param;
@@ -448,6 +503,11 @@ void Parameters::SetupOptions() {
 		}
 		{
 			vector<ParameterType*>& vec = mActionOptionList[CLASSIFY];
+			ParameterType& p = mOptionList[param.mLongSwitch];
+			vec.push_back(&p);
+		}
+		{
+			vector<ParameterType*>& vec = mActionOptionList[TEST];
 			ParameterType& p = mOptionList[param.mLongSwitch];
 			vec.push_back(&p);
 		}
@@ -484,6 +544,11 @@ void Parameters::SetupOptions() {
 			ParameterType& p = mOptionList[param.mLongSwitch];
 			vec.push_back(&p);
 		}
+		{
+			vector<ParameterType*>& vec = mActionOptionList[TEST];
+			ParameterType& p = mOptionList[param.mLongSwitch];
+			vec.push_back(&p);
+		}
 	}
 	//--------------------------------------
 	{
@@ -501,6 +566,11 @@ void Parameters::SetupOptions() {
 		}
 		{
 			vector<ParameterType*>& vec = mActionOptionList[CLASSIFY];
+			ParameterType& p = mOptionList[param.mLongSwitch];
+			vec.push_back(&p);
+		}
+		{
+			vector<ParameterType*>& vec = mActionOptionList[TEST];
 			ParameterType& p = mOptionList[param.mLongSwitch];
 			vec.push_back(&p);
 		}
@@ -523,6 +593,11 @@ void Parameters::SetupOptions() {
 			ParameterType& p = mOptionList[param.mLongSwitch];
 			vec.push_back(&p);
 		}
+		{
+			vector<ParameterType*>& vec = mActionOptionList[TEST];
+			ParameterType& p = mOptionList[param.mLongSwitch];
+			vec.push_back(&p);
+		}
 	}
 	{
 		ParameterType param;
@@ -534,6 +609,11 @@ void Parameters::SetupOptions() {
 		{
 			param.mValue = "100";
 			vector<ParameterType*>& vec = mActionOptionList[CLASSIFY];
+			ParameterType& p = mOptionList[param.mLongSwitch];
+			vec.push_back(&p);
+		}
+		{
+			vector<ParameterType*>& vec = mActionOptionList[TEST];
 			ParameterType& p = mOptionList[param.mLongSwitch];
 			vec.push_back(&p);
 		}
@@ -551,11 +631,35 @@ void Parameters::SetupOptions() {
 			ParameterType& p = mOptionList[param.mLongSwitch];
 			vec.push_back(&p);
 		}
+		{
+			vector<ParameterType*>& vec = mActionOptionList[TEST];
+			ParameterType& p = mOptionList[param.mLongSwitch];
+			vec.push_back(&p);
+		}
 	}
 	{
 		ParameterType param;
 		param.mShortSwitch = "";
 		param.mLongSwitch = "seq_shift";
+		param.mShortDescription = "For FASTA files only! Defines the fraction as length of seq_window to generate sequence fragments used for classification! 0..1 Can be used to have a different shift for classification and indexing";
+		param.mTypeCode = REAL;
+		param.mValue = "0";
+		mOptionList.insert(make_pair(param.mLongSwitch, param));
+		{
+			vector<ParameterType*>& vec = mActionOptionList[CLASSIFY];
+			ParameterType& p = mOptionList[param.mLongSwitch];
+			vec.push_back(&p);
+		}
+		{
+			vector<ParameterType*>& vec = mActionOptionList[TEST];
+			ParameterType& p = mOptionList[param.mLongSwitch];
+			vec.push_back(&p);
+		}
+	}
+	{
+		ParameterType param;
+		param.mShortSwitch = "";
+		param.mLongSwitch = "index_seq_shift";
 		param.mShortDescription = "For FASTA files only! Defines the fraction as length of seq_window to generate sequence fragments used for encoding! 0..1";
 		param.mTypeCode = REAL;
 		param.mValue = "0";
@@ -565,7 +669,13 @@ void Parameters::SetupOptions() {
 			ParameterType& p = mOptionList[param.mLongSwitch];
 			vec.push_back(&p);
 		}
+		{
+			vector<ParameterType*>& vec = mActionOptionList[TEST];
+			ParameterType& p = mOptionList[param.mLongSwitch];
+			vec.push_back(&p);
+		}
 	}
+
 	{
 		ParameterType param;
 		param.mShortSwitch = "";
@@ -581,6 +691,11 @@ void Parameters::SetupOptions() {
 		}
 		{
 			vector<ParameterType*>& vec = mActionOptionList[CLASSIFY];
+			ParameterType& p = mOptionList[param.mLongSwitch];
+			vec.push_back(&p);
+		}
+		{
+			vector<ParameterType*>& vec = mActionOptionList[TEST];
 			ParameterType& p = mOptionList[param.mLongSwitch];
 			vec.push_back(&p);
 		}
@@ -603,6 +718,11 @@ void Parameters::SetupOptions() {
 			ParameterType& p = mOptionList[param.mLongSwitch];
 			vec.push_back(&p);
 		}
+		{
+			vector<ParameterType*>& vec = mActionOptionList[TEST];
+			ParameterType& p = mOptionList[param.mLongSwitch];
+			vec.push_back(&p);
+		}
 	}
 	{
 		ParameterType param;
@@ -617,6 +737,11 @@ void Parameters::SetupOptions() {
 			ParameterType& p = mOptionList[param.mLongSwitch];
 			vec.push_back(&p);
 		}
+		{
+			vector<ParameterType*>& vec = mActionOptionList[TEST];
+			ParameterType& p = mOptionList[param.mLongSwitch];
+			vec.push_back(&p);
+		}
 	}
 	{
 		ParameterType param;
@@ -628,6 +753,11 @@ void Parameters::SetupOptions() {
 		mOptionList.insert(make_pair(param.mLongSwitch, param));
 		{
 			vector<ParameterType*>& vec = mActionOptionList[CLASSIFY];
+			ParameterType& p = mOptionList[param.mLongSwitch];
+			vec.push_back(&p);
+		}
+		{
+			vector<ParameterType*>& vec = mActionOptionList[TEST];
 			ParameterType& p = mOptionList[param.mLongSwitch];
 			vec.push_back(&p);
 		}
@@ -656,6 +786,11 @@ void Parameters::SetupOptions() {
 		mOptionList.insert(make_pair(param.mLongSwitch, param));
 		{
 			vector<ParameterType*>& vec = mActionOptionList[CLASSIFY];
+			ParameterType& p = mOptionList[param.mLongSwitch];
+			vec.push_back(&p);
+		}
+		{
+			vector<ParameterType*>& vec = mActionOptionList[TEST];
 			ParameterType& p = mOptionList[param.mLongSwitch];
 			vec.push_back(&p);
 		}
@@ -782,6 +917,8 @@ void Parameters::Init(int argc, const char** argv) {
 			mIndexSeqFile = param.mValue;
 		if (param.mLongSwitch == "seq_shift")
 			mSeqShift = stream_cast<double>(param.mValue);
+		if (param.mLongSwitch == "index_seq_shift")
+			mIndexSeqShift = stream_cast<double>(param.mValue);
 		if (param.mLongSwitch == "seq_window")
 			mSeqWindow = stream_cast<unsigned>(param.mValue);
 		if (param.mLongSwitch == "seq_clip")
@@ -803,6 +940,8 @@ void Parameters::Init(int argc, const char** argv) {
 		mActionCode = CLUSTER;
 	else if (mAction == "CLASSIFY")
 		mActionCode = CLASSIFY;
+	else if (mAction == "TEST")
+		mActionCode = TEST;
 	else
 		throw range_error("ERROR Parameters::Init: Unrecognized action: <" + mAction + ">");
 

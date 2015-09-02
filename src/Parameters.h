@@ -14,7 +14,7 @@ const string CITATIONS = "For the NSPDK graph kernels see Fabrizio Costa, Kurt D
 
 
 enum ActionType {
-	NULL_ACTION, CLUSTER, CLASSIFY
+	NULL_ACTION, CLUSTER, CLASSIFY, TEST
 };
 
 enum InputFileType {
@@ -90,7 +90,9 @@ public:
 	string mIndexSeqFile;
 	bool mNoIndexCacheFile;
 	unsigned mSeqWindow;
+	double mIndexSeqShift;
 	double mSeqShift;
+
 	unsigned mSeqClip;
 	unsigned mMinRadius;
 	unsigned mMinDistance;
