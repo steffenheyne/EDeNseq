@@ -22,6 +22,7 @@ void SeqClassifyManager::Exec() {
 
 	SeqFileT mySet;
 	mySet.filename          = mpParameters->mIndexSeqFile;
+	mySet.filename_BED		= mpParameters->mIndexBedFile;
 	mySet.filetype          = FASTA;
 	mySet.updateIndex       = SEQ_FEATURE;
 	mySet.updateSigCache    = false;
@@ -36,24 +37,41 @@ void SeqClassifyManager::Exec() {
 	if (std::string::npos != pos)
 		indexName = mpParameters->mIndexBedFile.substr(pos+1);
 
+	// error if the shift is 0 and we have a specific window size
+	if (mpParameters->mSeqWindow != 0 && mpParameters->mSeqShift==0)
+		throw range_error("\nERROR! 'seq_shift' cannot be 0 for a specific window size!");
+
 	// create/load new inverse MinHash index against that we can classify other sequences
 	if (!std::ifstream(mpParameters->mIndexBedFile+".bhi").good()){
 		cout << endl << " *** Creating inverse index *** "<< endl << endl;
+
+		// use desired shift value for index, "LoadData_Threaded" only uses variable mpParameters->mSeqShift
+		// assume 0 as not set
+		double tmp_shift = mpParameters->mSeqShift;
+		if (mpParameters->mIndexSeqShift > 0){
+			mpParameters->mSeqShift = mpParameters->mIndexSeqShift;
+		} else mpParameters->mIndexSeqShift = mpParameters->mSeqShift;
+
 		SeqFilesT myList;
 		myList.push_back(mIndexDataSet);
 		LoadData_Threaded(myList);
 		SetHistogramSize(mIndexDataSet->lastMetaIdx);
+		mpParameters->mSeqShift = tmp_shift;
 
-		// write index
+		// write index to file
 		if (!mpParameters->mNoIndexCacheFile){
 			cout << "inverse index file : " << mpParameters->mIndexBedFile+".bhi" << endl;
 			cout << " write index file ... ";
 			OutputManager om((indexName+".bhi").c_str(), mpParameters->mDirectoryPath);
 			writeBinaryIndex2(om.mOut,mInverseIndex);
 			om.mOut.close();
+			mIndexDataSet->filename_index = mpParameters->mDirectoryPath+"/"+indexName+".bhi";
 			cout << endl;
-		} else
+		} else {
 			cout << "Index is NOT saved to file!"<< endl;
+			mIndexDataSet->filename_index = "IN_MEMORY_INDEX_ONLY";
+		}
+
 	} else {
 
 		// read existing index file (*.bhi)
@@ -66,6 +84,7 @@ void SeqClassifyManager::Exec() {
 
 		} else
 			throw range_error("Cannot read index from file " + mpParameters->mIndexBedFile+".bhi");
+		mIndexDataSet->filename_index = mpParameters->mIndexBedFile+".bhi";
 	}
 
 	// update IndexValue2Feature map from provided Index BED file
@@ -105,21 +124,36 @@ inline double minSim(double i) {if (i<0.1) return 0; else return i;}
 
 void SeqClassifyManager::finishUpdate(workQueueP& myData) {
 
-	ogzstream *fout = myData->seqFile->out_results_fh;
+	if (myData->seqFile->updateIndex != NONE) return;
 
-	for (unsigned j = 0; j < myData->sigs.size(); j++) {
+	ogzstream *fout = myData->seqFile->out_results_fh;
+	unsigned j = 0;
+
+	while (j < myData->sigs.size()) {
 
 		valarray<double> hist;
+		hist.resize(GetHistogramSize());
 		unsigned emptyBins = 0;
+		unsigned k=0;
+		unsigned matchingSigs = 0;
+		do {
+			valarray<double> hist_tmp;
+			unsigned emptyBins_tmp;
+			ComputeHistogram(myData->sigs[j+k],hist_tmp,emptyBins_tmp);
+			hist += hist_tmp;
+			if ( hist_tmp.sum() != 0 ) matchingSigs++;
+			emptyBins += emptyBins_tmp;
+			k++;
+		} while (j+k<myData->sigs.size() && myData->names[j]==myData->names[j+k]);
 
-		ComputeHistogram(myData->sigs[j],hist,emptyBins);
+		uint sum = hist.sum();
+		uint max = hist.max();
 
-		unsigned sum = hist.sum();
-		unsigned max = hist.max();
-
+		mNumSequences++;
 		if (sum!=0)
 			mClassifiedInstances++;
-		*fout << myData->names[j] << "\t"<<mpParameters->mNumHashFunctions-emptyBins << "\t" << sum << "\t" << max << "\t";
+		*fout << myData->names[j] << "\t"<< k << "\t" << matchingSigs <<  "\t" << (k*mpParameters->mNumHashFunctions)-emptyBins << "\t" << sum << "\t" << max << "\t";
+
 		string values;
 		string indices;
 		string maxIndices;
@@ -130,6 +164,7 @@ void SeqClassifyManager::finishUpdate(workQueueP& myData) {
 			}
 			if (hist[i]==max && max!=0) maxIndices += std::to_string(i+1)+",";
 		}
+
 		if (max!=0) {
 			*fout << indices << "\t" << values << "\t";
 			*fout << maxIndices;
@@ -143,6 +178,7 @@ void SeqClassifyManager::finishUpdate(workQueueP& myData) {
 
 		metaHist += hist;
 		metaHistNum += hist.apply(indicator);
+		j += k;
 	}
 }
 
@@ -167,16 +203,15 @@ void SeqClassifyManager::ClassifySeqs(){
 	metaHistNum.resize(GetHistogramSize());
 	metaHistNum *= 0;
 
-	// currently we classify the whole seq always
-	// seq_clip can be applied to make them similar to used --seq_window for inverse index
-	mpParameters->mSeqWindow = 0;
 	mClassifiedInstances = 0;
-
+	mNumSequences = 0;
 	pb.Begin();
 	SeqFilesT myList;
 	myList.push_back(mySet);
+
 	LoadData_Threaded(myList);
-	cout << "Classification finished - signatures=" << mSignatureCounter << " classified=" << mClassifiedInstances<< endl;
+
+	cout << "Classification finished - signatures=" << mSignatureCounter << " instances=" << mNumSequences << " classified=" << mClassifiedInstances<< endl;
 	mySet->out_results_fh->close();
 
 	/////////////////////////////////////////////////////////////////////////////
@@ -229,18 +264,24 @@ ogzstream* SeqClassifyManager::PrepareResultsFile(){
 	ogzstream* fout = new ogzstream((mpParameters->mDirectoryPath+resultsName+".classified.tab.gz").c_str(),std::ios::out);
 	// write header to output results file
 	// parameters
+	*fout << "##INDEX PARAMETERS" << endl;
+	*fout << "##" << endl;
+	*fout << "#PARAM\tINDEX\t" << mIndexDataSet->filename_index << endl;
+	*fout << "#PARAM\tSEQFILE\t" << mIndexDataSet->filename << endl;
+	*fout << "#PARAM\tBEDFILE\t" << mpParameters->mIndexBedFile << endl;
 	*fout << "#PARAM\tHASHBITSIZE\t" << mpParameters->mHashBitSize << endl;
 	*fout << "#PARAM\tRANDOMSEED\t" << mpParameters->mRandomSeed << endl;
 	*fout << "#PARAM\tNUMHASHFUNC\t" << mpParameters->mNumHashFunctions << endl;
 	*fout << "#PARAM\tNUMREPEATHASHFUNC\t" << mpParameters->mNumRepeatsHashFunction << endl;
 	*fout << "#PARAM\tNUMHASHSHINGLES\t" << mpParameters->mNumHashShingles << endl;
-	*fout << "#PARAM\tMINRADIUS\t" <<mpParameters->mMinRadius << endl;
-	*fout << "#PARAM\tRADIUS\t" <<mpParameters->mRadius << endl;
+	*fout << "#PARAM\tMINRADIUS\t" << mpParameters->mMinRadius << endl;
+	*fout << "#PARAM\tRADIUS\t" << mpParameters->mRadius << endl;
 	*fout << "#PARAM\tMINDISTANCE\t" << mpParameters->mMinDistance<< endl;
-	*fout << "#PARAM\tDISTANCE\t" <<mpParameters->mDistance << endl;
+	*fout << "#PARAM\tDISTANCE\t" << mpParameters->mDistance << endl;
 	*fout << "#PARAM\tSEQWINDOW\t" << mpParameters->mSeqWindow<< endl;
-	*fout << "#PARAM\tSEQSHIFT\t" <<mpParameters->mSeqShift << endl;
-	*fout << "#PARAM\tSEQCLIP\t" <<mpParameters->mSeqClip << endl;
+	*fout << "#PARAM\tINDEXSEQSHIFT\t" << mpParameters->mIndexSeqShift << endl;
+	*fout << "#PARAM\tHISTOGRAMSIZE\t" << GetHistogramSize() << endl;
+	*fout << "##" << endl;
 
 	// mapping table histogram idx -> feature
 	for (std::map<string,uint>::iterator it = mFeature2IndexValue.begin(); it != mFeature2IndexValue.end();++it) {
@@ -249,6 +290,13 @@ ogzstream* SeqClassifyManager::PrepareResultsFile(){
 		if (it2 != mIndexValue2Feature.end() && it2->second->COLS.size()>=2) *fout << "\t" << it2->second->COLS[1];
 		*fout << endl;
 	}
-	*fout << "#SEQNAME\tHITS\tSUM\tMAX\tIDX\tVALS\tMAX_IDX"<< endl;
+	*fout << "##" << endl;
+	*fout << "##CLASSIFY PARAMETERS" << endl;
+	*fout << "##" << endl;
+	*fout << "#PARAM\tINPUTFILE\t" << mpParameters->mInputDataFileName << endl;
+	*fout << "#PARAM\tSEQSHIFT\t" <<mpParameters->mSeqShift << endl;
+	*fout << "#PARAM\tSEQCLIP\t" <<mpParameters->mSeqClip << endl;
+	*fout << "##" << endl;
+	*fout << "#SEQ\tSIGS\tSIG_HITS\tHF_HITS\tSUM\tMAX\tIDX\tVALS\tMAX_IDX"<< endl;
 	return fout;
 }
