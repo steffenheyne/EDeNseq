@@ -12,6 +12,7 @@
 #include "Parameters.h"
 #include "SeqClusterManager.h"
 #include "SeqClassifyManager.h"
+#include "TestManager.h"
 #include "MinHashEncoder.h"
 
 using namespace std;
@@ -46,6 +47,11 @@ public:
 		case CLUSTER:{
 			SeqClusterManager cluster_manager(&mParameters, &mData);
 			cluster_manager.Exec();
+		}
+		break;
+		case TEST:{
+			TestManager test_manager(&mParameters, &mData);
+			test_manager.Exec();
 		}
 		break;
 		default:
