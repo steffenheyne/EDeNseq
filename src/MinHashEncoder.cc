@@ -114,11 +114,11 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 			if (!fin)
 				throw range_error("ERROR Data::LoadData: Cannot open file: " + myData->filename);
 
-			file_instances = 0;
+			file_instances = 0; // only for log output
 
-			unsigned pos = 0;
-			unsigned end = 0;
-			unsigned idx  = 0;
+			unsigned pos = 0; // tracks the current seq start pos (window/shift)
+			unsigned end = 0; // tracks the current seq end pos, set from BED entry or to full seq end
+			unsigned idx = 0; // holds the instance id for the inverse index
 
 			bool valid_input = false; // set to false so that we get new seq in while further down directly
 			string currSeq;
@@ -133,7 +133,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 				unsigned maxB = max(100,(int)log2((double)mSignatureCounter)*100);
 				unsigned currBuff = rand()%(maxB*3 - maxB + 1) + maxB;
 				unsigned i = 0;
-				bool lastSeqGr = false; // indicates that we have the last fragment from current seq
+				bool lastSeqGr = false; // indicates that we have the last fragment from current seq, use to put all fragments from current seq into current chunk
 
 				workQueueP myDataChunk = std::make_shared<workQueueS>();
 				myDataChunk->gr.resize(currBuff);
