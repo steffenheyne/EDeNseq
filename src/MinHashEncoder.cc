@@ -24,7 +24,7 @@ void MinHashEncoder::Init(Parameters* apParameters, Data* apData, INDEXType apIn
 
 	if (mpParameters->mSeqWindow != 0 && mpParameters->mSeqShift == 0)
 
-	cout << "MinHashEncoder object created of indexType " << indexType << endl;
+		cout << "MinHashEncoder object created of indexType " << indexType << endl;
 }
 
 inline vector<unsigned> MinHashEncoder::HashFuncNSPDK(const string& aString, unsigned aStart, unsigned aMaxRadius, unsigned aBitMask) {
@@ -355,7 +355,7 @@ void MinHashEncoder::finisher(){
 				}
 			} //else {
 			// virtual function call that can be overloaded in child classes to do specific stuff
-				finishUpdate(myData);
+			finishUpdate(myData);
 			//}
 
 			mSignatureCounter += chunkSize;

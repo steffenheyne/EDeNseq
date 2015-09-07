@@ -178,7 +178,7 @@ void SeqClassifyManager::finishUpdate(workQueueP& myData) {
 
 		hist /= (k*mpParameters->mNumHashFunctions);
 
-//		hist = hist.apply([tr] {if (i<0.1) return 0; else return i;});
+		//		hist = hist.apply([tr] {if (i<0.1) return 0; else return i;});
 
 		hist /= sum;
 		//hist /= mpParameters->mNumHashFunctions-emptyBins;
