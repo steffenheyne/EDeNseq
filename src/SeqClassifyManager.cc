@@ -296,6 +296,7 @@ ogzstream* SeqClassifyManager::PrepareResultsFile(){
 	*fout << "#PARAM\tINPUTFILE\t" << mpParameters->mInputDataFileName << endl;
 	*fout << "#PARAM\tSEQSHIFT\t" <<mpParameters->mSeqShift << endl;
 	*fout << "#PARAM\tSEQCLIP\t" <<mpParameters->mSeqClip << endl;
+	*fout << "#PARAM\tAPPROXSIM\t" <<mpParameters->mPureApproximateSim << endl;
 	*fout << "##" << endl;
 	*fout << "##INDEX MAPPING TABLE" << endl;
 	*fout << "##" << endl;
