@@ -120,7 +120,7 @@ inline double changeNAN(double i) {if (std::isnan(i)) return 0.0; else return i;
 
 inline double indicator(double i) {if (i>0) return 1; else return 0;}
 
-inline double minSim(double i) {if (i<0.1) return 0; else return i;}
+//inline double minSim(double i) {if (i<0.1) return 0; else return i;}
 
 void SeqClassifyManager::finishUpdate(workQueueP& myData) {
 
@@ -150,6 +150,10 @@ void SeqClassifyManager::finishUpdate(workQueueP& myData) {
 		uint sum = hist.sum();
 		uint max = hist.max();
 
+		for (uint i = 0; i<hist.size(); i++){
+			if (hist[i] / (k*mpParameters->mNumHashFunctions) < mpParameters->mPureApproximateSim ) {hist[i] = 0.0;};
+		}
+
 		mNumSequences++;
 		if (sum!=0)
 			mClassifiedInstances++;
@@ -171,6 +175,10 @@ void SeqClassifyManager::finishUpdate(workQueueP& myData) {
 			*fout << maxIndices;
 		}
 		*fout << endl;
+
+		hist /= (k*mpParameters->mNumHashFunctions);
+
+//		hist = hist.apply([tr] {if (i<0.1) return 0; else return i;});
 
 		hist /= sum;
 		//hist /= mpParameters->mNumHashFunctions-emptyBins;
@@ -219,17 +227,15 @@ void SeqClassifyManager::ClassifySeqs(){
 	// classification finished
 	/////////////////////////////////////////////////////////////////////////////
 
-	// output just some simple results
 	// metahistogram
-	cout << endl << endl << "META histogram - classified seqs: " << setprecision(3) << (double)mClassifiedInstances/((double)GetLoadedInstances()) << " (" << mClassifiedInstances << ")" << endl;
+	cout << endl << endl << "META histogram - classified seqs: " << setprecision(3) << (double)mClassifiedInstances/((double)mNumSequences) << " (" << mClassifiedInstances << ")" << endl;
 	metaHist = metaHist/metaHist.sum();
 	vector<pair<double,uint> > sortedHist;
 	for (unsigned j=0; j<metaHist.size();j++){
 		sortedHist.push_back(make_pair(-metaHist[j],j));
 	}
 	sort(sortedHist.begin(), sortedHist.end());
-
-	for (unsigned j=0; j<sortedHist.size();j++){
+	for (unsigned j=0; j<std::min((unsigned)20,(unsigned)sortedHist.size());j++){
 		multimap<uint, Data::BEDentryP>::iterator it = mIndexValue2Feature.find(sortedHist[j].second+1);
 		uint num = mIndexValue2Feature.count(sortedHist[j].second+1);
 		cout << setprecision(2) << j+1 << "\t" << -sortedHist[j].first << "\t" << setprecision(10) << metaHistNum[sortedHist[j].second] << "\t" << sortedHist[j].second+1 << "\t";
@@ -240,18 +246,20 @@ void SeqClassifyManager::ClassifySeqs(){
 	cout << "SUM\t"<< metaHist.sum() << endl << endl;
 
 	// bin size statistics
-	valarray<double> indexHist;
-	indexHist.resize(GetHistogramSize());
-	indexHist *= 0;
+	if (mpParameters->mVerbose){
+		valarray<double> indexHist;
+		indexHist.resize(GetHistogramSize());
+		indexHist *= 0;
 
-	for (typename HistogramIndex::indexTy::const_iterator it = mInverseIndex.begin(); it!= mInverseIndex.end(); it++){
-		for (typename HistogramIndex::indexSingleTy::const_iterator itBin = it->begin(); itBin!=it->end(); itBin++){
-			indexHist[itBin->second[0]-1] += 1;
+		for (typename HistogramIndex::indexTy::const_iterator it = mInverseIndex.begin(); it!= mInverseIndex.end(); it++){
+			for (typename HistogramIndex::indexSingleTy::const_iterator itBin = it->begin(); itBin!=it->end(); itBin++){
+				indexHist[itBin->second[0]-1] += 1;
+			}
 		}
-	}
 
-	for (unsigned i=0; i<indexHist.size();i++){
-		cout << " index bin size " << i+1 << "\t" << indexHist[i] << "\t" << setprecision(5) << indexHist[i]/indexHist.sum() << endl;
+		for (unsigned i=0; i<indexHist.size();i++){
+			cout << " index bin size " << i+1 << "\t" << indexHist[i] << "\t" << setprecision(5) << indexHist[i]/indexHist.sum() << endl;
+		}
 	}
 }
 
@@ -283,6 +291,14 @@ ogzstream* SeqClassifyManager::PrepareResultsFile(){
 	*fout << "#PARAM\tINDEXSEQSHIFT\t" << mpParameters->mIndexSeqShift << endl;
 	*fout << "#PARAM\tHISTOGRAMSIZE\t" << GetHistogramSize() << endl;
 	*fout << "##" << endl;
+	*fout << "##CLASSIFY PARAMETERS" << endl;
+	*fout << "##" << endl;
+	*fout << "#PARAM\tINPUTFILE\t" << mpParameters->mInputDataFileName << endl;
+	*fout << "#PARAM\tSEQSHIFT\t" <<mpParameters->mSeqShift << endl;
+	*fout << "#PARAM\tSEQCLIP\t" <<mpParameters->mSeqClip << endl;
+	*fout << "##" << endl;
+	*fout << "##INDEX MAPPING TABLE" << endl;
+	*fout << "##" << endl;
 
 	// mapping table histogram idx -> feature
 	for (std::map<string,uint>::iterator it = mFeature2IndexValue.begin(); it != mFeature2IndexValue.end();++it) {
@@ -291,12 +307,6 @@ ogzstream* SeqClassifyManager::PrepareResultsFile(){
 		if (it2 != mIndexValue2Feature.end() && it2->second->COLS.size()>=2) *fout << "\t" << it2->second->COLS[1];
 		*fout << endl;
 	}
-	*fout << "##" << endl;
-	*fout << "##CLASSIFY PARAMETERS" << endl;
-	*fout << "##" << endl;
-	*fout << "#PARAM\tINPUTFILE\t" << mpParameters->mInputDataFileName << endl;
-	*fout << "#PARAM\tSEQSHIFT\t" <<mpParameters->mSeqShift << endl;
-	*fout << "#PARAM\tSEQCLIP\t" <<mpParameters->mSeqClip << endl;
 	*fout << "##" << endl;
 	*fout << "#SEQ\tSIGS\tSIG_HITS\tHF_HITS\tSUM\tMAX\tIDX\tVALS\tMAX_IDX"<< endl;
 	return fout;

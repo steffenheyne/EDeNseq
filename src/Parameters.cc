@@ -487,6 +487,11 @@ void Parameters::SetupOptions() {
 			ParameterType& p = mOptionList[param.mLongSwitch];
 			vec.push_back(&p);
 		}
+		{
+			vector<ParameterType*>& vec = mActionOptionList[CLASSIFY];
+			ParameterType& p = mOptionList[param.mLongSwitch];
+			vec.push_back(&p);
+		}
 	}
 	{
 		ParameterType param;

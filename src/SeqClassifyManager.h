@@ -33,6 +33,8 @@ public:
 	void Exec();
 	void ClassifySeqs();
 	ogzstream* PrepareResultsFile();
+
+	//inline double minSim(double i) { if (i<mpParameters->mPureApproximateSim) return 0; else return i; };
 };
 
 #endif /* SEQCLASSIFYMANAGER_H_ */

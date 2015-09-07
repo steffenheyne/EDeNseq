@@ -4,20 +4,39 @@ EDeNseq is a tool for fast clustering and classification of (metagenomics) reads
 
 # Read Classification
 
-EDeNseq classifies reads against an index of e.g. genomes. In order to build the index,
-EDeNseq needs a tab-delimited file with three columns:
+EDeNseq classifies sequences (e.g. reads) against an index of e.g. genomes or 
+any desired set of target sequences.
 
-`<idx>	<fa-file-path>	<description>`
+In order to build the index, EDeNseq needs a BED file and fasta file. 
+The BED file is used to define regions on sequences that are
+indexed under a certain label. 
 
-The first column, `<idx>`, is a running number (>=1) that denotes the bin/slot 
-in the index. 
-Second column, `<fa-file-path>`, is the path to a fasta file used for that idx. 
-The last column is some description of the file/slot. 
-This is used only for output purposes. 
+The labeling makes the whole classification procedure very powerful and 
+general, as this can be the sequence name (BED column 1) or a certain feature 
+identifier (BED file column 4). This allows to index different 
+sequences under the same label. For example, genomes of different 
+strains or related organisms, homologue transcripts or sequences of a certain 
+RNA family (Rfam).
 
-Note: there can multiple lines with the same `<idx>`! This allows to put several 
-fasta files (genomes) in the same index slot! This is useful e.g. for bacteria 
-with serveral chromosomes or in order to put very similar genomes together. 
+The BED file has the following format:
+
+`<SEQNAME>	<START>	<END>	<LABEL>	.	0	<SEQ_DESC>	<LABEL_DESC>`
+
+The first 4 cols are required. Columns 7 and 8 are optional, but then also 
+columns 5 and 6 have to be provided.
+
+`<LABEL>` can be any string or number. Internally each unique label is mapped to
+a number. 
+
+`<LABEL_DESC>` is used to annotate the results. 
+
+During indexing, EDeNseq scans through the fasta file and for each found seq, 
+it selects all provided regions in BED file for that sequence and index them. 
+This means also that nothing is indexed for a seq without BED entry as well as 
+if there is a BED entry without sequence in the FASTA file. 
+
+Note: Currently only in clustering mode, no BED file is necessary and all 
+provided sequences are used!
 
 ## Download bacterial reference genomes from NCBI
 
@@ -39,4 +58,4 @@ done`
 
 
 ## Example 
-`EDeNseq -a CLASSIFY -f STRINGSEQ -i test_10k_redsea.eden -b 30 --num_hash_shingles 2 --numThreads 4 --index_data_file refseq_bact_genomes.index_list --seq_window 80 --seq_shift 0.3 -r 6 -d 14 --min_radius 6 --min_distance 14  --num_repeat_hash_functions 0  -F 8`
+`EDeNseq -a CLASSIFY -f FASTA -i test_10k_redsea.eden -b 30 --num_hash_shingles 2 --numThreads 4 --index_data_file refseq_bact_genomes.bed --seq_window 80 --seq_shift 0.3 -r 6 -d 14 --min_radius 6 --min_distance 14  --num_repeat_hash_functions 0  -F 10`

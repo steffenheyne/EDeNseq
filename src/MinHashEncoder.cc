@@ -188,6 +188,9 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 							}
 						}
 
+						// CLUSTER     F1:S1:W1 W2 W3  <-> 	 F1:S2:W1 W2 W3
+						// CLASSIFY		F1:S1:W W W  ->  F1:S2:W W W
+
 						// update index?
 						// check under which value a current seq/window is inserted in inverse index
 						// we only use these cases if there is a valid bed entry (SEQ_FEATURE/SEQ_NAME)
