@@ -176,17 +176,19 @@ void SeqClassifyManager::finishUpdate(workQueueP& myData) {
 		}
 		*fout << endl;
 
-		hist /= (k*mpParameters->mNumHashFunctions);
+		valarray<double> hist_t = hist;
+		hist_t /= (k*mpParameters->mNumHashFunctions);
 
-		//		hist = hist.apply([tr] {if (i<0.1) return 0; else return i;});
+		hist_t /= sum;
+		hist_t = hist.apply(changeNAN);
 
-		hist /= sum;
-		//hist /= mpParameters->mNumHashFunctions-emptyBins;
-		hist = hist.apply(changeNAN);
-		//hist = hist.apply(minSim);
+		metaHist += hist_t;
 
-		metaHist += hist;
-		metaHistNum += hist.apply(indicator);
+		for (uint i = 0; i<hist.size(); i++){
+			if (hist[i] >= max ) {hist[i] = 1;} else { hist[i]=0.0;};
+		}
+		metaHistNum += hist; //.apply(indicator);
+
 		j += k;
 	}
 }

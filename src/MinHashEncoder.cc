@@ -98,6 +98,8 @@ void MinHashEncoder::generate_feature_vector(const GraphClass& aG, SVector& x) {
 void MinHashEncoder::worker_readFiles(int numWorkers){
 
 	int file_instances = 0;
+	int file_seqs      = 0;
+
 	std::tr1::unordered_map<string, uint8_t> seq_names_seen;
 
 	while (!done){
@@ -115,6 +117,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 				throw range_error("ERROR Data::LoadData: Cannot open file: " + myData->filename);
 
 			file_instances = 0; // only for log output
+			file_seqs      = 0;
 
 			unsigned pos = 0; // tracks the current seq start pos (window/shift)
 			unsigned end = 0; // tracks the current seq end pos, set from BED entry or to full seq end
@@ -168,6 +171,8 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 								throw range_error("ERROR Data::LoadData: file type not recognized: " + myData->filetype);
 							}
 
+							file_seqs++;
+
 							if (myData->updateIndex!= NONE){
 								cout << endl << " next found Seq #" <<  seq_names_seen.size() << " length " << currFullSeq.size() << ":" << currSeqName << ": " << endl;
 							}
@@ -188,8 +193,8 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 							}
 						}
 
-						// CLUSTER     F1:S1:W1 W2 W3  <-> 	 F1:S2:W1 W2 W3
-						// CLASSIFY		F1:S1:W W W  ->  F1:S2:W W W
+						// CLUSTER     F1:S1:W1 W2 W3  <->  F1:S2:W1 W2 W3
+						// CLASSIFY		F1:S1:W W W      ->  F1:S2:W W W
 
 						// update index?
 						// check under which value a current seq/window is inserted in inverse index
@@ -289,7 +294,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 				graph_queue.push(myDataChunk);
 				cv2.notify_all();
 				if (mInstanceCounter%1000000 <=currBuff){
-					cout << endl << " instances read " << mInstanceCounter << " " << myDataChunk->gr.size() << " buffer " << currBuff << " full..." << graph_queue.size() << " " << currSeq.size()<< " "<< currSeqName << endl;
+					cout << endl << "seqs read " << file_seqs << " instances read " << mInstanceCounter << " " << myDataChunk->gr.size() << " buffer " << currBuff << " full..." << graph_queue.size() << " " << currSeq.size()<< " "<< currSeqName << endl;
 				}
 				if (graph_queue.size()>=numWorkers*25){
 					unique_lock<mutex> lk(mut2);
@@ -379,9 +384,11 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 	cout << "Using " << mpParameters->mRandomSeed << " as random seed" << endl;
 	cout << "Using " << mpParameters->mNumHashFunctions << " hash functions (with factor " << mpParameters->mNumRepeatsHashFunction << " for single minhash)" << endl;
 	cout << "Using " << mpParameters->mNumHashShingles << " as hash shingle factor" << endl;
+	cout << "Using " << mpParameters->mPureApproximateSim << " as approximate similarity " << endl;
 	cout << "Using feature radius   " << mpParameters->mMinRadius<<".."<<mpParameters->mRadius << endl;
 	cout << "Using feature distance " << mpParameters->mMinDistance<<".."<<mpParameters->mDistance << endl;
 	cout << "Using sequence window  " << mpParameters->mSeqWindow<<" shift "<<mpParameters->mSeqShift << " ("<< (unsigned)std::max((double)1,(double)mpParameters->mSeqWindow*mpParameters->mSeqShift) << ") clip " << mpParameters->mSeqClip << endl;
+
 	cout << "Computing MinHash signatures on the fly while reading " << myFiles.size() << " file(s)..." << endl;
 
 	// threaded producer-consumer model for signature creation and index update
