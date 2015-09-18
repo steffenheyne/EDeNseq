@@ -134,9 +134,8 @@ bool Data::SetGraphFromSeq(string& seq, GraphClass& oG) {
 }
 
 
-void Data::GetNextStringSeq(istream& in,string& currSeq, string& header) {
+void Data::GetNextStringSeq(istream& in,string& currSeq) {
 
-	header.clear();
 	currSeq.clear();
 	getline(in, currSeq);
 }

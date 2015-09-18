@@ -4,27 +4,27 @@ MinHashEncoder::~MinHashEncoder(){
 
 }
 
-MinHashEncoder::MinHashEncoder(Parameters* apParameters, Data* apData, INDEXType apIndexType)
+MinHashEncoder::MinHashEncoder(Parameters* apParameters, Data* apData)
 {
-	Init(apParameters, apData, apIndexType);
+	Init(apParameters, apData);
 }
 
-void MinHashEncoder::Init(Parameters* apParameters, Data* apData, INDEXType apIndexType) {
+void MinHashEncoder::Init(Parameters* apParameters, Data* apData) {
 	mpParameters = apParameters;
 	mpData = apData;
 	numKeys=0;
 	numFullBins=0;
 	mHashBitMask = numeric_limits<unsigned>::max() >> 1;
 	mHashBitMask = (2 << (mpParameters->mHashBitSize - 1)) - 1;
-	indexType = apIndexType;
 
 	if (mpParameters->mNumRepeatsHashFunction == 0 || mpParameters->mNumRepeatsHashFunction > mpParameters->mNumHashShingles * mpParameters->mNumHashFunctions){
 		mpParameters->mNumRepeatsHashFunction = mpParameters->mNumHashShingles * mpParameters->mNumHashFunctions;
 	}
 
-	if (mpParameters->mSeqWindow != 0 && mpParameters->mSeqShift == 0)
+	if (mpParameters->mSeqWindow != 0 && mpParameters->mSeqShift == 0){
+		throw range_error("Please provide seq_shift > 0 if seq_window is > 0!");
+	}
 
-		cout << "MinHashEncoder object created of indexType " << indexType << endl;
 }
 
 inline vector<unsigned> MinHashEncoder::HashFuncNSPDK(const string& aString, unsigned aStart, unsigned aMaxRadius, unsigned aBitMask) {
@@ -97,11 +97,6 @@ void MinHashEncoder::generate_feature_vector(const GraphClass& aG, SVector& x) {
 
 void MinHashEncoder::worker_readFiles(int numWorkers){
 
-	int file_instances = 0;
-	int file_seqs      = 0;
-
-	std::tr1::unordered_map<string, uint8_t> seq_names_seen;
-
 	while (!done){
 
 		SeqFileP myData;
@@ -116,8 +111,9 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 			if (!fin)
 				throw range_error("ERROR Data::LoadData: Cannot open file: " + myData->filename);
 
-			file_instances = 0; // only for log output
-			file_seqs      = 0;
+			int file_instances = 0; // only for log output
+			int file_seqs      = 0;
+			std::tr1::unordered_map<string, uint8_t> seq_names_seen;
 
 			unsigned pos = 0; // tracks the current seq start pos (window/shift)
 			unsigned end = 0; // tracks the current seq end pos, set from BED entry or to full seq end
@@ -129,54 +125,59 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 			string currSeqName;
 
 			std::pair<Data::BEDdataIt,Data::BEDdataIt> annoEntries;
-			Data::BEDdataIt it;
+			Data::BEDdataIt it; // iteratore over all bed entries of current seq
 
 			while (!fin.eof()) {
 
 				unsigned maxB = max(100,(int)log2((double)mSignatureCounter)*100);
-				unsigned currBuff = rand()%(maxB*3 - maxB + 1) + maxB;
-				unsigned i = 0;
-				bool lastSeqGr = false; // indicates that we have the last fragment from current seq, use to put all fragments from current seq into current chunk
+				unsigned currBuff = rand()%(maxB*3 - maxB + 1) + maxB; // curr chunk size
+				unsigned i = 0;			// current fragment in currBuff
+				bool lastSeqGr = false; // indicates that we have the last fragment from current seq, used to get all fragments from current seq into current chunk
+				// necessary to have all fragments for one seq/feature if we want to combine signatures in finisher
 
 				workQueueP myDataChunk = std::make_shared<workQueueS>();
 				myDataChunk->gr.resize(currBuff);
 				myDataChunk->names.resize(currBuff);
 				myDataChunk->idx.resize(currBuff);
-				//myDataChunk->offset = mInstanceCounter;
+				myDataChunk->pos.resize(currBuff);
 				myDataChunk->seqFile = myData;
 
-				while ( ((i<currBuff) && !fin.eof()) || (myData->updateIndex==NONE && i>=currBuff && lastSeqGr == false) ) {
+				while ( ((i<currBuff) && !fin.eof()) || (myData->signatureAction==CLASSIFY && i>=currBuff && lastSeqGr == false) ) {
 
 					//cout << "valid? " << valid_input << " name :" << currSeqName << ": pos " << pos << " end " << end <<  endl;
 					if (!valid_input) {
 						if  ( it == annoEntries.second ) {
 							// last seq is finished, get next seq from file
+
 							switch (myData->filetype) {
 							case FASTA:
 								mpData->GetNextFastaSeq(fin, currFullSeq, currSeqName);
 								if (fin.eof() )
 									continue;
-								if (myData->updateIndex!= NONE && seq_names_seen.count(currSeqName) > 0) {
+								file_seqs++;
+								if (myData->checkUniqueSeqNames && seq_names_seen.count(currSeqName) > 0) {
 									throw range_error("Sequence names are not unique in FASTA file! "+currSeqName);
-								} else if (myData->updateIndex!= NONE) {
+								} else if (myData->checkUniqueSeqNames) {
 									seq_names_seen.insert(make_pair(currSeqName,1));
 								}
 								break;
 							case STRINGSEQ:
-								mpData->GetNextStringSeq(fin, currFullSeq, currSeqName);
+								mpData->GetNextStringSeq(fin, currFullSeq);
 								if (fin.eof() )
 									continue;
+								file_seqs++;
+								currSeqName =  std::to_string(file_seqs);
 								break;
 							default:
 								throw range_error("ERROR Data::LoadData: file type not recognized: " + myData->filetype);
 							}
 
-							file_seqs++;
-
-							if (myData->updateIndex!= NONE){
+							// log output
+							if (myData->signatureAction==INDEX){
 								cout << endl << " next found Seq #" <<  seq_names_seen.size() << " length " << currFullSeq.size() << ":" << currSeqName << ": " << endl;
 							}
-							// if we have bed entries for that seq, find them and set iterator to first bed entry
+
+							// if we have bed entries for a seq, find them and set iterator to first bed entry
 							if (myData->dataBED && myData->dataBED->find(currSeqName) != myData->dataBED->end()){
 								annoEntries = myData->dataBED->equal_range(currSeqName);
 								it = annoEntries.first;
@@ -191,7 +192,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 								end=currFullSeq.size();
 								//cout << "no BED data present! "<< currSeqName << " " << pos << "-" << end << endl;
 							}
-						}
+						} // if no bed entries left for current seq get new seq
 
 						// CLUSTER     F1:S1:W1 W2 W3  <->  F1:S2:W1 W2 W3
 						// CLASSIFY		F1:S1:W W W      ->  F1:S2:W W W
@@ -199,13 +200,11 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 						// update index?
 						// check under which value a current seq/window is inserted in inverse index
 						// we only use these cases if there is a valid bed entry (SEQ_FEATURE/SEQ_NAME)
-						multimap<string,uint>::iterator feat;
-						switch (myData->updateIndex){
+						switch (myData->groupGraphsBy){
 						// use seq name as value for inverse index
 						case SEQ_NAME:
-							feat = mFeature2IndexValue.find(currSeqName);
-							if (feat != mFeature2IndexValue.end()){
-								idx = feat->second;
+							if (mFeature2IndexValue.find(currSeqName) != mFeature2IndexValue.end()){
+								idx = mFeature2IndexValue[currSeqName];
 							} else {
 								myData->lastMetaIdx++;
 								idx=myData->lastMetaIdx;
@@ -214,15 +213,13 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 							break;
 							// use given value/name in BED file col4 as  value for inverse index
 						case SEQ_FEATURE:
-							feat = mFeature2IndexValue.find(it->second->NAME);
-							if (feat != mFeature2IndexValue.end()){
-								idx = feat->second;
+							if (mFeature2IndexValue.find(it->second->NAME) != mFeature2IndexValue.end()){
+								idx = mFeature2IndexValue[currSeqName];
 							} else {
 								myData->lastMetaIdx++;
 								idx=myData->lastMetaIdx;
 								mFeature2IndexValue.insert(make_pair(it->second->NAME,idx));
 							}
-							//cout << "update SEQ_FEATURE idx=" << idx << " " << it->second.NAME << endl;
 							break;
 						default:
 							break;
@@ -252,8 +249,10 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 						myDataChunk->gr.resize(i+1);
 						myDataChunk->names.resize(i+1);
 						myDataChunk->idx.resize(i+1);
+						myDataChunk->pos.resize(i+1);
 					}
-					// fill the current chunk
+
+					// fill the current chunk with graphs etc
 					mpData->SetGraphFromSeq2(myDataChunk->gr.at(i),currSeq, pos, lastSeqGr);
 					if (myDataChunk->gr.at(i).IsEmpty()) {
 						valid_input = false;
@@ -262,12 +261,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 						mInstanceCounter++;
 						file_instances++;
 
-						myDataChunk->names.at(i) = currSeqName;
-						if (myDataChunk->names.at(i) == "") {
-							myDataChunk->names.at(i) = std::to_string(mInstanceCounter);
-						}
-
-						switch (myData->updateIndex){
+						switch (myData->groupGraphsBy){
 						case NONE:
 						case SEQ_WINDOW:
 							idx = mInstanceCounter;
@@ -276,10 +270,10 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 							break;
 						}
 
+						myDataChunk->names.at(i) = currSeqName;
 						myDataChunk->idx.at(i) = idx;
+						myDataChunk->pos.at(i) = pos;
 						i++;
-
-						// if (i-1==currBuff){ lastName=
 					}
 					//cout << "Gr: " << myDataChunk->gr.size() << " "<< i << " " << currBuff<< " "<< pos << " " << currSeqName<<  " " << currSeq.size() << " " << lastSeqGr << endl;
 				} // while buffer not full or eof
@@ -354,14 +348,8 @@ void MinHashEncoder::finisher(){
 
 			uint chunkSize = myData->sigs.size();
 
-			if (myData->seqFile->updateIndex != NONE){
-				for (unsigned j = 0; j < myData->sigs.size(); j++) {
-					UpdateInverseIndex(myData->sigs[j], myData->idx[j]);
-				}
-			} //else {
 			// virtual function call that can be overloaded in child classes to do specific stuff
 			finishUpdate(myData);
-			//}
 
 			mSignatureCounter += chunkSize;
 			if (mSignatureCounter%1000000 <= chunkSize){
@@ -505,7 +493,7 @@ void NeighborhoodIndex::NeighborhoodCacheReset() {
 
 
 vector<unsigned>& NeighborhoodIndex::ComputeHashSignature(unsigned aID) {
-	cout << "here2" << aID << endl;
+
 	if (mMinHashCache && mMinHashCache->size()>0 && mMinHashCache->at(aID).size() > 0)
 		return mMinHashCache->at(aID);
 	else {

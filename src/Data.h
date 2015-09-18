@@ -45,7 +45,7 @@ public:
 	bool SetGraphFromSeq2(GraphClass& oG, string& currSeq, unsigned& pos, bool& lastGr);
 	bool SetGraphFromSeq(string& seq, GraphClass& oG);
 	void GetNextFastaSeq(istream& in,string& currSeq, string& header);
-	void GetNextStringSeq(istream& in,string& currSeq, string& header);
+	void GetNextStringSeq(istream& in,string& currSeq);
 	void LoadStringList(string aFileName, vector<string>& oList, uint numTokens);
 
 	//	vector<SeqDataSet> LoadIndexDataList(string filename);

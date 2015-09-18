@@ -17,23 +17,27 @@ class MinHashEncoder {
 
 public:
 
-	enum INDEXTypeE {
-		CLUSTER, CLASSIFY
+	enum signatureActionE {
+		INDEX, INDEX_SIGCACHE, CLASSIFY
 	};
 
-	enum INDEXupdatesE {
+	enum groupGraphsByE {
 			SEQ_WINDOW, SEQ_NAME, SEQ_FEATURE, NONE
 	};
 
-	typedef INDEXupdatesE INDEXupdatesT;
+	typedef groupGraphsByE groupGraphsByT;
+	typedef signatureActionE signatureActionT;
 
 	struct SeqFileS {
 		string filename;
 		string filename_BED;
 		string filename_index;
 		InputFileType filetype;
-		INDEXupdatesT updateIndex;
-		bool updateSigCache;
+		groupGraphsByT groupGraphsBy;
+		bool checkUniqueSeqNames;
+		//bool updateIndex;
+		//bool updateSigCache;
+		signatureActionT	signatureAction;
 		Data::SigCacheP sigCache;
 		Data::BEDdataP	dataBED;
 		unsigned lastMetaIdx;
@@ -49,11 +53,10 @@ public:
 		Data::SigCacheT sigs;
 		vector<string> names;
 		vector<unsigned> idx;
-		//unsigned offset;
+		vector<unsigned> pos;
 		SeqFileP seqFile;
 	};
 
-	typedef INDEXTypeE INDEXType;
 	typedef std::shared_ptr<workQueueS> workQueueP;
 
 	Parameters* mpParameters;
@@ -62,8 +65,6 @@ public:
 	SeqFileP 	mIndexDataSet;
 
 protected:
-
-	INDEXType	indexType;
 
 	unsigned numKeys;
 	unsigned numFullBins;
@@ -102,9 +103,9 @@ private:
 
 public:
 
-	MinHashEncoder(Parameters* apParameters, Data* apData, INDEXType apIndexType=CLUSTER);
+	MinHashEncoder(Parameters* apParameters, Data* apData);
 	virtual	~MinHashEncoder();
-	void		Init(Parameters* apParameters, Data* apData, INDEXType apIndexType=CLUSTER);
+	void		Init(Parameters* apParameters, Data* apData);
 
 	virtual void 		UpdateInverseIndex(vector<unsigned>& aSignature, unsigned aIndex) {};
 	virtual void 		finishUpdate(workQueueP& myData) {};
@@ -128,7 +129,7 @@ private:
 
 public:
 	NeighborhoodIndex(Parameters* apParameters, Data* apData)
-		:MinHashEncoder(apParameters,apData,CLUSTER)
+		:MinHashEncoder(apParameters,apData)
 	{
 		mInverseIndex.clear();
 		for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k){
@@ -178,7 +179,7 @@ public:
 	indexTy mInverseIndex;
 
 	HistogramIndex(Parameters* apParameters, Data* apData)
-		:MinHashEncoder(apParameters,apData,CLASSIFY)
+		:MinHashEncoder(apParameters,apData)
 	{
 		mInverseIndex.clear();
 		for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k){

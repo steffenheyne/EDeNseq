@@ -23,12 +23,13 @@ void TestManager::Exec() {
 	SeqFileT mySet;
 	mySet.filename          = mpParameters->mIndexSeqFile;
 	mySet.filetype          = FASTA;
-	mySet.updateIndex       = NONE;
-	mySet.updateSigCache    = false;
+//	mySet.updateIndex       = NONE;
+	mySet.signatureAction	= CLASSIFY;
+	//mySet.updateSigCache    = false;
 	Data::BEDdataP indexBED = mpData->LoadBEDfile(mpParameters->mIndexBedFile.c_str());
 	mySet.dataBED           = indexBED;
 	mySet.lastMetaIdx       = 0;
-
+	mySet.checkUniqueSeqNames = false;
 	mIndexDataSet = std::make_shared<SeqFileT>(mySet);
 
 	string indexName = mpParameters->mIndexBedFile;
@@ -41,7 +42,7 @@ void TestManager::Exec() {
 	cout << endl << " *** Creating inverse index *** "<< endl << endl;
 	SeqFilesT myList;
 	myList.push_back(mIndexDataSet);
-	//LoadData_Threaded(myList);
+	LoadData_Threaded(myList);
 	SetHistogramSize(mIndexDataSet->lastMetaIdx);
 
 	// write index
@@ -107,16 +108,16 @@ inline double minSim(double i) {if (i<0.1) return 0; else return i;}
 void TestManager::finishUpdate(workQueueP& myData) {
 
 	unsigned shift = std::max((double)1,(double)mpParameters->mSeqWindow*mpParameters->mSeqShift);
-	int k = 20;
+	uint k = 20;
 	for (unsigned j = k; j < myData->sigs.size(); j++) {
 
-		for (unsigned b=1; b<=k; b++){
+		for (unsigned b=0; b<=k; b++){
 
 			unsigned matches = 0;
 			unsigned nomatch = 0;
 
 			for (unsigned pos=0; pos<mpParameters->mNumHashFunctions; pos++){
-				//cout << myData->sigs[j-1][pos] << " " << myData->sigs[j][pos] << endl;
+			//	cout << myData->sigs[j-1][pos] << " " << myData->sigs[j][pos] << endl;
 				if (myData->sigs[j-b][pos] == myData->sigs[j][pos]){
 					matches++;
 				} else {
@@ -124,7 +125,7 @@ void TestManager::finishUpdate(workQueueP& myData) {
 				}
 
 			}
-			//cout << b << " " << matches << "\t" << (double)matches/mpParameters->mNumHashFunctions << "\t" << nomatch << "\t" << shift << "\t" << mpParameters->mSeqWindow << endl;
+			cout << b << " " << matches << "\t" << (double)matches/mpParameters->mNumHashFunctions << "\t" << nomatch << "\t" << shift*b << "\t" << mpParameters->mSeqWindow << "\t" << myData->names[j] << endl;
 		}
 		//cout << endl;
 
@@ -184,11 +185,10 @@ void TestManager::ClassifySeqs(){
 	SeqFileP mySet = std::make_shared<SeqFileT>();
 	mySet->filename = mpParameters->mInputDataFileName;
 	mySet->filetype = mpParameters->mFileTypeCode;
-	mySet->updateIndex=NONE;
-	mySet->updateSigCache=false;
-
+	mySet->signatureAction = CLASSIFY;
+	mySet->checkUniqueSeqNames=false;
 	// get results file handle
-	mySet->out_results_fh = PrepareResultsFile();
+	//mySet->out_results_fh = PrepareResultsFile();
 
 	metaHist.resize(GetHistogramSize());
 	metaHist *= 0;
@@ -205,7 +205,7 @@ void TestManager::ClassifySeqs(){
 	myList.push_back(mySet);
 	LoadData_Threaded(myList);
 	cout << "Classification finished - signatures=" << mSignatureCounter << " classified=" << mClassifiedInstances<< endl;
-	mySet->out_results_fh->close();
+//	mySet->out_results_fh->close();
 
 	/////////////////////////////////////////////////////////////////////////////
 	// classification finished

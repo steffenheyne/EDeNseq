@@ -11,10 +11,13 @@ SeqClusterManager::SeqClusterManager(Parameters* apParameters, Data* apData)
 	mIndexDataSet = std::make_shared<SeqFileT>();
 
 	mIndexDataSet->filename = mpParameters->mInputDataFileName.c_str();
+	mIndexDataSet->filename_BED = "";
 	mIndexDataSet->filetype = mpParameters->mFileTypeCode;
-	mIndexDataSet->updateIndex=SEQ_WINDOW;
-	mIndexDataSet->updateSigCache=true;
+	mIndexDataSet->groupGraphsBy=SEQ_WINDOW;
 	mIndexDataSet->sigCache = mMinHashCache;
+	mIndexDataSet->lastMetaIdx = 0;
+	mIndexDataSet->checkUniqueSeqNames=true;
+	//mIndexDataSet = std::make_shared<SeqFileT>(myI);
 
 	SeqFilesT myList;
 	myList.push_back(mIndexDataSet);
@@ -25,11 +28,11 @@ SeqClusterManager::SeqClusterManager(Parameters* apParameters, Data* apData)
 
 void SeqClusterManager::finishUpdate(workQueueP& myData) {
 
-	if (myData->seqFile->updateSigCache){
-
+	switch (myData->seqFile->signatureAction){
+	case INDEX_SIGCACHE: {
 		unsigned chunkSize 	= myData->sigs.size();
 		unsigned offset 		= myData->idx[0]-1;
-		cout << "offset" << offset << " chunk" << chunkSize << endl;
+		//cout << "offset " << offset << " chunk " << chunkSize << endl;
 		if (myData->seqFile->sigCache->size() < offset + chunkSize) {
 			myData->seqFile->sigCache->resize( offset + chunkSize);
 			idx2nameMap.resize(offset + chunkSize);
@@ -41,6 +44,20 @@ void SeqClusterManager::finishUpdate(workQueueP& myData) {
 			idx2nameMap.at(offset+j) = myData->names[j];
 		}
 
+		for (unsigned j = 0; j < myData->sigs.size(); j++) {
+			UpdateInverseIndex(myData->sigs[j], myData->idx[j]);
+		}
+	}
+	case INDEX: {
+			for (unsigned j = 0; j < myData->sigs.size(); j++) {
+				UpdateInverseIndex(myData->sigs[j], myData->idx[j]);
+			}
+			break;
+	}
+	default:
+		break;
+	}
+}
 
 //		if (myData->seqFile->sigCache->size()<myData->offset + chunkSize) {
 //			myData->seqFile->sigCache->resize(myData->offset + chunkSize);
@@ -52,8 +69,6 @@ void SeqClusterManager::finishUpdate(workQueueP& myData) {
 //			name2idxMap.insert(make_pair(myData->names[j],myData->offset+j));
 //			idx2nameMap.at(myData->offset+j) = myData->names[j];
 //		}
-	}
-}
 
 
 void SeqClusterManager::Exec() {
@@ -98,7 +113,6 @@ void SeqClusterManager::DenseCluster() {
 			vector<unsigned> neighborhood_list;
 			unsigned collisions = 0;
 			double density = 0;
-			cout << "here" << endl;
 			neighborhood_list = ComputeNeighborhood(ii,collisions,density);
 			double score = density * neighborhood_list.size();
 			DensityList[i]= make_pair(-score,ii);
