@@ -140,6 +140,8 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 				myDataChunk->names.resize(currBuff);
 				myDataChunk->idx.resize(currBuff);
 				myDataChunk->pos.resize(currBuff);
+				myDataChunk->seq.resize(currBuff);
+				myDataChunk->svec.resize(currBuff);
 				myDataChunk->seqFile = myData;
 
 				while ( ((i<currBuff) && !fin.eof()) || (myData->signatureAction==CLASSIFY && i>=currBuff && lastSeqGr == false) ) {
@@ -250,10 +252,12 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 						myDataChunk->names.resize(i+1);
 						myDataChunk->idx.resize(i+1);
 						myDataChunk->pos.resize(i+1);
+						myDataChunk->seq.resize(i+1);
+						myDataChunk->svec.resize(i+1);
 					}
 
 					// fill the current chunk with graphs etc
-					mpData->SetGraphFromSeq2(myDataChunk->gr.at(i),currSeq, pos, lastSeqGr);
+					mpData->SetGraphFromSeq2(myDataChunk->gr.at(i),currSeq, pos, lastSeqGr,myDataChunk->seq.at(i));
 					if (myDataChunk->gr.at(i).IsEmpty()) {
 						valid_input = false;
 					} else {
@@ -319,9 +323,10 @@ void MinHashEncoder::worker_Graph2Signature(int numWorkers){
 			//cout << "  graph2sig thread got chunk " << myData->gr.size() << " offset " << myData->offset << " " << mpParameters->mHashBitSize << endl;
 
 			for (unsigned j = 0; j < myData->gr.size(); j++) {
-				SVector x(pow(2, mpParameters->mHashBitSize));
-				generate_feature_vector(myData->gr[j], x);
-				myData->sigs[j] = ComputeHashSignature(x);
+				//SVector x(pow(2, mpParameters->mHashBitSize));
+				myData->svec[j].resize(pow(2, mpParameters->mHashBitSize));
+				generate_feature_vector(myData->gr[j], myData->svec[j]);
+				myData->sigs[j] = ComputeHashSignature(myData->svec[j]);
 			}
 			if (sig_queue.size()>=numWorkers*25){
 				unique_lock<mutex> lk(mut2);
@@ -454,7 +459,7 @@ vector<unsigned> MinHashEncoder::ComputeHashSignature(SVector& aX) {
 				unsigned lower_bound = MAXUNSIGNED / sub_hash_range * kk;
 				unsigned upper_bound = MAXUNSIGNED / sub_hash_range * (kk + 1);
 				// upper bound can be different from MAXUNSIGNED due to rounding effects, correct this
-				//if (kk+1==sub_hash_range) upper_bound=MAXUNSIGNED;
+				if (kk+1==sub_hash_range) upper_bound=MAXUNSIGNED;
 				if (key >= lower_bound && key < upper_bound) { //if we are in the k-th slot
 					unsigned signature_feature = kk + (l - 1) * sub_hash_range;
 					if (key < signature[signature_feature]) //keep the min hash within the slot

@@ -54,6 +54,8 @@ public:
 		vector<string> names;
 		vector<unsigned> idx;
 		vector<unsigned> pos;
+		vector<string> seq;
+		vector<SVector> svec;
 		SeqFileP seqFile;
 	};
 

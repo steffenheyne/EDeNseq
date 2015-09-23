@@ -42,7 +42,7 @@ public:
 	void Init(Parameters* apParameters);
 
 	BEDdataP	LoadBEDfile(string filename);
-	bool SetGraphFromSeq2(GraphClass& oG, string& currSeq, unsigned& pos, bool& lastGr);
+	bool SetGraphFromSeq2(GraphClass& oG, string& currSeq, unsigned& pos, bool& lastGr, string& seq);
 	bool SetGraphFromSeq(string& seq, GraphClass& oG);
 	void GetNextFastaSeq(istream& in,string& currSeq, string& header);
 	void GetNextStringSeq(istream& in,string& currSeq);

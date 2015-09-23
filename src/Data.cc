@@ -57,6 +57,10 @@ void Data::GetNextFastaSeq(istream& in,string& currSeq, string& header) {
 		currSeq.erase(std::remove(currSeq.begin(), currSeq.end(), '\n'),currSeq.end());
 		currSeq.erase(std::remove(currSeq.begin(), currSeq.end(), ' '),currSeq.end());
 		std::transform(currSeq.begin(), currSeq.end(), currSeq.begin(), ::toupper);
+
+		string seq = currSeq.substr(mpParameters->mSeqClip,currSeq.size()-(2*mpParameters->mSeqClip));
+		currSeq=seq;
+
 		const unsigned pos = header.find_first_of(" ");
 		if (std::string::npos != pos)
 			header = header.substr(0,pos);
@@ -69,7 +73,7 @@ void Data::GetNextFastaSeq(istream& in,string& currSeq, string& header) {
 	}
 }
 
-bool Data::SetGraphFromSeq2(GraphClass& oG, string& currSeq, unsigned& pos, bool& lastGr) {
+bool Data::SetGraphFromSeq2(GraphClass& oG, string& currSeq, unsigned& pos, bool& lastGr, string& seq) {
 
 	bool success_status = false;
 	lastGr = false;
@@ -93,7 +97,7 @@ bool Data::SetGraphFromSeq2(GraphClass& oG, string& currSeq, unsigned& pos, bool
 		}
 
 		if (currSize>=1){
-			string seq = currSeq.substr(pos,currSize);
+			seq = currSeq.substr(pos,currSize);
 			SetGraphFromSeq( seq ,oG);
 			//cout << currSeq.size() << " " << currSize << " eof? " << in.eof() << " pos " << pos << " win " << win << " " << seq << endl;
 		} else

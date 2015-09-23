@@ -24,7 +24,8 @@ void TestManager::Exec() {
 	mySet.filename          = mpParameters->mIndexSeqFile;
 	mySet.filetype          = FASTA;
 //	mySet.updateIndex       = NONE;
-	mySet.signatureAction	= CLASSIFY;
+	mySet.signatureAction	= INDEX;
+	mySet.groupGraphsBy		= SEQ_WINDOW;
 	//mySet.updateSigCache    = false;
 	Data::BEDdataP indexBED = mpData->LoadBEDfile(mpParameters->mIndexBedFile.c_str());
 	mySet.dataBED           = indexBED;
@@ -111,6 +112,11 @@ void TestManager::finishUpdate(workQueueP& myData) {
 	uint k = 20;
 	for (unsigned j = k; j < myData->sigs.size(); j++) {
 
+
+		for (SVector::InnerIterator it(myData->svec[j]); it; ++it) {
+				unsigned feature_id = it.index();
+				cout << "feat " << feature_id << endl;
+		}
 		for (unsigned b=0; b<=k; b++){
 
 			unsigned matches = 0;
@@ -125,9 +131,9 @@ void TestManager::finishUpdate(workQueueP& myData) {
 				}
 
 			}
-			cout << b << " " << matches << "\t" << (double)matches/mpParameters->mNumHashFunctions << "\t" << nomatch << "\t" << shift*b << "\t" << mpParameters->mSeqWindow << "\t" << myData->names[j] << endl;
+			cout << b << " " << matches << "\t" << (double)matches/mpParameters->mNumHashFunctions << "\t" << nomatch << "\t" << shift*b << "\t" << mpParameters->mSeqWindow << "\t" << myData->pos[j] << "\t" << myData->names[j] << "\t" << myData->seq[j-b] << endl;
 		}
-		//cout << endl;
+		cout << endl;
 
 	}
 }
