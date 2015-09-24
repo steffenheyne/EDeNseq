@@ -26,10 +26,9 @@ public:
 	unsigned mClassifiedInstances;
 	ProgressBar pb;
 
-	threadsafe_queue<workQueueP> finish_queue;
 	std::atomic_bool done_output;
 
-	void finishUpdate(workQueueP& myData);
+	void finishUpdate(ChunkP& myData);
 	void Exec();
 	void ClassifySeqs();
 	ogzstream* PrepareResultsFile();

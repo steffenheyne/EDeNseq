@@ -106,14 +106,14 @@ inline double indicator(double i) {if (i>0) return 1; else return 0;}
 
 inline double minSim(double i) {if (i<0.1) return 0; else return i;}
 
-void TestManager::finishUpdate(workQueueP& myData) {
+void TestManager::finishUpdate(ChunkP& myData) {
 
 	unsigned shift = std::max((double)1,(double)mpParameters->mSeqWindow*mpParameters->mSeqShift);
 	uint k = 20;
-	for (unsigned j = k; j < myData->sigs.size(); j++) {
+	for (unsigned j = k; j < myData->size(); j++) {
 
 
-		for (SVector::InnerIterator it(myData->svec[j]); it; ++it) {
+		for (SVector::InnerIterator it((*myData)[j].svec); it; ++it) {
 				unsigned feature_id = it.index();
 				cout << "feat " << feature_id << endl;
 		}
@@ -124,14 +124,14 @@ void TestManager::finishUpdate(workQueueP& myData) {
 
 			for (unsigned pos=0; pos<mpParameters->mNumHashFunctions; pos++){
 			//	cout << myData->sigs[j-1][pos] << " " << myData->sigs[j][pos] << endl;
-				if (myData->sigs[j-b][pos] == myData->sigs[j][pos]){
+				if ((*myData)[j-b].sig[pos] == (*myData)[j].sig[pos]){
 					matches++;
 				} else {
 					nomatch++;
 				}
 
 			}
-			cout << b << " " << matches << "\t" << (double)matches/mpParameters->mNumHashFunctions << "\t" << nomatch << "\t" << shift*b << "\t" << mpParameters->mSeqWindow << "\t" << myData->pos[j] << "\t" << myData->names[j] << "\t" << myData->seq[j-b] << endl;
+			cout << b << " " << matches << "\t" << (double)matches/mpParameters->mNumHashFunctions << "\t" << nomatch << "\t" << shift*b << "\t" << mpParameters->mSeqWindow << "\t" << (*myData)[j].pos << "\t" << (*myData)[j].name << "\t" << (*myData)[j-b].seq << endl;
 		}
 		cout << endl;
 

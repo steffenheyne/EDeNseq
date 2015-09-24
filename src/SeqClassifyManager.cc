@@ -125,20 +125,24 @@ inline double indicator(double i) {if (i>0) return 1; else return 0;}
 
 //inline double minSim(double i) {if (i<0.1) return 0; else return i;}
 
-void SeqClassifyManager::finishUpdate(workQueueP& myData) {
+void SeqClassifyManager::finishUpdate(ChunkP& myData) {
 
-	switch (myData->seqFile->signatureAction){
-	case INDEX:{
-		for (unsigned j = 0; j < myData->sigs.size(); j++) {
-			UpdateInverseIndex(myData->sigs[j], myData->idx[j]);
+	unsigned j = 0;
+	while (j < (*myData).size()) {
+
+		switch ((*myData)[j].seqFile->signatureAction){
+		case INDEX:{
+			//	for (unsigned j = 0; j < myData->size(); j++) {
+			UpdateInverseIndex((*myData)[j].sig, (*myData)[j].idx);
+			//	}
+			j++;
+			break;
 		}
-		break;
-	}
-	case CLASSIFY: {
-		ogzstream *fout = myData->seqFile->out_results_fh;
-		unsigned j = 0;
+		case CLASSIFY: {
+			ogzstream *fout = (*myData)[j].seqFile->out_results_fh;
+			//		unsigned j = 0;
 
-		while (j < myData->sigs.size()) {
+			//		while (j < myData->sigs.size()) {
 
 			valarray<double> hist;
 			hist.resize(GetHistogramSize());
@@ -148,12 +152,12 @@ void SeqClassifyManager::finishUpdate(workQueueP& myData) {
 			do {
 				valarray<double> hist_tmp;
 				unsigned emptyBins_tmp;
-				ComputeHistogram(myData->sigs[j+k],hist_tmp,emptyBins_tmp);
+				ComputeHistogram((*myData)[j+k].sig,hist_tmp,emptyBins_tmp);
 				hist += hist_tmp;
 				if ( hist_tmp.sum() != 0 ) matchingSigs++;
 				emptyBins += emptyBins_tmp;
 				k++;
-			} while (j+k<myData->sigs.size() && myData->names[j]==myData->names[j+k]);
+			} while (j+k<myData->size() && (*myData)[j].name==(*myData)[j+k].name);
 
 			uint sum = hist.sum();
 			uint max = hist.max();
@@ -165,7 +169,7 @@ void SeqClassifyManager::finishUpdate(workQueueP& myData) {
 			mNumSequences++;
 			if (sum!=0)
 				mClassifiedInstances++;
-			*fout << myData->names[j] << "\t"<< k << "\t" << matchingSigs <<  "\t" << (k*mpParameters->mNumHashFunctions)-emptyBins << "\t" << sum << "\t" << max << "\t";
+			*fout << (*myData)[j].name << "\t"<< k << "\t" << matchingSigs <<  "\t" << (k*mpParameters->mNumHashFunctions)-emptyBins << "\t" << sum << "\t" << max << "\t";
 
 			string values;
 			string indices;
@@ -198,16 +202,17 @@ void SeqClassifyManager::finishUpdate(workQueueP& myData) {
 			metaHistNum += hist; //.apply(indicator);
 
 			j += k;
+			//	}
+			break;
+		}
+		case INDEX_SIGCACHE:{
+
 		}
 		break;
-	}
-	case INDEX_SIGCACHE:{
-
-	}
-		break;
-	default:
-		break;
-	}
+		default:
+			break;
+		}
+	} // while
 }
 
 

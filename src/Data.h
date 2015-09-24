@@ -12,8 +12,6 @@ using namespace std;
 class Data {
 
 public:
-	typedef vector<vector<unsigned> > SigCacheT;
-	typedef std::shared_ptr<SigCacheT> SigCacheP;
 
 	struct BEDentryS {
 		// cols 1-6 from file

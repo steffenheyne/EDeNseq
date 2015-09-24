@@ -14,7 +14,7 @@ public:
    void Exec();
 protected:
    //SeqDataSet mDataSet;
-   void finishUpdate(workQueueP& myData);
+   void finishUpdate(ChunkP& myData);
    void DenseCluster();
 };
 

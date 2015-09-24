@@ -25,8 +25,13 @@ public:
 			SEQ_WINDOW, SEQ_NAME, SEQ_FEATURE, NONE
 	};
 
-	typedef groupGraphsByE groupGraphsByT;
-	typedef signatureActionE signatureActionT;
+	typedef groupGraphsByE		groupGraphsByT;
+	typedef signatureActionE	signatureActionT;
+
+	typedef vector<unsigned>				Signature;
+	typedef vector<Signature>				SigCacheT;
+	typedef std::shared_ptr<SigCacheT>	SigCacheP;
+
 
 	struct SeqFileS {
 		string filename;
@@ -35,10 +40,8 @@ public:
 		InputFileType filetype;
 		groupGraphsByT groupGraphsBy;
 		bool checkUniqueSeqNames;
-		//bool updateIndex;
-		//bool updateSigCache;
 		signatureActionT	signatureAction;
-		Data::SigCacheP sigCache;
+		SigCacheP sigCache;
 		Data::BEDdataP	dataBED;
 		unsigned lastMetaIdx;
 		ogzstream* out_results_fh;
@@ -48,18 +51,20 @@ public:
 	typedef std::shared_ptr<SeqFileT> 	SeqFileP;
 	typedef vector<SeqFileP> 				SeqFilesT;
 
-	struct workQueueS {
-		vector<GraphClass> gr;
-		Data::SigCacheT sigs;
-		vector<string> names;
-		vector<unsigned> idx;
-		vector<unsigned> pos;
-		vector<string> seq;
-		vector<SVector> svec;
-		SeqFileP seqFile;
-	};
+	struct instanceS {
+			GraphClass gr;
+			Signature sig;
+			string name;
+			unsigned idx;
+			unsigned pos;
+			string seq;
+			SVector svec;
+			SeqFileP seqFile;
+		};
 
-	typedef std::shared_ptr<workQueueS> workQueueP;
+	typedef instanceS InstanceT;
+	typedef vector<InstanceT> ChunkT;
+	typedef std::shared_ptr<ChunkT> ChunkP;
 
 	Parameters* mpParameters;
 	Data* 		mpData;
@@ -88,8 +93,8 @@ private:
 	std::condition_variable cv3;
 
 	threadsafe_queue<SeqFileP> readFile_queue;
-	threadsafe_queue<workQueueP> graph_queue;
-	threadsafe_queue<workQueueP> sig_queue;
+	threadsafe_queue<ChunkP> graph_queue;
+	threadsafe_queue<ChunkP> sig_queue;
 
 	std::atomic_bool done;
 	std::atomic_uint files_done;
@@ -110,7 +115,7 @@ public:
 	void		Init(Parameters* apParameters, Data* apData);
 
 	virtual void 		UpdateInverseIndex(vector<unsigned>& aSignature, unsigned aIndex) {};
-	virtual void 		finishUpdate(workQueueP& myData) {};
+	virtual void 		finishUpdate(ChunkP& myData) {};
 	void 					LoadData_Threaded(SeqFilesT& myFiles);
 	unsigned				GetLoadedInstances();
 
@@ -140,7 +145,7 @@ public:
 	}
 
 	indexTy 									mInverseIndex;
-	Data::SigCacheP 						mMinHashCache;
+	SigCacheP								mMinHashCache;
 	vector<vector<unsigned> > 			mNeighborhoodCache;
 	vector<umap_uint_int> 				mNeighborhoodCacheExt;
 	vector<pair<unsigned,double> >	mNeighborhoodCacheInfo;

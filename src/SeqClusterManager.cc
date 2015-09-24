@@ -7,7 +7,7 @@
 SeqClusterManager::SeqClusterManager(Parameters* apParameters, Data* apData)
 : NeighborhoodIndex(apParameters, apData)
 {
-	mMinHashCache = std::make_shared<Data::SigCacheT>();
+	mMinHashCache = std::make_shared<SigCacheT>();
 	mIndexDataSet = std::make_shared<SeqFileT>();
 
 	mIndexDataSet->filename = mpParameters->mInputDataFileName.c_str();
@@ -17,7 +17,6 @@ SeqClusterManager::SeqClusterManager(Parameters* apParameters, Data* apData)
 	mIndexDataSet->sigCache = mMinHashCache;
 	mIndexDataSet->lastMetaIdx = 0;
 	mIndexDataSet->checkUniqueSeqNames=true;
-	//mIndexDataSet = std::make_shared<SeqFileT>(myI);
 
 	SeqFilesT myList;
 	myList.push_back(mIndexDataSet);
@@ -26,31 +25,31 @@ SeqClusterManager::SeqClusterManager(Parameters* apParameters, Data* apData)
 	NeighborhoodCacheReset();
 }
 
-void SeqClusterManager::finishUpdate(workQueueP& myData) {
+void SeqClusterManager::finishUpdate(ChunkP& myData) {
 
-	switch (myData->seqFile->signatureAction){
+	switch ((*myData)[0].seqFile->signatureAction){
 	case INDEX_SIGCACHE: {
-		unsigned chunkSize 	= myData->sigs.size();
-		unsigned offset 		= myData->idx[0]-1;
+		unsigned chunkSize 	= myData->size();
+		unsigned offset 		= (*myData)[0].idx-1;
 		//cout << "offset " << offset << " chunk " << chunkSize << endl;
-		if (myData->seqFile->sigCache->size() < offset + chunkSize) {
-			myData->seqFile->sigCache->resize( offset + chunkSize);
+		if ((*myData)[0].seqFile->sigCache->size() < offset + chunkSize) {
+			(*myData)[0].seqFile->sigCache->resize( offset + chunkSize);
 			idx2nameMap.resize(offset + chunkSize);
 		}
 
 		for (unsigned j = 0; j < chunkSize; j++) {
-			myData->seqFile->sigCache->at(offset+j) = myData->sigs[j];
-			name2idxMap.insert(make_pair(myData->names[j], offset+j));
-			idx2nameMap.at(offset+j) = myData->names[j];
+			(*myData)[0].seqFile->sigCache->at(offset+j) = (*myData)[j].sig;
+			name2idxMap.insert(make_pair((*myData)[j].name, offset+j));
+			idx2nameMap.at(offset+j) = (*myData)[j].name;
 		}
 
-		for (unsigned j = 0; j < myData->sigs.size(); j++) {
-			UpdateInverseIndex(myData->sigs[j], myData->idx[j]);
+		for (unsigned j = 0; j < myData->size(); j++) {
+			UpdateInverseIndex((*myData)[j].sig, (*myData)[j].idx);
 		}
 	}
 	case INDEX: {
-			for (unsigned j = 0; j < myData->sigs.size(); j++) {
-				UpdateInverseIndex(myData->sigs[j], myData->idx[j]);
+			for (unsigned j = 0; j < myData->size(); j++) {
+				UpdateInverseIndex((*myData)[j].sig, (*myData)[j].idx);
 			}
 			break;
 	}

@@ -135,14 +135,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 				bool lastSeqGr = false; // indicates that we have the last fragment from current seq, used to get all fragments from current seq into current chunk
 				// necessary to have all fragments for one seq/feature if we want to combine signatures in finisher
 
-				workQueueP myDataChunk = std::make_shared<workQueueS>();
-				myDataChunk->gr.resize(currBuff);
-				myDataChunk->names.resize(currBuff);
-				myDataChunk->idx.resize(currBuff);
-				myDataChunk->pos.resize(currBuff);
-				myDataChunk->seq.resize(currBuff);
-				myDataChunk->svec.resize(currBuff);
-				myDataChunk->seqFile = myData;
+				ChunkP 		myChunkP = std::make_shared<ChunkT>();
 
 				while ( ((i<currBuff) && !fin.eof()) || (myData->signatureAction==CLASSIFY && i>=currBuff && lastSeqGr == false) ) {
 
@@ -246,19 +239,12 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 
 					} // valid_input?
 
-
-					if (i>=currBuff){
-						myDataChunk->gr.resize(i+1);
-						myDataChunk->names.resize(i+1);
-						myDataChunk->idx.resize(i+1);
-						myDataChunk->pos.resize(i+1);
-						myDataChunk->seq.resize(i+1);
-						myDataChunk->svec.resize(i+1);
-					}
-
 					// fill the current chunk with graphs etc
-					mpData->SetGraphFromSeq2(myDataChunk->gr.at(i),currSeq, pos, lastSeqGr,myDataChunk->seq.at(i));
-					if (myDataChunk->gr.at(i).IsEmpty()) {
+					InstanceT	myInstance;
+					myInstance.seqFile = myData;
+
+					mpData->SetGraphFromSeq2(myInstance.gr,currSeq, pos, lastSeqGr,myInstance.seq);
+					if (myInstance.gr.IsEmpty()) {
 						valid_input = false;
 					} else {
 						valid_input = true;
@@ -273,10 +259,11 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 						default:
 							break;
 						}
+						myInstance.name = currSeqName;
+						myInstance.idx = idx;
+						myInstance.pos = pos;
 
-						myDataChunk->names.at(i) = currSeqName;
-						myDataChunk->idx.at(i) = idx;
-						myDataChunk->pos.at(i) = pos;
+						myChunkP->push_back(std::move(myInstance));
 						i++;
 					}
 					//cout << "Gr: " << myDataChunk->gr.size() << " "<< i << " " << currBuff<< " "<< pos << " " << currSeqName<<  " " << currSeq.size() << " " << lastSeqGr << endl;
@@ -285,14 +272,11 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 				if (i==0)
 					continue;
 
-				myDataChunk->idx.resize(i);
-				myDataChunk->gr.resize(i);
-				myDataChunk->names.resize(i);
+				graph_queue.push(myChunkP);
 
-				graph_queue.push(myDataChunk);
 				cv2.notify_all();
 				if (mInstanceCounter%1000000 <=currBuff){
-					cout << endl << "seqs read " << file_seqs << " instances read " << mInstanceCounter << " " << myDataChunk->gr.size() << " buffer " << currBuff << " full..." << graph_queue.size() << " " << currSeq.size()<< " "<< currSeqName << endl;
+					cout << endl << "seqs read " << file_seqs << " instances read " << mInstanceCounter << " " << myChunkP->size() << " buffer " << currBuff << " full..." << graph_queue.size() << " " << currSeq.size()<< " "<< currSeqName << endl;
 				}
 				if (graph_queue.size()>=numWorkers*25){
 					unique_lock<mutex> lk(mut2);
@@ -312,21 +296,19 @@ void MinHashEncoder::worker_Graph2Signature(int numWorkers){
 
 	while (!done){
 
-		workQueueP myData;
+		ChunkP myData;
 		unique_lock<mutex> lk(mut2);
 		cv2.wait(lk,[&]{if ( (done) ||  (graph_queue.try_pop( (myData) )) ) return true; else return false;});
 		lk.unlock();
 
-		if (!done && myData->gr.size()>0) {
-			myData->sigs.resize(myData->gr.size());
-
+		if (!done && myData->size()>0) {
 			//cout << "  graph2sig thread got chunk " << myData->gr.size() << " offset " << myData->offset << " " << mpParameters->mHashBitSize << endl;
 
-			for (unsigned j = 0; j < myData->gr.size(); j++) {
+			for (unsigned j = 0; j < myData->size(); j++) {
 				//SVector x(pow(2, mpParameters->mHashBitSize));
-				myData->svec[j].resize(pow(2, mpParameters->mHashBitSize));
-				generate_feature_vector(myData->gr[j], myData->svec[j]);
-				myData->sigs[j] = ComputeHashSignature(myData->svec[j]);
+				(*myData)[j].svec.resize(pow(2, mpParameters->mHashBitSize));
+				generate_feature_vector((*myData)[j].gr, (*myData)[j].svec);
+				(*myData)[j].sig = ComputeHashSignature((*myData)[j].svec);
 			}
 			if (sig_queue.size()>=numWorkers*25){
 				unique_lock<mutex> lk(mut2);
@@ -344,14 +326,14 @@ void MinHashEncoder::finisher(){
 	ProgressBar progress_bar(1000);
 	while (!done){
 
-		workQueueP myData;
+		ChunkP myData;
 		unique_lock<mutex> lk(mut3);
 		cv3.wait(lk,[&]{if ( (done) || (sig_queue.try_pop( (myData) ))) return true; else return false;});
 		lk.unlock();
 
-		if (!done && myData->sigs.size()>0) {
+		if (!done && myData->size()>0) {
 
-			uint chunkSize = myData->sigs.size();
+			uint chunkSize = myData->size();
 
 			// virtual function call that can be overloaded in child classes to do specific stuff
 			finishUpdate(myData);
