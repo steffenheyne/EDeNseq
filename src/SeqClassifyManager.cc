@@ -292,7 +292,7 @@ void SeqClassifyManager::ClassifySeqs(){
 	mySet->groupGraphsBy=SEQ_NAME; // actually we check by InstanceT.name field for graphs from one seq
 	mySet->checkUniqueSeqNames = true;
 	mySet->signatureAction	= CLASSIFY;
-	mySet->strandType			= FR_sep;
+	mySet->strandType			= FR;
 
 	// get results file handle
 	mySet->out_results_fh = PrepareResultsFile();
