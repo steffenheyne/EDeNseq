@@ -73,7 +73,7 @@ void Data::GetNextFastaSeq(istream& in,string& currSeq, string& header) {
 	}
 }
 
-bool Data::SetGraphFromSeq2(GraphClass& oG, string& currSeq, unsigned& pos, bool& lastGr, string& seq) {
+bool Data::GetNextWinFromSeq(string& currSeq, unsigned& pos, bool& lastGr, string& seq) {
 
 	bool success_status = false;
 	lastGr = false;
@@ -98,15 +98,14 @@ bool Data::SetGraphFromSeq2(GraphClass& oG, string& currSeq, unsigned& pos, bool
 
 		if (currSize>=1){
 			seq = currSeq.substr(pos,currSize);
-			SetGraphFromSeq( seq ,oG);
-			//cout << currSeq.size() << " " << currSize << " eof? " << in.eof() << " pos " << pos << " win " << win << " " << seq << endl;
+			//SetGraphFromSeq( seq ,oG);
+			//cout << currSeq.size() << " " << currSize  << " pos " << pos << " win " << win << " " << seq << endl;
 		} else
 			throw range_error("ERROR FASTA reader! Too short sequence found. " + std::to_string(pos));
 
 		if ((win>0) && (currSeq.size()-pos-shift>=win)){
 			pos += shift;
-		} else if ((currSeq.size()-shift-pos<win ) || (win == 0))
-		{
+		} else if ((currSeq.size()-shift-pos<win ) || (win == 0))	{
 			currSeq="";
 			pos = 0;
 			lastGr=true;
@@ -137,6 +136,26 @@ bool Data::SetGraphFromSeq(string& seq, GraphClass& oG) {
 	return success_status;
 }
 
+
+void Data::GetRevComplSeq(string& in_seq,string& out_seq){
+
+	out_seq = "";
+	for (std::string::reverse_iterator rit=in_seq.rbegin(); rit!=in_seq.rend(); ++rit) {
+		switch (*rit) {
+			case 'A': out_seq.push_back('T');
+		 		break;
+		 	case 'T': out_seq.push_back('A');
+		 		break;
+		 	case 'G': out_seq.push_back('C');
+		 		break;
+		 	case 'C': out_seq.push_back('G');
+		 		break;
+		 	default:
+		 		out_seq.push_back('N');
+		 		break;
+		}
+	}
+}
 
 void Data::GetNextStringSeq(istream& in,string& currSeq) {
 
@@ -342,3 +361,46 @@ void Data::LoadStringList(string aFileName, vector<string>& oList, uint numToken
 //	return myList;
 //}
 
+
+//bool Data::SetGraphFromSeq2(GraphClass& oG, string& currSeq, unsigned& pos, bool& lastGr, string& seq) {
+//
+//	bool success_status = false;
+//	lastGr = false;
+//	unsigned win=mpParameters->mSeqWindow;
+//	unsigned shift = std::max((double)1,(double)win*mpParameters->mSeqShift);
+//
+//	if (currSeq.size() > pos ) {
+//
+//		// default case for window/shift
+//		unsigned currSize = win;
+//		// case no window/shift
+//		if (win==0){
+//			unsigned clipSize = mpParameters->mSeqClip;
+//			currSize = currSeq.size()-(2*clipSize);
+//			pos = clipSize;
+//		} else if (win>currSeq.size()-pos) {
+//			// case seq left is smaller than win
+//			// then we take a full window from the end
+//			pos = std::max((int)0,((int)currSeq.size()-(int)win));
+//			currSize=currSeq.size()-pos;
+//		}
+//
+//		if (currSize>=1){
+//			seq = currSeq.substr(pos,currSize);
+//			SetGraphFromSeq( seq ,oG);
+//			//cout << currSeq.size() << " " << currSize << " eof? " << in.eof() << " pos " << pos << " win " << win << " " << seq << endl;
+//		} else
+//			throw range_error("ERROR FASTA reader! Too short sequence found. " + std::to_string(pos));
+//
+//		if ((win>0) && (currSeq.size()-pos-shift>=win)){
+//			pos += shift;
+//		} else if ((currSeq.size()-shift-pos<win ) || (win == 0))
+//		{
+//			currSeq="";
+//			pos = 0;
+//			lastGr=true;
+//		}
+//		success_status = true;
+//	}
+//	return success_status;
+//}

@@ -21,17 +21,16 @@ void SeqClassifyManager::Exec() {
 	//	vector<SeqDataSet> fileList = mpData->LoadIndexDataList(mpParameters->mIndexDataList.c_str());
 
 	SeqFileT mySet;
-	mySet.filename            = mpParameters->mIndexSeqFile;
-	mySet.filename_BED		  = mpParameters->mIndexBedFile;
-	mySet.filetype            = FASTA;
-	mySet.checkUniqueSeqNames = true;
-	mySet.signatureAction	  = INDEX;
-	//mySet.updateIndex       = true;
-	mySet.groupGraphsBy		  = SEQ_FEATURE;
-	//mySet.updateSigCache    = false;
-	Data::BEDdataP indexBED   = mpData->LoadBEDfile(mpParameters->mIndexBedFile.c_str());
-	mySet.dataBED             = indexBED;
-	mySet.lastMetaIdx         = 0;
+	mySet.filename            	= mpParameters->mIndexSeqFile;
+	mySet.filename_BED		  	= mpParameters->mIndexBedFile;
+	mySet.filetype            	= FASTA;
+	mySet.checkUniqueSeqNames 	= true;
+	mySet.signatureAction	  	= INDEX;
+	mySet.groupGraphsBy		  	= SEQ_FEATURE;
+	Data::BEDdataP indexBED   	= mpData->LoadBEDfile(mpParameters->mIndexBedFile.c_str());
+	mySet.dataBED             	= indexBED;
+	mySet.lastMetaIdx				= 0;
+	mySet.strandType				= FWD;
 
 	mIndexDataSet = std::make_shared<SeqFileT>(mySet);
 
@@ -132,61 +131,76 @@ void SeqClassifyManager::finishUpdate(ChunkP& myData) {
 
 		switch ((*myData)[j].seqFile->signatureAction){
 		case INDEX:{
-			//	for (unsigned j = 0; j < myData->size(); j++) {
 			UpdateInverseIndex((*myData)[j].sig, (*myData)[j].idx);
-			//	}
 			j++;
 			break;
 		}
 		case CLASSIFY: {
 			ogzstream *fout = (*myData)[j].seqFile->out_results_fh;
-			//		unsigned j = 0;
 
-			//		while (j < myData->sigs.size()) {
+			valarray<double> hist(0.0,GetHistogramSize());
+			valarray<double> histRC(0.0,GetHistogramSize());
 
-			valarray<double> hist;
-			hist.resize(GetHistogramSize());
 			unsigned emptyBins = 0;
+			unsigned emptyBinsRC = 0;
+
 			unsigned k=0;
-			unsigned matchingSigs = 0;
+			unsigned matchingSigs 	= 0;
+			unsigned matchingSigsRC = 0;
+
 			do {
 				valarray<double> hist_tmp;
 				unsigned emptyBins_tmp;
 				ComputeHistogram((*myData)[j+k].sig,hist_tmp,emptyBins_tmp);
-				hist += hist_tmp;
-				if ( hist_tmp.sum() != 0 ) matchingSigs++;
-				emptyBins += emptyBins_tmp;
+
+				switch ((*myData)[j+k].rc){
+				case true:
+					histRC += hist_tmp;
+					if ( hist_tmp.sum() != 0 ) matchingSigsRC++;
+					emptyBinsRC += emptyBins_tmp;
+					break;
+				case false:
+					hist += hist_tmp;
+					if ( hist_tmp.sum() != 0 ) matchingSigs++;
+					emptyBins += emptyBins_tmp;
+					break;
+				}
+				//cout << (*myData)[j+k].name << " " << (*myData)[j+k].rc << endl;
 				k++;
 			} while (j+k<myData->size() && (*myData)[j].name==(*myData)[j+k].name);
 
-			uint sum = hist.sum();
-			uint max = hist.max();
-
-			for (uint i = 0; i<hist.size(); i++){
-				if (hist[i] / (k*mpParameters->mNumHashFunctions) < mpParameters->mPureApproximateSim ) {hist[i] = 0.0;};
+			string myRes;
+			switch ((*myData)[j].seqFile->strandType){
+			case FWD:
+				myRes = getResultString(hist,emptyBins,matchingSigs,k,(*myData)[j].name,FWD);
+				*fout << myRes;
+				break;
+			case REV:
+				myRes = getResultString(histRC,emptyBinsRC,matchingSigsRC,k,(*myData)[j].name,REV);
+				*fout << myRes;
+				break;
+			case FR:
+				myRes = getResultString(hist+histRC,emptyBins+emptyBinsRC,matchingSigs+matchingSigsRC,k,(*myData)[j].name,FR);
+				*fout << myRes;
+				break;
+			case FR_sep:
+				myRes = getResultString(hist,emptyBins,matchingSigs,k/2,(*myData)[j].name,FWD);
+				*fout << myRes;
+				myRes = getResultString(histRC,emptyBinsRC,matchingSigsRC,k/2,(*myData)[j].name,REV);
+				*fout << myRes;
+				break;
+			default:
+				break;
 			}
+
+			// meta analysis, only for screen output summary
+			hist += histRC;
+			unsigned sum = hist.sum();
+			unsigned max = hist.max();
 
 			mNumSequences++;
 			if (sum!=0)
 				mClassifiedInstances++;
-			*fout << (*myData)[j].name << "\t"<< k << "\t" << matchingSigs <<  "\t" << (k*mpParameters->mNumHashFunctions)-emptyBins << "\t" << sum << "\t" << max << "\t";
-
-			string values;
-			string indices;
-			string maxIndices;
-			for (unsigned i=0; i<hist.size();i++){
-				if (hist[i]>0) {
-					indices += std::to_string(i+1)+ ",";
-					values += std::to_string((int)hist[i])+",";
-				}
-				if (hist[i]==max && max!=0) maxIndices += std::to_string(i+1)+",";
-			}
-
-			if (max!=0) {
-				*fout << indices << "\t" << values << "\t";
-				*fout << maxIndices;
-			}
-			*fout << endl;
 
 			valarray<double> hist_t = hist;
 			hist_t /= (k*mpParameters->mNumHashFunctions);
@@ -196,13 +210,12 @@ void SeqClassifyManager::finishUpdate(ChunkP& myData) {
 
 			metaHist += hist_t;
 
-			for (uint i = 0; i<hist.size(); i++){
+			for (unsigned i = 0; i<hist.size(); i++){
 				if (hist[i] >= max ) {hist[i] = 1;} else { hist[i]=0.0;};
 			}
 			metaHistNum += hist; //.apply(indicator);
 
 			j += k;
-			//	}
 			break;
 		}
 		case INDEX_SIGCACHE:{
@@ -216,6 +229,57 @@ void SeqClassifyManager::finishUpdate(ChunkP& myData) {
 }
 
 
+string SeqClassifyManager::getResultString(histogramT hist,unsigned emptyBins, unsigned matchingSigs, unsigned numSigs, string name, strandTypeT strand){
+
+	stringstream res;
+
+	uint sum = hist.sum();
+	uint max = hist.max();
+
+	for (uint i = 0; i<hist.size(); i++){
+		if (hist[i] / (numSigs*mpParameters->mNumHashFunctions) < mpParameters->mPureApproximateSim ) {
+			hist[i] = 0.0;
+		};
+	}
+
+	string str;
+	switch (strand) {
+	case FWD:
+		str="+";
+		break;
+	case REV:
+		str="-";
+		break;
+	case FR:
+		str=".";
+		break;
+	default:
+		break;
+	}
+
+	res << name << "\t" << str << "\t"<< numSigs << "\t" << matchingSigs <<  "\t" << (numSigs*mpParameters->mNumHashFunctions)-emptyBins << "\t" << sum << "\t" << max << "\t";
+
+	string values;
+	string indices;
+	string maxIndices;
+	for (unsigned i=0; i<hist.size();i++){
+		if (hist[i]>0) {
+			indices += std::to_string(i+1)+ ",";
+			values += std::to_string((int)hist[i])+",";
+		}
+		if (hist[i]==max && max!=0)
+			maxIndices += std::to_string(i+1)+",";
+	}
+
+	if (max!=0) {
+		res << indices << "\t" << values << "\t";
+		res << maxIndices;
+	}
+
+	res << endl;
+	return res.str();
+}
+
 void SeqClassifyManager::ClassifySeqs(){
 
 	cout << endl << " *** Read sequences for classification and create their MinHash signatures *** " << endl << endl;
@@ -225,9 +289,10 @@ void SeqClassifyManager::ClassifySeqs(){
 	SeqFileP mySet = std::make_shared<SeqFileT>();
 	mySet->filename = mpParameters->mInputDataFileName;
 	mySet->filetype = mpParameters->mFileTypeCode;
-	mySet->groupGraphsBy=SEQ_NAME;
+	mySet->groupGraphsBy=SEQ_NAME; // actually we check by InstanceT.name field for graphs from one seq
 	mySet->checkUniqueSeqNames = true;
-	mySet->signatureAction	  = CLASSIFY;
+	mySet->signatureAction	= CLASSIFY;
+	mySet->strandType			= FR_sep;
 
 	// get results file handle
 	mySet->out_results_fh = PrepareResultsFile();
@@ -334,6 +399,6 @@ ogzstream* SeqClassifyManager::PrepareResultsFile(){
 		*fout << endl;
 	}
 	*fout << "##" << endl;
-	*fout << "#SEQ\tSIGS\tSIG_HITS\tHF_HITS\tSUM\tMAX\tIDX\tVALS\tMAX_IDX"<< endl;
+	*fout << "#SEQ\tSTR\tSIGS\tSIG_HITS\tHF_HITS\tSUM\tMAX\tIDX\tVALS\tMAX_IDX"<< endl;
 	return fout;
 }

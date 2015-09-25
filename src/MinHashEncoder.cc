@@ -142,7 +142,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 					//cout << "valid? " << valid_input << " name :" << currSeqName << ": pos " << pos << " end " << end <<  endl;
 					if (!valid_input) {
 						if  ( it == annoEntries.second ) {
-							// last seq is finished, get next seq from file
+							// last seq and all bed entries for it are finished, get next seq from file
 
 							switch (myData->filetype) {
 							case FASTA:
@@ -192,9 +192,8 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 						// CLUSTER     F1:S1:W1 W2 W3  <->  F1:S2:W1 W2 W3
 						// CLASSIFY		F1:S1:W W W      ->  F1:S2:W W W
 
-						// update index?
-						// check under which value a current seq/window is inserted in inverse index
-						// we only use these cases if there is a valid bed entry (SEQ_FEATURE/SEQ_NAME)
+						// check if we use the same idx-group for the whole seq, either by seq name or feature id from BED
+						// idx also defines the value under which we insert features into the index
 						switch (myData->groupGraphsBy){
 						// use seq name as value for inverse index
 						case SEQ_NAME:
@@ -239,17 +238,18 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 
 					} // valid_input?
 
-					// fill the current chunk with graphs etc
+					// new instance for this chunk
 					InstanceT	myInstance;
-					myInstance.seqFile = myData;
 
-					mpData->SetGraphFromSeq2(myInstance.gr,currSeq, pos, lastSeqGr,myInstance.seq);
-					if (myInstance.gr.IsEmpty()) {
+					mpData->GetNextWinFromSeq(currSeq, pos, lastSeqGr,myInstance.seq);
+
+					if (myInstance.seq.size() == 0 && !lastSeqGr) {
 						valid_input = false;
 					} else {
+						// fill current Instance with all data
+						// make graph from seq
+
 						valid_input = true;
-						mInstanceCounter++;
-						file_instances++;
 
 						switch (myData->groupGraphsBy){
 						case NONE:
@@ -259,35 +259,65 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 						default:
 							break;
 						}
-						myInstance.name = currSeqName;
-						myInstance.idx = idx;
-						myInstance.pos = pos;
 
-						myChunkP->push_back(std::move(myInstance));
-						i++;
+						if (myData->strandType != REV){
+							mpData->SetGraphFromSeq(myInstance.seq,myInstance.gr);
+
+							myInstance.seqFile = myData;
+							myInstance.name = currSeqName;
+							myInstance.idx = idx;
+							myInstance.pos = pos;
+							myInstance.rc = false;
+
+							myChunkP->push_back(myInstance);
+							i++;
+							mInstanceCounter++;
+							file_instances++;
+
+						}
+
+						if (myData->strandType != FWD){
+							InstanceT	myInstanceRC;
+							myInstanceRC.seqFile = myData;
+							myInstanceRC.name = currSeqName;
+							myInstanceRC.idx = idx;
+							myInstanceRC.pos = pos;
+							myInstanceRC.rc = true;
+							mpData->GetRevComplSeq(myInstance.seq,myInstanceRC.seq);
+							mpData->SetGraphFromSeq(myInstanceRC.seq,myInstanceRC.gr);
+
+							myChunkP->push_back(myInstanceRC);
+							mInstanceCounter++;
+							file_instances++;
+							i++;
+						}
+
 					}
-					//cout << "Gr: " << myDataChunk->gr.size() << " "<< i << " " << currBuff<< " "<< pos << " " << currSeqName<<  " " << currSeq.size() << " " << lastSeqGr << endl;
+					//cout << "Gr: " << myChunkP->size() << " "<< i << " " << currBuff<< " "<< pos << " " << currSeqName<<  " " << currSeq.size() << " " << lastSeqGr << endl;
 				} // while buffer not full or eof
-				//cout << "Gr: " << myDataChunk->gr.size() << " "<< i << " " << currBuff<< " "<< pos << " " << currSeqName<<  " " << currSeq.size() << " " << lastSeqGr << endl;
+
+				//cout << "Gr: " << myChunkP->size() << " "<< i << " " << currBuff<< " "<< pos << " " << currSeqName<<  " " << currSeq.size() << " " << lastSeqGr << endl;
 				if (i==0)
 					continue;
 
 				graph_queue.push(myChunkP);
 
-				cv2.notify_all();
+				//log output
 				if (mInstanceCounter%1000000 <=currBuff){
 					cout << endl << "seqs read " << file_seqs << " instances read " << mInstanceCounter << " " << myChunkP->size() << " buffer " << currBuff << " full..." << graph_queue.size() << " " << currSeq.size()<< " "<< currSeqName << endl;
 				}
+
+				cv2.notify_all();
 				if (graph_queue.size()>=numWorkers*25){
 					unique_lock<mutex> lk(mut2);
 					cv2.wait(lk,[&]{if ((done) || (graph_queue.size()<=numWorkers*10)) return true; else return false;});
 					lk.unlock();
 				}
 				cv2.notify_all();
-			}
+			} // while eof
 			fin.close();
 			files_done++;
-			cout << files_done << " " << mInstanceCounter << " " << mSignatureCounter << " instances produced from file " << file_instances << endl;
+			cout << endl << "file " << files_done << " seqs " << file_seqs << " " << mInstanceCounter << " " << mSignatureCounter << " instances produced from file " << file_instances << endl;
 		}
 	}
 }

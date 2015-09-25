@@ -28,10 +28,11 @@ public:
 
 	std::atomic_bool done_output;
 
-	void finishUpdate(ChunkP& myData);
-	void Exec();
-	void ClassifySeqs();
-	ogzstream* PrepareResultsFile();
+	void 			Exec();
+	void 			finishUpdate(ChunkP& myData);
+	void 			ClassifySeqs();
+	string		getResultString(histogramT hist,unsigned emptyBins, unsigned matchingSigs, unsigned numSigs, string name, strandTypeT strand);
+	ogzstream* 	PrepareResultsFile();
 
 	//inline double minSim(double i) { if (i<mpParameters->mPureApproximateSim) return 0; else return i; };
 };

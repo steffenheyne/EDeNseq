@@ -40,8 +40,10 @@ public:
 	void Init(Parameters* apParameters);
 
 	BEDdataP	LoadBEDfile(string filename);
-	bool SetGraphFromSeq2(GraphClass& oG, string& currSeq, unsigned& pos, bool& lastGr, string& seq);
+	bool GetNextWinFromSeq(string& currSeq, unsigned& pos, bool& lastGr, string& seq);
+	//bool SetGraphFromSeq2(GraphClass& oG, string& currSeq, unsigned& pos, bool& lastGr, string& seq);
 	bool SetGraphFromSeq(string& seq, GraphClass& oG);
+	void GetRevComplSeq(string& in_seq,string& out_seq);
 	void GetNextFastaSeq(istream& in,string& currSeq, string& header);
 	void GetNextStringSeq(istream& in,string& currSeq);
 	void LoadStringList(string aFileName, vector<string>& oList, uint numTokens);

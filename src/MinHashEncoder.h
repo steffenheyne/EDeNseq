@@ -22,9 +22,14 @@ public:
 	};
 
 	enum groupGraphsByE {
-			SEQ_WINDOW, SEQ_NAME, SEQ_FEATURE, NONE
+		SEQ_WINDOW, SEQ_NAME, SEQ_FEATURE, NONE
 	};
 
+	enum strandTypeE {
+		FWD, REV, FR, FR_sep
+	};
+
+	typedef strandTypeE			strandTypeT;
 	typedef groupGraphsByE		groupGraphsByT;
 	typedef signatureActionE	signatureActionT;
 
@@ -40,6 +45,7 @@ public:
 		InputFileType filetype;
 		groupGraphsByT groupGraphsBy;
 		bool checkUniqueSeqNames;
+		strandTypeT strandType;
 		signatureActionT	signatureAction;
 		SigCacheP sigCache;
 		Data::BEDdataP	dataBED;
@@ -52,14 +58,15 @@ public:
 	typedef vector<SeqFileP> 				SeqFilesT;
 
 	struct instanceS {
-			GraphClass gr;
-			Signature sig;
-			string name;
-			unsigned idx;
-			unsigned pos;
-			string seq;
-			SVector svec;
-			SeqFileP seqFile;
+			GraphClass	gr;
+			Signature 	sig;
+			string 		name;
+			unsigned 	idx;
+			unsigned 	pos;
+			string 		seq;
+			SVector 		svec;
+			bool			rc;
+			SeqFileP 	seqFile;
 		};
 
 	typedef instanceS InstanceT;
@@ -182,6 +189,8 @@ public:
 	typedef vector<indexSingleTy> indexTy;
 	const binKeyTy MAXBINKEY = std::numeric_limits<binKeyTy>::max();
 
+	typedef valarray<double> histogramT;
+
 	binKeyTy mHistogramSize;
 	indexTy mInverseIndex;
 
@@ -199,10 +208,8 @@ public:
 
 	binKeyTy	GetHistogramSize();
 	void  SetHistogramSize(binKeyTy size);
-//	void	PrepareIndexDataSets(vector<SeqDataSet>& myFileList);
 	void	UpdateInverseIndex(vector<unsigned>& aSignature, unsigned aIndex);
 	void  ComputeHistogram(const vector<unsigned>& aSignature, std::valarray<double>& hist, unsigned& emptyBins);
-//	void  ComputeHistogram(const vector<unsigned>& aSignature, std::valarray<double>& hist, unsigned& emptyBins, std::vector<pair<binKeyTy,unsigned> >& histPairs);
 	void	writeBinaryIndex2(ostream &out, const indexTy& index);
 	bool	readBinaryIndex2(string filename, indexTy& index);
 };
