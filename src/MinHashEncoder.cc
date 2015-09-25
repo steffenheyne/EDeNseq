@@ -208,7 +208,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 							// use given value/name in BED file col4 as  value for inverse index
 						case SEQ_FEATURE:
 							if (mFeature2IndexValue.find(it->second->NAME) != mFeature2IndexValue.end()){
-								idx = mFeature2IndexValue[currSeqName];
+								idx = mFeature2IndexValue[it->second->NAME];
 							} else {
 								myData->lastMetaIdx++;
 								idx=myData->lastMetaIdx;
