@@ -23,14 +23,13 @@ void TestManager::Exec() {
 	SeqFileT mySet;
 	mySet.filename          = mpParameters->mIndexSeqFile;
 	mySet.filetype          = FASTA;
-//	mySet.updateIndex       = NONE;
 	mySet.signatureAction	= INDEX;
 	mySet.groupGraphsBy		= SEQ_WINDOW;
-	//mySet.updateSigCache    = false;
 	Data::BEDdataP indexBED = mpData->LoadBEDfile(mpParameters->mIndexBedFile.c_str());
 	mySet.dataBED           = indexBED;
 	mySet.lastMetaIdx       = 0;
-	mySet.checkUniqueSeqNames = false;
+	mySet.checkUniqueSeqNames = true;
+	mySet.strandType				= FWD;
 	mIndexDataSet = std::make_shared<SeqFileT>(mySet);
 
 	string indexName = mpParameters->mIndexBedFile;
