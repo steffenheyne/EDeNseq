@@ -28,9 +28,20 @@ public:
 
 	std::atomic_bool done_output;
 
+	threadsafe_queue<ResultChunkP> res_queue;
+	mutable std::mutex mut_res;
+   std::condition_variable cv_res;
+	std::atomic_uint mResultCounter;
+
+
 	void 			Exec();
 	void 			finishUpdate(ChunkP& myData);
+	void 			finishUpdate(ChunkP& myData, ResultChunkP& myResult);
+
 	void 			ClassifySeqs();
+	void 			Classify_Signatures(SeqFilesT& myFiles);
+	void 			worker_Classify(int numWorkers);
+	void 			finisher_Results(ogzstream* fout_res);
 	string		getResultString(histogramT hist,unsigned emptyBins, unsigned matchingSigs, unsigned numSigs, string name, strandTypeT strand);
 	ogzstream* 	PrepareResultsFile();
 
