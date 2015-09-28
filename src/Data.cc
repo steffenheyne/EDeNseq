@@ -22,7 +22,7 @@ Data::BEDdataP Data::LoadBEDfile(string filename){
 	while (!fin.eof() && valid_input) {
 		BEDentryP myEnt = std::make_shared<BEDentryT>();
 		if (fin >> myEnt->SEQ >> myEnt->START >> myEnt->END >> myEnt->NAME >> myEnt->SCORE >> myEnt->STRAND){
-			cout << "BED " << myEnt->SEQ << "\t" <<  myEnt->START << "\t" <<  myEnt->END << "\t" <<  myEnt->NAME << "\t" <<  myEnt->SCORE << "\t" <<  myEnt->STRAND << endl;
+			//cout << "BED " << myEnt->SEQ << "\t" <<  myEnt->START << "\t" <<  myEnt->END << "\t" <<  myEnt->NAME << "\t" <<  myEnt->SCORE << "\t" <<  myEnt->STRAND << endl;
 
 			getline(fin, line);
 			istringstream iss(line,istringstream::in);
@@ -34,7 +34,7 @@ Data::BEDdataP Data::LoadBEDfile(string filename){
 		}
 	}
 	fin.close();
-
+	cout << "BED file loaded with " <<  myBED->size() << " entries" << endl;
 	if (!myBED->size())
 		throw range_error("ERROR LoadIndexData: No data found in " + filename + "!");
 

@@ -173,7 +173,7 @@ void SeqClassifyManager::finisher_Results(ogzstream* fout_res){
 				mResultCounter += (*myResults)[i].numInstances;
 			}
 
-			if (mResultCounter%1000000 <= chunkSize){
+			if (mResultCounter%1000000 <= 10*chunkSize){
 				cout << endl << "    Resultfinisher updated index with " << chunkSize << " signatures all_sigs=" <<  mSignatureCounter << " inst=" << mInstanceCounter << " resQueue=" << res_queue.size() << endl;
 			}
 			progress_bar.Count(mResultCounter);

@@ -129,7 +129,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 
 			while (!fin.eof()) {
 
-				unsigned maxB = max(1000,(int)log2((double)mSignatureCounter)*100);
+				unsigned maxB = max(1000,(int)log2((double)mSignatureCounter)*500);
 				unsigned currBuff = rand()%(maxB*3 - maxB + 1) + maxB; // curr chunk size
 				unsigned i = 0;			// current fragment in currBuff
 				bool lastSeqGr = false; // indicates that we have the last fragment from current seq, used to get all fragments from current seq into current chunk
