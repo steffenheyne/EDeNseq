@@ -717,7 +717,7 @@ HistogramIndex::binKeyTy HistogramIndex::GetHistogramSize(){
 //	SetHistogramSize(bin+1);
 //}
 
-void HistogramIndex::UpdateInverseIndex(vector<unsigned>& aSignature, unsigned aIndex) {
+void HistogramIndex::UpdateInverseIndex(vector<unsigned>& aSignature, unsigned& aIndex) {
 	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k) { //for every hash value
 		unsigned key = aSignature[k];
 		if (key != MAXUNSIGNED && key != 0) { //if key is equal to markers for empty bins then skip insertion instance in data structure
