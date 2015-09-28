@@ -129,7 +129,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 
 			while (!fin.eof()) {
 
-				unsigned maxB = max(100,(int)log2((double)mSignatureCounter)*100);
+				unsigned maxB = max(1000,(int)log2((double)mSignatureCounter)*100);
 				unsigned currBuff = rand()%(maxB*3 - maxB + 1) + maxB; // curr chunk size
 				unsigned i = 0;			// current fragment in currBuff
 				bool lastSeqGr = false; // indicates that we have the last fragment from current seq, used to get all fragments from current seq into current chunk
@@ -445,6 +445,68 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 	} else
 		cout << "Instances/signatures produced " << mInstanceCounter << endl;
 }
+
+//std::thread* MinHashEncoder::FillGraphQueue(SeqFilesT& myFiles){
+//
+//	for (unsigned i=0;i<myFiles.size(); i++){
+//		readFile_queue.push(myFiles[i]);
+//	}
+//	cout << "Using " << mpParameters->mHashBitSize << " bits to encode features" << endl;
+//	cout << "Using " << mpParameters->mRandomSeed << " as random seed" << endl;
+//	cout << "Using " << mpParameters->mNumHashFunctions << " hash functions (with factor " << mpParameters->mNumRepeatsHashFunction << " for single minhash)" << endl;
+//	cout << "Using " << mpParameters->mNumHashShingles << " as hash shingle factor" << endl;
+//	cout << "Using " << mpParameters->mPureApproximateSim << " as approximate similarity " << endl;
+//	cout << "Using feature radius   " << mpParameters->mMinRadius<<".."<<mpParameters->mRadius << endl;
+//	cout << "Using feature distance " << mpParameters->mMinDistance<<".."<<mpParameters->mDistance << endl;
+//	cout << "Using sequence window  " << mpParameters->mSeqWindow<<" shift "<<mpParameters->mSeqShift << " ("<< (unsigned)std::max((double)1,(double)mpParameters->mSeqWindow*mpParameters->mSeqShift) << ") clip " << mpParameters->mSeqClip << endl;
+//
+//	cout << "Computing MinHash signatures on the fly while reading " << myFiles.size() << " file(s)..." << endl;
+//
+//	// threaded producer-consumer model for signature creation and index update
+//	// created threads:
+//	// 	1 finisher that updates the index and signature cache,
+//	// 	1 to read files and produces sequence instances
+//	//		n worker threads that create the signatures
+//
+//	int graphWorkers = std::thread::hardware_concurrency();
+//	if (mpParameters->mNumThreads>0)
+//		graphWorkers = mpParameters->mNumThreads;
+//
+//	cout << "Using 1 thread to read input file..." << endl;
+//
+//	done = false;
+//	files_done=0;
+//	mSignatureCounter = 0;
+//	mInstanceCounter = 0;
+//
+//	vector<std::thread> threads;
+//	return &( std::thread(&MinHashEncoder::worker_readFiles,this,graphWorkers));
+
+//	{
+//		join_threads joiner(threads);
+//
+//		unique_lock<mutex> lk(mutm);
+//		cv1.notify_all();
+//		while(!done){
+//			cvm.wait(lk,[&]{if ( (files_done<myFiles.size()) || (mSignatureCounter < mInstanceCounter)) return false; else return true;});
+//			lk.unlock();
+//			done=true;
+//			cv3.notify_all();
+//			cv2.notify_all();
+//			cv1.notify_all();
+//		}
+//
+//	} // by leaving this block threads get joined by destruction of joiner
+//
+//	// threads finished
+//	if (numKeys>0)
+//		cout << endl << "Inverse index ratio of overfull bins (maxSizeBin): " << ((double)numFullBins)/((double)numKeys) << " "<< numFullBins << "/" << numKeys << " instances " << mInstanceCounter << endl;
+//
+//	if (mInstanceCounter == 0) {
+//		throw range_error("ERROR in MinHashEncoder::LoadData: something went wrong; no instances/signatures produced");
+//	} else
+//		cout << "Instances/signatures produced " << mInstanceCounter << endl;
+//}
 
 unsigned MinHashEncoder::GetLoadedInstances() {
 	return mInstanceCounter;

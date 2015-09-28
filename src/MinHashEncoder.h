@@ -73,6 +73,15 @@ public:
 	typedef vector<InstanceT> ChunkT;
 	typedef std::shared_ptr<ChunkT> ChunkP;
 
+	struct resultS{
+		string output_line;
+		unsigned numInstances;
+	};
+
+	typedef resultS ResultT;
+	typedef vector<ResultT> ResultChunkT;
+	typedef std::shared_ptr<ResultChunkT> ResultChunkP;
+
 	Parameters* mpParameters;
 	Data* 		mpData;
 
@@ -85,9 +94,6 @@ protected:
 
 	multimap<uint, Data::BEDentryP> mIndexValue2Feature;
 	map<string, uint> mFeature2IndexValue;
-	std::atomic_uint mSignatureCounter;
-
-private:
 
 	mutable std::mutex mutm;
 	mutable std::mutex mut1;
@@ -107,16 +113,19 @@ private:
 	std::atomic_uint files_done;
 	std::atomic_uint mInstanceCounter;
 
-	unsigned mHashBitMask;
 
-	void 					worker_readFiles(int numWorkers);
+
+
 	void					worker_Graph2Signature(int numWorkers);
 	void 					finisher();
 	void 					generate_feature_vector(const GraphClass& aG, SVector& x);
 	vector<unsigned>	HashFuncNSPDK(const string& aString, unsigned aStart, unsigned aMaxRadius, unsigned aBitMask);
 
 public:
+	std::atomic_uint mSignatureCounter;
 
+	unsigned mHashBitMask;
+	void 					worker_readFiles(int numWorkers);
 	MinHashEncoder(Parameters* apParameters, Data* apData);
 	virtual	~MinHashEncoder();
 	void		Init(Parameters* apParameters, Data* apData);
@@ -124,6 +133,7 @@ public:
 	virtual void 		UpdateInverseIndex(vector<unsigned>& aSignature, unsigned aIndex) {};
 	virtual void 		finishUpdate(ChunkP& myData) {};
 	void 					LoadData_Threaded(SeqFilesT& myFiles);
+	//std::thread*		FillGraphQueue(SeqFilesT& myFiles);
 	unsigned				GetLoadedInstances();
 
 	vector<unsigned>	ComputeHashSignature(SVector& aX);
