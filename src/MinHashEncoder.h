@@ -218,7 +218,7 @@ public:
 
 	binKeyTy	GetHistogramSize();
 	void  SetHistogramSize(binKeyTy size);
-	void	UpdateInverseIndex(vector<unsigned>& aSignature, unsigned& aIndex);
+	void	UpdateInverseIndex(const vector<unsigned>& aSignature, const unsigned& aIndex);
 	void  ComputeHistogram(const vector<unsigned>& aSignature, std::valarray<double>& hist, unsigned& emptyBins);
 	void	writeBinaryIndex2(ostream &out, const indexTy& index);
 	bool	readBinaryIndex2(string filename, indexTy& index);

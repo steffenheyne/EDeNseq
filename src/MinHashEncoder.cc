@@ -65,7 +65,7 @@ void MinHashEncoder::generate_feature_vector(const GraphClass& aG, SVector& x) {
 		endpoint_list[0] = r;
 		for (unsigned d = mMinDistance; d <= mDistance; d++) {
 			endpoint_list[1] = d;
-			SVector z(pow(2, mpParameters->mHashBitSize));
+		//	SVector z(pow(2, mpParameters->mHashBitSize));
 			for (unsigned start = 0; start < size; ++start) {
 				unsigned src_code = mFeatureCache[start][r];
 				unsigned effective_dest = min(start + d, size - 1);
@@ -88,11 +88,11 @@ void MinHashEncoder::generate_feature_vector(const GraphClass& aG, SVector& x) {
 				//				z.coeffRef(nosrc_code) += 1;
 				x.coeffRef(code) = 1;
 			}
-			z /= z.norm();
-			x += z;
+			//z /= z.norm();
+			//x += z;
 		}
 	}
-	x /= x.norm();
+	//x /= x.norm();
 }
 
 void MinHashEncoder::worker_readFiles(int numWorkers){
@@ -446,67 +446,6 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 		cout << "Instances/signatures produced " << mInstanceCounter << endl;
 }
 
-//std::thread* MinHashEncoder::FillGraphQueue(SeqFilesT& myFiles){
-//
-//	for (unsigned i=0;i<myFiles.size(); i++){
-//		readFile_queue.push(myFiles[i]);
-//	}
-//	cout << "Using " << mpParameters->mHashBitSize << " bits to encode features" << endl;
-//	cout << "Using " << mpParameters->mRandomSeed << " as random seed" << endl;
-//	cout << "Using " << mpParameters->mNumHashFunctions << " hash functions (with factor " << mpParameters->mNumRepeatsHashFunction << " for single minhash)" << endl;
-//	cout << "Using " << mpParameters->mNumHashShingles << " as hash shingle factor" << endl;
-//	cout << "Using " << mpParameters->mPureApproximateSim << " as approximate similarity " << endl;
-//	cout << "Using feature radius   " << mpParameters->mMinRadius<<".."<<mpParameters->mRadius << endl;
-//	cout << "Using feature distance " << mpParameters->mMinDistance<<".."<<mpParameters->mDistance << endl;
-//	cout << "Using sequence window  " << mpParameters->mSeqWindow<<" shift "<<mpParameters->mSeqShift << " ("<< (unsigned)std::max((double)1,(double)mpParameters->mSeqWindow*mpParameters->mSeqShift) << ") clip " << mpParameters->mSeqClip << endl;
-//
-//	cout << "Computing MinHash signatures on the fly while reading " << myFiles.size() << " file(s)..." << endl;
-//
-//	// threaded producer-consumer model for signature creation and index update
-//	// created threads:
-//	// 	1 finisher that updates the index and signature cache,
-//	// 	1 to read files and produces sequence instances
-//	//		n worker threads that create the signatures
-//
-//	int graphWorkers = std::thread::hardware_concurrency();
-//	if (mpParameters->mNumThreads>0)
-//		graphWorkers = mpParameters->mNumThreads;
-//
-//	cout << "Using 1 thread to read input file..." << endl;
-//
-//	done = false;
-//	files_done=0;
-//	mSignatureCounter = 0;
-//	mInstanceCounter = 0;
-//
-//	vector<std::thread> threads;
-//	return &( std::thread(&MinHashEncoder::worker_readFiles,this,graphWorkers));
-
-//	{
-//		join_threads joiner(threads);
-//
-//		unique_lock<mutex> lk(mutm);
-//		cv1.notify_all();
-//		while(!done){
-//			cvm.wait(lk,[&]{if ( (files_done<myFiles.size()) || (mSignatureCounter < mInstanceCounter)) return false; else return true;});
-//			lk.unlock();
-//			done=true;
-//			cv3.notify_all();
-//			cv2.notify_all();
-//			cv1.notify_all();
-//		}
-//
-//	} // by leaving this block threads get joined by destruction of joiner
-//
-//	// threads finished
-//	if (numKeys>0)
-//		cout << endl << "Inverse index ratio of overfull bins (maxSizeBin): " << ((double)numFullBins)/((double)numKeys) << " "<< numFullBins << "/" << numKeys << " instances " << mInstanceCounter << endl;
-//
-//	if (mInstanceCounter == 0) {
-//		throw range_error("ERROR in MinHashEncoder::LoadData: something went wrong; no instances/signatures produced");
-//	} else
-//		cout << "Instances/signatures produced " << mInstanceCounter << endl;
-//}
 
 unsigned MinHashEncoder::GetLoadedInstances() {
 	return mInstanceCounter;
@@ -779,7 +718,8 @@ HistogramIndex::binKeyTy HistogramIndex::GetHistogramSize(){
 //	SetHistogramSize(bin+1);
 //}
 
-void HistogramIndex::UpdateInverseIndex(vector<unsigned>& aSignature, unsigned& aIndex) {
+void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, const unsigned& aIndex) {
+	const binKeyTy& aIndexT =(binKeyTy)aIndex;
 	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k) { //for every hash value
 		unsigned key = aSignature[k];
 		if (key != MAXUNSIGNED && key != 0) { //if key is equal to markers for empty bins then skip insertion instance in data structure
@@ -787,27 +727,27 @@ void HistogramIndex::UpdateInverseIndex(vector<unsigned>& aSignature, unsigned& 
 
 				binKeyTy * foo;
 				foo = new binKeyTy[2];
-				foo[1]= (binKeyTy)aIndex;
+				foo[1]= aIndexT;
 				foo[0]= 1; //index of last element is stored at idx[0]
 
 				mInverseIndex[k][key] = foo;
 				numKeys++; // just for bin statistics
-			} else if (mInverseIndex[k][key][mInverseIndex[k][key][0]] != (binKeyTy)aIndex){
+			} else if (mInverseIndex[k][key][mInverseIndex[k][key][0]] != aIndexT){
 
 				// find pos for insert, assume sorted array
 				binKeyTy i = mInverseIndex[k][key][0];
-				while ((mInverseIndex[k][key][i]> aIndex) && (i>1)){
+				while ((mInverseIndex[k][key][i]> aIndexT) && (i>1)){
 					i--;
 				}
 
 				// only insert if element is not there
-				if (mInverseIndex[k][key][i]<aIndex){
+				if (mInverseIndex[k][key][i]<aIndexT){
 					binKeyTy newSize = (mInverseIndex[k][key][0])+1;
 					binKeyTy * fooNew;
 					fooNew = new binKeyTy[newSize+1];
 
 					memcpy(fooNew,mInverseIndex[k][key],(i+1)*sizeof(binKeyTy));
-					fooNew[i+1] = (binKeyTy)aIndex;
+					fooNew[i+1] = aIndexT;
 					memcpy(&fooNew[i+2],&mInverseIndex[k][key][i+1],(mInverseIndex[k][key][0]-i)*sizeof(binKeyTy));
 					fooNew[0] = newSize;
 
@@ -955,7 +895,7 @@ bool HistogramIndex::readBinaryIndex2(string filename, indexTy &index){
 				return false;
 
 			indexBinTy tmp = new binKeyTy[numBinEntries+1];
-
+			//cout << "new bin " << binId << " " << numBinEntries << " ";
 			for (unsigned entry = 1; entry <= numBinEntries; entry++ ){
 
 				binKeyTy s;
@@ -965,7 +905,9 @@ bool HistogramIndex::readBinaryIndex2(string filename, indexTy &index){
 				if (!fin.good())
 					return false;
 				tmp[entry] = s;
+				//cout << s << " ";
 			}
+			//cout << endl;
 			tmp[0] = numBinEntries;
 			index[hashFunc][binId] = tmp;
 		}
