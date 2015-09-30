@@ -111,9 +111,8 @@ void TestManager::finishUpdate(ChunkP& myData) {
 	uint k = 20;
 	for (unsigned j = k; j < myData->size(); j++) {
 
-
 		for (SVector::InnerIterator it((*myData)[j].svec); it; ++it) {
-				unsigned feature_id = it.index();
+			unsigned feature_id = it.index();
 				cout << "feat " << feature_id << endl;
 		}
 		for (unsigned b=0; b<=k; b++){

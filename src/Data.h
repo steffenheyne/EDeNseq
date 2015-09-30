@@ -5,7 +5,7 @@
 #include "Utility.h"
 #include "Parameters.h"
 #include "gzstream.h"
-#include "GraphClass.h"
+//#include "GraphClass.h"
 
 using namespace std;
 
@@ -42,7 +42,7 @@ public:
 	BEDdataP	LoadBEDfile(string filename);
 	bool GetNextWinFromSeq(string& currSeq, unsigned& pos, bool& lastGr, string& seq);
 	//bool SetGraphFromSeq2(GraphClass& oG, string& currSeq, unsigned& pos, bool& lastGr, string& seq);
-	bool SetGraphFromSeq(string& seq, GraphClass& oG);
+	//bool SetGraphFromSeq(string& seq, GraphClass& oG);
 	void GetRevComplSeq(string& in_seq,string& out_seq);
 	void GetNextFastaSeq(istream& in,string& currSeq, string& header);
 	void GetNextStringSeq(istream& in,string& currSeq);

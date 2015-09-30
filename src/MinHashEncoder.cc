@@ -40,15 +40,20 @@ inline vector<unsigned> MinHashEncoder::HashFuncNSPDK(const string& aString, uns
 	return code_list;
 }
 
-void MinHashEncoder::generate_feature_vector(const GraphClass& aG, SVector& x) {
+//void MinHashEncoder::generate_feature_vector(const GraphClass& aG, SVector& x) {
+//void MinHashEncoder::generate_feature_vector(const string& seq, SVector& x) {
+void MinHashEncoder::generate_feature_vector(const string& seq, SVector& x) {
+//	x.set_empty_key(0);
+//	x.resize(5000);
+	x.resize(pow(2, mpParameters->mHashBitSize));
 	//assume there is a mMinRadius and a mMinDistance
-	unsigned mRadius = mpParameters->mRadius;
-	unsigned mDistance = mpParameters->mDistance;
-	unsigned mMinRadius = mpParameters->mMinRadius;
-	unsigned mMinDistance = mpParameters->mMinDistance;
+	unsigned& mRadius = mpParameters->mRadius;
+	unsigned& mDistance = mpParameters->mDistance;
+	unsigned& mMinRadius = mpParameters->mMinRadius;
+	unsigned& mMinDistance = mpParameters->mMinDistance;
 
 	//assume 1 vertex with all info on the label
-	string seq = aG.GetVertexLabel(0);
+	//string seq = aG.GetVertexLabel(0);
 	unsigned size = seq.size();
 
 	vector<vector<unsigned> > mFeatureCache;
@@ -87,6 +92,7 @@ void MinHashEncoder::generate_feature_vector(const GraphClass& aG, SVector& x) {
 				//				unsigned nosrc_code = HashFunc(endpoint_list, mHashBitMask);
 				//				z.coeffRef(nosrc_code) += 1;
 				x.coeffRef(code) = 1;
+				//x.insert(code);
 			}
 			//z /= z.norm();
 			//x += z;
@@ -129,7 +135,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 
 			while (!fin.eof()) {
 
-				unsigned maxB = max(1000,(int)log2((double)mSignatureCounter)*500);
+				unsigned maxB = max(1000,(int)log2((double)mSignatureCounter)*200);
 				unsigned currBuff = rand()%(maxB*3 - maxB + 1) + maxB; // curr chunk size
 				unsigned i = 0;			// current fragment in currBuff
 				bool lastSeqGr = false; // indicates that we have the last fragment from current seq, used to get all fragments from current seq into current chunk
@@ -240,7 +246,6 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 
 					// new instance for this chunk
 					InstanceT	myInstance;
-
 					mpData->GetNextWinFromSeq(currSeq, pos, lastSeqGr,myInstance.seq);
 
 					if (myInstance.seq.size() == 0 && !lastSeqGr) {
@@ -261,7 +266,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 						}
 
 						if (myData->strandType != REV){
-							mpData->SetGraphFromSeq(myInstance.seq,myInstance.gr);
+							//mpData->SetGraphFromSeq(myInstance.seq,myInstance.gr);
 
 							myInstance.seqFile = myData;
 							myInstance.name = currSeqName;
@@ -284,7 +289,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 							myInstanceRC.pos = pos;
 							myInstanceRC.rc = true;
 							mpData->GetRevComplSeq(myInstance.seq,myInstanceRC.seq);
-							mpData->SetGraphFromSeq(myInstanceRC.seq,myInstanceRC.gr);
+							//mpData->SetGraphFromSeq(myInstanceRC.seq,myInstanceRC.gr);
 
 							myChunkP->push_back(myInstanceRC);
 							mInstanceCounter++;
@@ -310,7 +315,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 				cv2.notify_all();
 				if (graph_queue.size()>=numWorkers*25){
 					unique_lock<mutex> lk(mut2);
-					cv2.wait(lk,[&]{if ((done) || (graph_queue.size()<=numWorkers*10)) return true; else return false;});
+					cv2.wait(lk,[&]{if ((done) || (graph_queue.size()<=numWorkers*3)) return true; else return false;});
 					lk.unlock();
 				}
 				cv2.notify_all();
@@ -335,17 +340,17 @@ void MinHashEncoder::worker_Graph2Signature(int numWorkers){
 			//cout << "  graph2sig thread got chunk " << myData->gr.size() << " offset " << myData->offset << " " << mpParameters->mHashBitSize << endl;
 
 			for (unsigned j = 0; j < myData->size(); j++) {
-				//SVector x(pow(2, mpParameters->mHashBitSize));
-				(*myData)[j].svec.resize(pow(2, mpParameters->mHashBitSize));
-				generate_feature_vector((*myData)[j].gr, (*myData)[j].svec);
+
+				generate_feature_vector((*myData)[j].seq, (*myData)[j].svec);
 				(*myData)[j].sig = ComputeHashSignature((*myData)[j].svec);
 			}
+			sig_queue.push(myData);
 			if (sig_queue.size()>=numWorkers*25){
 				unique_lock<mutex> lk(mut2);
-				cv2.wait(lk,[&]{if ((done) || (sig_queue.size()<=numWorkers*10)) return true; else return false;});
+				cv2.wait(lk,[&]{if ((done) || (sig_queue.size()<=numWorkers*3)) return true; else return false;});
 				lk.unlock();
 			}
-			sig_queue.push(myData);
+
 		}
 		cv2.notify_all();
 		cv3.notify_all();
@@ -367,7 +372,7 @@ void MinHashEncoder::finisher(){
 
 			// virtual function call that can be overloaded in child classes to do specific stuff
 			finishUpdate(myData);
-
+			myData.reset();
 			mSignatureCounter += chunkSize;
 			if (mSignatureCounter%1000000 <= chunkSize){
 				cout << endl << "    finisher updated index with " << chunkSize << " signatures all_sigs=" <<  mSignatureCounter << " inst=" << mInstanceCounter << " sigQueue=" << sig_queue.size() << endl;
@@ -452,7 +457,7 @@ unsigned MinHashEncoder::GetLoadedInstances() {
 }
 
 
-vector<unsigned> MinHashEncoder::ComputeHashSignature(SVector& aX) {
+vector<unsigned> MinHashEncoder::ComputeHashSignature(const SVector& aX) {
 
 	unsigned numHashFunctionsFull = mpParameters->mNumHashFunctions * mpParameters->mNumHashShingles;
 	unsigned sub_hash_range = numHashFunctionsFull / mpParameters->mNumRepeatsHashFunction;
@@ -465,6 +470,7 @@ vector<unsigned> MinHashEncoder::ComputeHashSignature(SVector& aX) {
 	//for each element of the sparse vector
 	for (SVector::InnerIterator it(aX); it; ++it) {
 		unsigned feature_id = it.index();
+		//unsigned feature_id = *it;
 		//for each sub_hash
 		for (unsigned l = 1; l <= mpParameters->mNumRepeatsHashFunction; ++l) {
 			unsigned key = IntHash(feature_id, MAXUNSIGNED, l);

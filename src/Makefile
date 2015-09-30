@@ -48,7 +48,7 @@ objects_mains := $(patsubst %,%.o,$(PROGRAMS))
 EDeNseq : $(objects)
 	${CXX} ${CXXFLAGS} ${OBABEL} $(filter-out $(objects_mains),$(objects)) $@.o ${LIBS} -o $@
 	 
-EDeNseq.o: EDeNseq.cc vectors.h gzstream.h MinHashEncoder.h
+EDeNseq.o: EDeNseq.cc gzstream.h MinHashEncoder.h
 	 ${CXX} ${CXXFLAGS} -c EDeNseq.cc -o EDeNseq.o
 
 SeqClassifyManager.o:SeqClassifyManager.cc SeqClassifyManager.h MinHashEncoder.h
@@ -59,18 +59,12 @@ TestManager.o:TestManager.cc TestManager.h MinHashEncoder.h
 
 MinHashEncoder.o:MinHashEncoder.h Data.h
 
-GraphClass.o:GraphClass.h BaseGraphClass.cc 
-
-BaseGraphClass.o:BaseGraphClass.h 
-
 BaseManager.o:BaseManager.h
 
 Data.o:Data.h
 
 Parameters.o:Parameters.h Utility.h
 
-Utility.o:Utility.h vectors.h
-
-vectors.o: vectors.cc vectors.h
+Utility.o:Utility.h
 
 gzstream.o: gzstream.cc gzstream.h

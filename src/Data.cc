@@ -58,8 +58,8 @@ void Data::GetNextFastaSeq(istream& in,string& currSeq, string& header) {
 		currSeq.erase(std::remove(currSeq.begin(), currSeq.end(), ' '),currSeq.end());
 		std::transform(currSeq.begin(), currSeq.end(), currSeq.begin(), ::toupper);
 
-		string seq = currSeq.substr(mpParameters->mSeqClip,currSeq.size()-(2*mpParameters->mSeqClip));
-		currSeq=seq;
+		//string seq = currSeq.substr(mpParameters->mSeqClip,currSeq.size()-(2*mpParameters->mSeqClip));
+		//currSeq=seq;
 
 		const unsigned pos = header.find_first_of(" ");
 		if (std::string::npos != pos)
@@ -115,26 +115,26 @@ bool Data::GetNextWinFromSeq(string& currSeq, unsigned& pos, bool& lastGr, strin
 	return success_status;
 }
 
-
-bool Data::SetGraphFromSeq(string& seq, GraphClass& oG) {
-	vector<bool> vertex_status(5, false);
-	vertex_status[0] = true; //kernel point
-	vertex_status[1] = true; //kind
-	vertex_status[2] = true; //viewpoint
-	vertex_status[3] = false; //dead
-	vertex_status[4] = false; //abstraction
-
-	bool success_status = false;
-	//cout << graphSeq << " " << currSeq.size() << " " << currSize << " " << in.eof() << endl;
-	unsigned real_vertex_index = oG.InsertVertex();
-	vector<string> vertex_symbolic_attribute_list(1);
-	vertex_symbolic_attribute_list[0] = seq;
-	oG.SetVertexSymbolicAttributeList(real_vertex_index, vertex_symbolic_attribute_list);
-	oG.SetVertexStatusAttributeList(real_vertex_index, vertex_status);
-	success_status = true;
-
-	return success_status;
-}
+//
+//bool Data::SetGraphFromSeq(string& seq, GraphClass& oG) {
+//	vector<bool> vertex_status(5, false);
+//	vertex_status[0] = true; //kernel point
+//	vertex_status[1] = true; //kind
+//	vertex_status[2] = true; //viewpoint
+//	vertex_status[3] = false; //dead
+//	vertex_status[4] = false; //abstraction
+//
+//	bool success_status = false;
+//	//cout << graphSeq << " " << currSeq.size() << " " << currSize << " " << in.eof() << endl;
+//	unsigned real_vertex_index = oG.InsertVertex();
+//	vector<string> vertex_symbolic_attribute_list(1);
+//	vertex_symbolic_attribute_list[0] = seq;
+//	oG.SetVertexSymbolicAttributeList(real_vertex_index, vertex_symbolic_attribute_list);
+//	oG.SetVertexStatusAttributeList(real_vertex_index, vertex_status);
+//	success_status = true;
+//
+//	return success_status;
+//}
 
 
 void Data::GetRevComplSeq(string& in_seq,string& out_seq){

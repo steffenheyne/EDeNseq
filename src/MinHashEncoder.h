@@ -10,6 +10,10 @@
 #include "Data.h"
 #include "BaseManager.h"
 #include "sparsehash-2.0.2/sparsehash/sparse_hash_map"
+//#include "sparsehash-2.0.2/sparsehash/dense_hash_set"
+//#include "sparsehash-2.0.2/sparsehash/sparse_hash_set"
+#include <Eigen/Sparse>
+#include <chrono>
 
 using namespace std;
 
@@ -37,7 +41,6 @@ public:
 	typedef vector<Signature>				SigCacheT;
 	typedef std::shared_ptr<SigCacheT>	SigCacheP;
 
-
 	struct SeqFileS {
 		string filename;
 		string filename_BED;
@@ -57,8 +60,11 @@ public:
 	typedef std::shared_ptr<SeqFileT> 	SeqFileP;
 	typedef vector<SeqFileP> 				SeqFilesT;
 
+	typedef Eigen::SparseVector<unsigned> SVector;
+//	typedef google::dense_hash_set<unsigned> SVectorMap;
+
+
 	struct instanceS {
-			GraphClass	gr;
 			Signature 	sig;
 			string 		name;
 			unsigned 	idx;
@@ -86,6 +92,8 @@ public:
 	Data* 		mpData;
 
 	SeqFileP 	mIndexDataSet;
+
+
 
 protected:
 
@@ -118,7 +126,7 @@ protected:
 
 	void					worker_Graph2Signature(int numWorkers);
 	void 					finisher();
-	void 					generate_feature_vector(const GraphClass& aG, SVector& x);
+	void 					generate_feature_vector(const string& seq, SVector& x);
 	vector<unsigned>	HashFuncNSPDK(const string& aString, unsigned aStart, unsigned aMaxRadius, unsigned aBitMask);
 
 public:
@@ -133,10 +141,9 @@ public:
 	virtual void 		UpdateInverseIndex(vector<unsigned>& aSignature, unsigned aIndex) {};
 	virtual void 		finishUpdate(ChunkP& myData) {};
 	void 					LoadData_Threaded(SeqFilesT& myFiles);
-	//std::thread*		FillGraphQueue(SeqFilesT& myFiles);
 	unsigned				GetLoadedInstances();
 
-	vector<unsigned>	ComputeHashSignature(SVector& aX);
+	vector<unsigned>	ComputeHashSignature(const SVector& aX);
 };
 
 class NeighborhoodIndex : public MinHashEncoder
