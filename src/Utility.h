@@ -59,27 +59,27 @@ const string TAB = "    ";
 const unsigned MAXUNSIGNED = 2 << 30;
 
 ///Returns a random number uniformly distributed between 0 and 1
-inline double random01() {
-	return (double) rand() / (double) RAND_MAX;
-}
-
-///Returns a random number approximately normally distributed with mean 0 and std 1
-inline double randomn() {
-	return  -log(1 / random01() - 1) / 1.702; //Rao, K. R., Boiroju, N. K., & Reddy, M. K. (2011). GENERATION OF STANDARD NORMAL RANDOM VARIABLES. Indian Journal of Scientific Research, 2(4).
-}
-
-///Returns a random integer uniformly distributed between 0 and the argument aMax-1
-inline unsigned randomUnsigned(unsigned aMax) {
-	return (unsigned) (rand() % aMax);
-}
-
-template<class InType>
-void PermuteVector(vector<InType> & t) {
-	for (unsigned i = 0; i < t.size(); ++i) {
-		unsigned j = randomUnsigned(t.size());
-		swap(t[i], t[j]);
-	}
-}
+//inline double random01() {
+//	return (double) rand() / (double) RAND_MAX;
+//}
+//
+/////Returns a random number approximately normally distributed with mean 0 and std 1
+//inline double randomn() {
+//	return  -log(1 / random01() - 1) / 1.702; //Rao, K. R., Boiroju, N. K., & Reddy, M. K. (2011). GENERATION OF STANDARD NORMAL RANDOM VARIABLES. Indian Journal of Scientific Research, 2(4).
+//}
+//
+/////Returns a random integer uniformly distributed between 0 and the argument aMax-1
+//inline unsigned randomUnsigned(unsigned aMax) {
+//	return (unsigned) (rand() % aMax);
+//}
+//
+//template<class InType>
+//void PermuteVector(vector<InType> & t) {
+//	for (unsigned i = 0; i < t.size(); ++i) {
+//		unsigned j = randomUnsigned(t.size());
+//		swap(t[i], t[j]);
+//	}
+//}
 
 ///Implements a type converter via streams
 template<class OutType, class InType>
@@ -91,7 +91,7 @@ OutType stream_cast(const InType & t) {
 	return result;
 }
 
-void MakeShuffledDataIndicesList(vector<unsigned>& oDataIdList, unsigned aSize);
+//void MakeShuffledDataIndicesList(vector<unsigned>& oDataIdList, unsigned aSize);
 
 ///Return an integer hash value for a given input integer in a given domain range
 inline int IntHashSimple(int key, int aModulo) {
@@ -120,8 +120,10 @@ unsigned RSHash(const string& str);
 unsigned RSHash(const vector<unsigned>& aV);
 unsigned APHash(const string& str);
 unsigned APHash(const vector<unsigned>& aV);
+unsigned APHash(const vector<unsigned>::const_iterator& aV_begin, vector<unsigned>::const_iterator& aV_end);
 unsigned HashFunc(const string& str, unsigned aBitMask = 2147483647);
 unsigned HashFunc(const vector<unsigned>& aList, unsigned aBitMask = 2147483647);
+unsigned HashFunc(vector<unsigned>::iterator aList_begin,vector<unsigned>::iterator aList_end,unsigned aBitMask = 2147483647);
 
 //inline vector<unsigned> ComputeMinHashSignature(SVector& aX, unsigned aNumHashFunctions) {
 //	const unsigned MAXUNSIGNED = 2147483647;
@@ -178,39 +180,39 @@ private:
 //------------------------------------------------------------------------------------------------------------------------
 ///Implements safe access policies to a vector container and offers
 ///members to compute various statistical estimators.
-class VectorClass {
-	friend ostream& operator<<(ostream& out, const VectorClass& aV);
-public:
-	VectorClass();
-	VectorClass(unsigned aSize);
-	void operator=(const VectorClass& aVector);
-	VectorClass(const VectorClass& aVector);
-	VectorClass(const vector<double>& aVector);
-	VectorClass(const vector<int>& aVector);
-	void Init(unsigned aSize);
-	void Import(const string& aFileName);
-	void Clear();
-	unsigned Size() const;
-	ostream& Output(ostream& out) const;
-	void PushBack(double aValue);
-	double& operator[](unsigned i);
-	double operator[](unsigned i) const;
-	double Prod() const;
-	double Sum() const;
-	double Mean() const;
-	double StandardDeviation() const;
-	double Order(double aOrder) const;
-	double Median() const;
-	double MedianAbsoluteDifference() const;
-	double Min() const;
-	double Max() const;
-	VectorClass RemoveNulls();
-	ostream& OutputStatistics(ostream& out);
-protected:
-	vector<double> mV;
-};
-
-//------------------------------------------------------------------------------------------------------------------------
+//class VectorClass {
+//	friend ostream& operator<<(ostream& out, const VectorClass& aV);
+//public:
+//	VectorClass();
+//	VectorClass(unsigned aSize);
+//	void operator=(const VectorClass& aVector);
+//	VectorClass(const VectorClass& aVector);
+//	VectorClass(const vector<double>& aVector);
+//	VectorClass(const vector<int>& aVector);
+//	void Init(unsigned aSize);
+//	void Import(const string& aFileName);
+//	void Clear();
+//	unsigned Size() const;
+//	ostream& Output(ostream& out) const;
+//	void PushBack(double aValue);
+//	double& operator[](unsigned i);
+//	double operator[](unsigned i) const;
+//	double Prod() const;
+//	double Sum() const;
+//	double Mean() const;
+//	double StandardDeviation() const;
+//	double Order(double aOrder) const;
+//	double Median() const;
+//	double MedianAbsoluteDifference() const;
+//	double Min() const;
+//	double Max() const;
+//	VectorClass RemoveNulls();
+//	ostream& OutputStatistics(ostream& out);
+//protected:
+//	vector<double> mV;
+//};
+//
+////------------------------------------------------------------------------------------------------------------------------
 class OutputManager{
 public:
 	ofstream mOut;

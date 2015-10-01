@@ -134,12 +134,9 @@ void SeqClassifyManager::worker_Classify(int numWorkers){
 			ResultChunkP myResultChunk = std::make_shared<ResultChunkT>();
 
 			for (unsigned j = 0; j < myData->size(); j++) {
-				//SVector x(pow(2, mpParameters->mHashBitSize));
-				//(*myData)[j].svec.resize(pow(2, mpParameters->mHashBitSize));
 
 				generate_feature_vector((*myData)[j].seq, (*myData)[j].svec);
-
-				(*myData)[j].sig = MinHashEncoder::ComputeHashSignature((*myData)[j].svec);
+				MinHashEncoder::ComputeHashSignature((*myData)[j].svec,(*myData)[j].sig);
 
 			}
 			finishUpdate(myData,myResultChunk);

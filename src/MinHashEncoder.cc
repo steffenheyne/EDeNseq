@@ -337,12 +337,12 @@ void MinHashEncoder::worker_Graph2Signature(int numWorkers){
 		lk.unlock();
 
 		if (!done && myData->size()>0) {
-			//cout << "  graph2sig thread got chunk " << myData->gr.size() << " offset " << myData->offset << " " << mpParameters->mHashBitSize << endl;
+			//cout << "  graph2sig thread got chunk " << myData->size() << " offset " << myData->offset << " " << mpParameters->mHashBitSize << endl;
 
 			for (unsigned j = 0; j < myData->size(); j++) {
 
 				generate_feature_vector((*myData)[j].seq, (*myData)[j].svec);
-				(*myData)[j].sig = ComputeHashSignature((*myData)[j].svec);
+				ComputeHashSignature((*myData)[j].svec,(*myData)[j].sig);
 			}
 			sig_queue.push(myData);
 			if (sig_queue.size()>=numWorkers*25){
@@ -457,23 +457,32 @@ unsigned MinHashEncoder::GetLoadedInstances() {
 }
 
 
-vector<unsigned> MinHashEncoder::ComputeHashSignature(const SVector& aX) {
+void MinHashEncoder::ComputeHashSignature(const SVector& aX, Signature& signature) {
 
 	unsigned numHashFunctionsFull = mpParameters->mNumHashFunctions * mpParameters->mNumHashShingles;
 	unsigned sub_hash_range = numHashFunctionsFull / mpParameters->mNumRepeatsHashFunction;
-	vector<unsigned> signature(numHashFunctionsFull);
+
+	//if we use shingles we need a temp signature of length numHashFunctionsFull
+	// otherwise we directly put values directly in the provided signature object
+	std::shared_ptr<Signature> signatureP;
+	if (mpParameters->mNumHashShingles>1){
+		signatureP = std::make_shared<Signature>(numHashFunctionsFull);
+	} else {
+		signature.resize(numHashFunctionsFull);
+		signatureP = std::make_shared<Signature>(signature);
+	}
+
 	//init with MAXUNSIGNED
 	for (unsigned k = 0; k < numHashFunctionsFull; ++k)
-		signature[k] = MAXUNSIGNED;
+		(*signatureP)[k] = MAXUNSIGNED;
 
 	//prepare a vector containing the signature as the k min values
 	//for each element of the sparse vector
 	for (SVector::InnerIterator it(aX); it; ++it) {
 		unsigned feature_id = it.index();
-		//unsigned feature_id = *it;
 		//for each sub_hash
 		for (unsigned l = 1; l <= mpParameters->mNumRepeatsHashFunction; ++l) {
-			unsigned key = IntHash(feature_id, MAXUNSIGNED, l);
+			unsigned key = IntHash(feature_id, mHashBitMask, l);
 			for (unsigned kk = 0; kk < sub_hash_range; ++kk) { //for all k values
 				unsigned lower_bound = MAXUNSIGNED / sub_hash_range * kk;
 				unsigned upper_bound = MAXUNSIGNED / sub_hash_range * (kk + 1);
@@ -481,26 +490,26 @@ vector<unsigned> MinHashEncoder::ComputeHashSignature(const SVector& aX) {
 				if (kk+1==sub_hash_range) upper_bound=MAXUNSIGNED;
 				if (key >= lower_bound && key < upper_bound) { //if we are in the k-th slot
 					unsigned signature_feature = kk + (l - 1) * sub_hash_range;
-					if (key < signature[signature_feature]) //keep the min hash within the slot
-						signature[signature_feature] = key;
+					if (key < (*signatureP)[signature_feature]) //keep the min hash within the slot
+						(*signatureP)[signature_feature] = key;
 				}
 			}
 		}
 	}
 
 	// compute shingles, i.e. rehash mNumHashShingles hash values into one hash value
-	if (mpParameters->mNumHashShingles == 1 ) {
-		return signature;
-	} else {
+	if (mpParameters->mNumHashShingles > 1 ) {
 		vector<unsigned> signatureFinal(mpParameters->mNumHashFunctions);
 		for (unsigned i=0;i<mpParameters->mNumHashFunctions;i++){
-			vector<unsigned> sigShinglet;
-			for (unsigned j=i*mpParameters->mNumHashShingles;j<=i*mpParameters->mNumHashShingles+mpParameters->mNumHashShingles-1; j++){
-				sigShinglet.push_back(signature[j]);
-			}
-			signatureFinal[i] = HashFunc(sigShinglet);
+			//vector<unsigned> sigShinglet;
+			//for (unsigned j=i*mpParameters->mNumHashShingles;j<=i*mpParameters->mNumHashShingles+mpParameters->mNumHashShingles-1; j++){
+			//	sigShinglet.push_back(signature[j]);
+			//}
+			//signatureFinal[i] = HashFunc(sigShinglet);
+			// give current shingle as vector range to HashFunc
+			signatureFinal[i] = HashFunc(signatureP->begin()+(i*mpParameters->mNumHashShingles),signatureP->begin()+(i*mpParameters->mNumHashShingles+mpParameters->mNumHashShingles),mHashBitMask);
 		}
-		return signatureFinal;
+		signature.swap(signatureFinal);
 	}
 }
 

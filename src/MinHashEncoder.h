@@ -143,7 +143,7 @@ public:
 	void 					LoadData_Threaded(SeqFilesT& myFiles);
 	unsigned				GetLoadedInstances();
 
-	vector<unsigned>	ComputeHashSignature(const SVector& aX);
+	void					ComputeHashSignature(const SVector& aX, Signature& signaure);
 };
 
 class NeighborhoodIndex : public MinHashEncoder
