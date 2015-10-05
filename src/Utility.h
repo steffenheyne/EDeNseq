@@ -30,6 +30,7 @@
 #include <condition_variable>
 #include <mutex>
 #include <atomic>
+#include <chrono>
 
 #ifdef USEMULTITHREAD
 #include <omp.h>
@@ -125,25 +126,6 @@ unsigned HashFunc(const string& str, unsigned aBitMask = 2147483647);
 unsigned HashFunc(const vector<unsigned>& aList, unsigned aBitMask = 2147483647);
 unsigned HashFunc(vector<unsigned>::iterator aList_begin,vector<unsigned>::iterator aList_end,unsigned aBitMask = 2147483647);
 
-//inline vector<unsigned> ComputeMinHashSignature(SVector& aX, unsigned aNumHashFunctions) {
-//	const unsigned MAXUNSIGNED = 2147483647;
-//	//prepare a vector containing the k min values
-//	vector<unsigned> signature(aNumHashFunctions, MAXUNSIGNED);
-//	for (SparseVector<double>::InnerIterator it(aX); it; ++it) {
-//		//extract only the feature id (i.e. ignore the actual feature value)
-//		unsigned hash_id = it.index();
-//		if (hash_id == 0) {
-//			hash_id = 1; //force collision between feature 0 and 1 to avoid features with ID=0
-//		}
-//		for (unsigned k = 0; k < aNumHashFunctions; ++k) { //for all k hashes
-//			unsigned new_hash = IntHash(hash_id, MAXUNSIGNED, k); //rehash the feature id with a procedure that is aware of the index k
-//			if (new_hash < signature[k])
-//				signature[k] = new_hash; //keep the minimum value only
-//		}
-//	}
-//	return signature;
-//}
-
 //------------------------------------------------------------------------------------------------------------------------
 ///Returns the time between the creation and destruction of an object of TimerClass
 class TimerClass {
@@ -152,9 +134,11 @@ public:
 	~TimerClass() {
 	}
 	void Output();
+	double getElapsed();
 private:
 	std::time_t mStartSec;
 	std::clock_t mStart;
+	std::chrono::time_point<std::chrono::steady_clock> mStart2;
 };
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -169,6 +153,7 @@ public:
 	void Begin();
 	void Count();
 	void Count(int co);
+	double getElapsed();
 	unsigned End();
 private:
 	mutable std::mutex mut;
@@ -303,15 +288,17 @@ public:
 	explicit join_threads(vector<thread>& threads_):
 	threads(threads_)
 	{}
+
 	~join_threads()
 	{
+		cout << endl << " join " <<  threads.size() << " threads " << endl;
 		for(unsigned long i=0;i<threads.size();++i)
 		{
 			if(threads[i].joinable())
 				threads[i].join();
-			cout << "thread " << i << " joined " << endl;
+			cout << i << " ";
 		}
-		cout << threads.size() << " threads joined" << endl;
+		cout << endl;
 	}
 };
 

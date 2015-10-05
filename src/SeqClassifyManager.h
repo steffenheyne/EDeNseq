@@ -20,7 +20,7 @@ class SeqClassifyManager: public HistogramIndex {
 public:
 	SeqClassifyManager(Parameters* apParameters, Data* apData);
 
-	unsigned mNumSequences;
+	std::atomic_uint mNumSequences;
 	valarray<double> metaHist;
 	valarray<double> metaHistNum;
 	unsigned mClassifiedInstances;

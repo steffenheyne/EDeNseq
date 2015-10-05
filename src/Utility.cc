@@ -83,7 +83,7 @@ unsigned HashFunc(vector<unsigned>::iterator aList_begin,vector<unsigned>::itera
 
 //------------------------------------------------------------------------------------------------------------------------
 TimerClass::TimerClass() :
-		mStartSec(time(NULL)), mStart(std::clock()) {
+		mStartSec(time(NULL)), mStart(std::clock()), mStart2(std::chrono::steady_clock::now()) {
 }
 void TimerClass::Output() {
 	//std::clock_t end=std::clock();
@@ -93,7 +93,14 @@ void TimerClass::Output() {
 	double elapsed_min = elapsed_sec / 60;
 	double elapsed_hour = elapsed_sec / 3600;
 	//CLOCKS_PER_SEC
-	cout << "Elapsed time: h: " << floor(elapsed_hour) << " m: " << floor(elapsed_min) << " s: " << floor(elapsed_sec) << endl;
+	cout << endl << setprecision(2) << "Elapsed time: h: " << floor(elapsed_hour) << " m: " << floor(elapsed_min) << " s: " << floor(elapsed_sec) << endl;
+}
+
+double TimerClass::getElapsed(){
+	auto end = std::chrono::steady_clock::now();
+	//chrono::duration <double, milli> (diff).count()
+   std::chrono::milliseconds elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - mStart2);
+	return elapsed.count();
 }
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -132,6 +139,10 @@ void ProgressBar::Count(int max) {
 	}
 }
 
+
+double ProgressBar::getElapsed() {
+	return mTimer.getElapsed();
+}
 
 unsigned ProgressBar::End() {
 	return mCounter;

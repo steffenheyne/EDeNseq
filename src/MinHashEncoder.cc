@@ -110,7 +110,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 
 		if (!done && succ && myData->filename != ""){
 
-			cout << endl << "read next file " << myData->filename << " sig_all_counter " << mSignatureCounter << " inst_counter "<< mInstanceCounter << " thread " << std::this_thread::get_id() << endl;
+			cout << endl << "read next file " << myData->filename << " sig_all_counter " << mSignatureCounter << " inst_counter "<< mInstanceCounter  << endl;
 			igzstream fin;
 			fin.open(myData->filename.c_str(),std::ios::in);
 
@@ -187,16 +187,8 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 								// bed is present, but no entry for current seq found -> we take next seq
 								valid_input = false;
 								continue;
-							} else {
-								// no bed is present, then we set start/end to full seq, eg. in case for clustering
-								pos=0;
-								end=currFullSeq.size();
-								//cout << "no BED data present! "<< currSeqName << " " << pos << "-" << end << endl;
 							}
 						} // if no bed entries left for current seq get new seq
-
-						// CLUSTER     F1:S1:W1 W2 W3  <->  F1:S2:W1 W2 W3
-						// CLASSIFY		F1:S1:W W W      ->  F1:S2:W W W
 
 						// check if we use the same idx-group for the whole seq, either by seq name or feature id from BED
 						// idx also defines the value under which we insert features into the index
@@ -233,6 +225,11 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 							//mIndexValue2Feature.insert(make_pair(idx,it->second));
 							cout << endl << "BED entry found for seq name " << currSeqName << " " << it->second->NAME << " MetaIdx "<< idx << " " << pos << "-"<< end << endl;
 							it++;
+						} else {
+							// no bed is present, then we set start/end to full seq, eg. in case for clustering
+							pos=0;
+							end=currFullSeq.size();
+							//cout << "no BED data present! "<< currSeqName << " " << pos << "-" << end << endl;
 						}
 
 						// check if start/end is within bounds of found seq
@@ -308,12 +305,12 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 				graph_queue.push(myChunkP);
 
 				//log output
-				if (mInstanceCounter%1000000 <=currBuff){
-					cout << endl << "seqs read " << file_seqs << " instances read " << mInstanceCounter << " " << myChunkP->size() << " buffer " << currBuff << " full..." << graph_queue.size() << " " << currSeq.size()<< " "<< currSeqName << endl;
-				}
+				//if (mInstanceCounter%1000000 <=currBuff){
+				//	cout << endl << "seqs read " << file_seqs << " instances read " << mInstanceCounter << " " << myChunkP->size() << " buffer " << currBuff << " full..." << graph_queue.size() << " " << currSeq.size()<< " "<< currSeqName << endl;
+				//}
 
 				cv2.notify_all();
-				if (graph_queue.size()>=numWorkers*25){
+				if (graph_queue.size()>=numWorkers*50){
 					unique_lock<mutex> lk(mut2);
 					cv2.wait(lk,[&]{if ((done) || (graph_queue.size()<=numWorkers*3)) return true; else return false;});
 					lk.unlock();
@@ -322,7 +319,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 			} // while eof
 			fin.close();
 			files_done++;
-			cout << endl << "file " << files_done << " seqs " << file_seqs << " " << mInstanceCounter << " " << mSignatureCounter << " instances produced from file " << file_instances << endl;
+			//cout << endl << "file " << files_done << " seqs " << file_seqs << " " << mInstanceCounter << " " << mSignatureCounter << " instances produced from file " << file_instances << endl;
 		}
 	}
 }
@@ -374,10 +371,10 @@ void MinHashEncoder::finisher(){
 			finishUpdate(myData);
 			myData.reset();
 			mSignatureCounter += chunkSize;
-			if (mSignatureCounter%1000000 <= chunkSize){
+			if (mInstanceCounter%1000000 <= chunkSize){
 				cout << endl << "    finisher updated index with " << chunkSize << " signatures all_sigs=" <<  mSignatureCounter << " inst=" << mInstanceCounter << " sigQueue=" << sig_queue.size() << endl;
 			}
-			progress_bar.Count(mSignatureCounter);
+			progress_bar.Count(mInstanceCounter);
 		}
 		cv1.notify_all();
 		cv2.notify_all();
@@ -463,7 +460,7 @@ void MinHashEncoder::ComputeHashSignature(const SVector& aX, Signature& signatur
 	unsigned sub_hash_range = numHashFunctionsFull / mpParameters->mNumRepeatsHashFunction;
 
 	//if we use shingles we need a temp signature of length numHashFunctionsFull
-	// otherwise we directly put values directly in the provided signature object
+	// otherwise we directly put values in the provided signature object
 	std::shared_ptr<Signature> signatureP;
 	if (mpParameters->mNumHashShingles>1){
 		signatureP = std::make_shared<Signature>(numHashFunctionsFull);
@@ -703,35 +700,6 @@ HistogramIndex::binKeyTy HistogramIndex::GetHistogramSize(){
 	return mHistogramSize;
 }
 
-
-//bool compare(const Data::SeqFileT& first, const Data::SeqFileT& second) {
-//
-//	return (first.uIdx<second.uIdx);
-//}
-
-//void  HistogramIndex::PrepareIndexDataSets(vector<SeqDataSet>& myFileList){
-//
-//	if (!myFileList.size())
-//		throw range_error("ERROR no datasets to prepare ...");
-//
-//	sort(myFileList.begin(),myFileList.end(),compare);
-//
-//	// check if we have datasets to update the index
-//	uint bin = 0;
-//	uint userIdx = myFileList[0].uIdx;
-//	for (unsigned i=0;i<myFileList.size(); i++){
-//		if (myFileList[i].updateIndex){
-//			if ( myFileList[i].uIdx != userIdx )
-//				bin++;
-//			mHistBin2DatasetIdx.insert(make_pair(bin,i));
-//			userIdx = myFileList[i].uIdx;
-//			myFileList[i].idx = bin;
-//			mIndexDataSets.push_back(myFileList[i]);
-//			//cout << "bin" << bin << " " << userIdx << " "<<myFileList[i].idx << " " << myFileList[i].uIdx << endl;
-//		}
-//	}
-//	SetHistogramSize(bin+1);
-//}
 
 void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, const unsigned& aIndex) {
 	const binKeyTy& aIndexT =(binKeyTy)aIndex;
@@ -1107,4 +1075,33 @@ bool HistogramIndex::readBinaryIndex2(string filename, indexTy &index){
 //			}
 //		}
 //	}
+//}
+
+//bool compare(const Data::SeqFileT& first, const Data::SeqFileT& second) {
+//
+//	return (first.uIdx<second.uIdx);
+//}
+
+//void  HistogramIndex::PrepareIndexDataSets(vector<SeqDataSet>& myFileList){
+//
+//	if (!myFileList.size())
+//		throw range_error("ERROR no datasets to prepare ...");
+//
+//	sort(myFileList.begin(),myFileList.end(),compare);
+//
+//	// check if we have datasets to update the index
+//	uint bin = 0;
+//	uint userIdx = myFileList[0].uIdx;
+//	for (unsigned i=0;i<myFileList.size(); i++){
+//		if (myFileList[i].updateIndex){
+//			if ( myFileList[i].uIdx != userIdx )
+//				bin++;
+//			mHistBin2DatasetIdx.insert(make_pair(bin,i));
+//			userIdx = myFileList[i].uIdx;
+//			myFileList[i].idx = bin;
+//			mIndexDataSets.push_back(myFileList[i]);
+//			//cout << "bin" << bin << " " << userIdx << " "<<myFileList[i].idx << " " << myFileList[i].uIdx << endl;
+//		}
+//	}
+//	SetHistogramSize(bin+1);
 //}

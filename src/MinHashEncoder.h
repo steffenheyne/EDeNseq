@@ -120,7 +120,7 @@ protected:
 	std::atomic_bool done;
 	std::atomic_uint files_done;
 	std::atomic_uint mInstanceCounter;
-
+	std::atomic_uint mSignatureCounter;
 
 
 
@@ -130,9 +130,9 @@ protected:
 	vector<unsigned>	HashFuncNSPDK(const string& aString, unsigned aStart, unsigned aMaxRadius, unsigned aBitMask);
 
 public:
-	std::atomic_uint mSignatureCounter;
 
-	unsigned mHashBitMask;
+
+	unsigned 			mHashBitMask;
 	void 					worker_readFiles(int numWorkers);
 	MinHashEncoder(Parameters* apParameters, Data* apData);
 	virtual	~MinHashEncoder();

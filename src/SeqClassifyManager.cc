@@ -18,8 +18,7 @@ HistogramIndex(apParameters,apData),pb(1000)
 
 void SeqClassifyManager::Exec() {
 
-	// load and prepare index list file to get files for indexing
-	//	vector<SeqDataSet> fileList = mpData->LoadIndexDataList(mpParameters->mIndexDataList.c_str());
+	cout << SEP << endl << "INVERSE INDEX"<< endl << SEP << endl;
 
 	SeqFileT mySet;
 	mySet.filename            	= mpParameters->mIndexSeqFile;
@@ -163,23 +162,24 @@ void SeqClassifyManager::finisher_Results(ogzstream* fout_res){
 
 		if (!done && myResults->size()>0) {
 
-			uint chunkSize = myResults->size();
-
 			for (unsigned i=0; i<myResults->size(); i++){
 				*fout_res << (*myResults)[i].output_line;
 				mResultCounter += (*myResults)[i].numInstances;
+				if (mResultCounter%1000 <= 10) {
+					std::ios::fmtflags old = cout.setf(ios::fixed); //,ios::floatfield);
+					cout << "\r" <<  std::setprecision(1) << progress_bar.getElapsed()/1000 << " sec elapsed    Finised numSeqs=" << std::setprecision(0) << setw(10);
+					cout << mNumSequences  << "("<<mNumSequences/(progress_bar.getElapsed()/1000) <<" seq/s)  signatures=" << setw(10);
+					cout << mResultCounter << "("<<(double)mResultCounter/((progress_bar.getElapsed()/1000)) <<" sig/s - "<<(double)mResultCounter/((progress_bar.getElapsed()/(1000/mpParameters->mNumThreads)))<<" per thread)  inst=";
+					cout << mInstanceCounter << " resQueue=" << res_queue.size() << " graphQueue=" << graph_queue.size() << "       ";
+				}
 			}
-
-			if (mResultCounter%1000000 <= 10*chunkSize){
-				cout << endl << "    Resultfinisher updated index with " << chunkSize << " signatures all_sigs=" <<  mSignatureCounter << " inst=" << mInstanceCounter << " resQueue=" << res_queue.size() << endl;
-			}
-			progress_bar.Count(mResultCounter);
 		}
 		cv1.notify_all();
 		cv2.notify_all();
 		cvm.notify_all();
 		cv_res.notify_all();
 	}
+	cout << endl << endl;
 }
 
 void SeqClassifyManager::Classify_Signatures(SeqFilesT& myFiles){
@@ -476,7 +476,7 @@ void SeqClassifyManager::ClassifySeqs(){
 	for (unsigned j=0; j<std::min((unsigned)20,(unsigned)sortedHist.size());j++){
 		multimap<uint, Data::BEDentryP>::iterator it = mIndexValue2Feature.find(sortedHist[j].second+1);
 		uint num = mIndexValue2Feature.count(sortedHist[j].second+1);
-		cout << setprecision(2) << j+1 << "\t" << -sortedHist[j].first << "\t" << setprecision(10) << metaHistNum[sortedHist[j].second] << "\t" << sortedHist[j].second+1 << "\t";
+		cout << setprecision(2) << j+1 << "\t" << -sortedHist[j].first << "\t" << (uint)metaHistNum[sortedHist[j].second] << "\t" << sortedHist[j].second+1 << "\t";
 		if (it != mIndexValue2Feature.end()) cout << "feature\t"<< it->second->NAME << "\t#features=" << num;
 		if (it != mIndexValue2Feature.end() && it->second->COLS.size()>=2) cout << "\t" << it->second->COLS[1];
 		cout << endl;
