@@ -27,7 +27,7 @@ OPTS=-g -O3 -Wno-deprecated -Wno-unused-local-typedefs -DLOSS=1 -std=c++11 -pthr
 #OPTS=-g -Wno-deprecated -DLOSS=1 -static -DEIGEN_DONT_PARALLELIZE # -DDEBUGON # -DCHECKLIMITS
 #OPTS=-g -Wno-deprecated -DLOSS=1 #-DDEBUGON
 #OPTS=-g -Wno-deprecated -static -pg
-CXXFLAGS=${OPTS} -Wall -I eigen-eigen-3.20 -Isparsehash-2.0.2 # -mtune=native -march=native 
+CXXFLAGS=${OPTS} -Wall -I eigen-eigen-3.20 -Isparsehash-2.0.2 # -fprofile-use -fprofile-correction # -fprofile-generate #-mtune=native -march=native 
 #CXXFLAGS= ${OPTS} 
 #LIBS=-lm -lz -Wl,--whole-archive -lpthread -Wl,--no-whole-archive
 #LIBS=-lm -lz -lpthread -Wl,-u,pthread
