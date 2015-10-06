@@ -94,7 +94,7 @@ OutType stream_cast(const InType & t) {
 
 //void MakeShuffledDataIndicesList(vector<unsigned>& oDataIdList, unsigned aSize);
 
-///Return an integer hash value for a given input integer in a given domain range
+//Return an integer hash value for a given input integer in a given domain range
 inline int IntHashSimple(int key, int aModulo) {
 	key = ~key + (key << 15); // key = (key << 15) - key - 1;
 	key = key ^ (key >> 12);
@@ -105,26 +105,54 @@ inline int IntHashSimple(int key, int aModulo) {
 	return key % aModulo;
 }
 
-inline int IntHashPair(int key1, int key2, int aModulo = 2147483647) {
-	const double A = sqrt(2) - 1;
-	int key = key1 * (key2 + 1) * A;
-	return IntHashSimple(key, aModulo);
-}
+//inline int IntHashPair(int key1, int key2, int aModulo = 2147483647) {
+//	const double A = sqrt(2) - 1;
+//	int key = key1 * (key2 + 1) * A;
+//	return IntHashSimple(key, aModulo);
+//}
 
-///Return an integer hash value for a given input integer in a given domain range given an additional seed to select the random hash function
+//Return an integer hash value for a given input integer in a given domain range given an additional seed to select the random hash function
 inline int IntHash(int key, int aModulo, unsigned aSeed) {
 	const double A = sqrt(2) - 1;
 	return IntHashSimple(key * (aSeed + 1) * A, aModulo);
 }
 
-unsigned RSHash(const string& str);
-unsigned RSHash(const vector<unsigned>& aV);
-unsigned APHash(const string& str);
-unsigned APHash(const vector<unsigned>& aV);
-unsigned APHash(const vector<unsigned>::const_iterator& aV_begin, vector<unsigned>::const_iterator& aV_end);
-unsigned HashFunc(const string& str, unsigned aBitMask = 2147483647);
-unsigned HashFunc(const vector<unsigned>& aList, unsigned aBitMask = 2147483647);
-unsigned HashFunc(vector<unsigned>::iterator aList_begin,vector<unsigned>::iterator aList_end,unsigned aBitMask = 2147483647);
+//unsigned RSHash(const string& str);
+//unsigned RSHash(const vector<unsigned>& aV);
+//unsigned APHash(const string& str);
+//unsigned APHash(const vector<unsigned>& aV);
+//unsigned APHash(const vector<unsigned>::const_iterator& aV_begin, vector<unsigned>::const_iterator& aV_end);
+//unsigned HashFunc(const string& str, unsigned aBitMask = 2147483647);
+//unsigned HashFunc(const vector<unsigned>& aList, unsigned aBitMask = 2147483647)
+
+inline unsigned APHash(const vector<unsigned>::const_iterator& aV_begin,const vector<unsigned>::const_iterator& aV_end){
+	unsigned int hash = 0xAAAAAAAA;
+	size_t i=0;
+	//for (;aV_begin!=aV_end;aV_begin++) {
+	for (auto it = aV_begin; it !=aV_end;it++) {
+		hash ^= ((i & 1) == 0) ? ((hash << 7) ^ *it * (hash >> 3)) : (~(((hash << 11) + *it) ^ (hash >> 5)));
+		i++;
+	}
+	return hash;
+
+}
+
+
+inline unsigned APHash(const vector<unsigned>& aV) {
+	unsigned int hash = 0xAAAAAAAA;
+	for (std::size_t i = 0; i < aV.size(); i++) {
+		hash ^= ((i & 1) == 0) ? ((hash << 7) ^ aV[i] * (hash >> 3)) : (~(((hash << 11) + aV[i]) ^ (hash >> 5)));
+	}
+	return hash;
+}
+inline unsigned HashFunc(const vector<unsigned>& aList, unsigned aBitMask) {
+	return APHash(aList) & aBitMask;
+}
+
+//unsigned HashFunc(vector<unsigned>::iterator aList_begin,vector<unsigned>::iterator aList_end,unsigned aBitMask = 2147483647);
+inline unsigned HashFunc(vector<unsigned>::iterator aList_begin,vector<unsigned>::iterator aList_end,unsigned aBitMask) {
+	return APHash(aList_begin,aList_end) & aBitMask;
+}
 
 //------------------------------------------------------------------------------------------------------------------------
 ///Returns the time between the creation and destruction of an object of TimerClass

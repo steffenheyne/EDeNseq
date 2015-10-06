@@ -282,7 +282,7 @@ void SeqClassifyManager::finishUpdate(ChunkP& myData, ResultChunkP& myResultChun
 			unsigned matchingSigsRC = 0;
 
 			do {
-				valarray<double> hist_tmp;
+				valarray<double> hist_tmp; //(0.0,GetHistogramSize());
 				unsigned emptyBins_tmp;
 				ComputeHistogram((*myData)[j+k].sig,hist_tmp,emptyBins_tmp);
 

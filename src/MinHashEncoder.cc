@@ -1,4 +1,5 @@
 #include "MinHashEncoder.h"
+#include "Utility.h"
 
 MinHashEncoder::~MinHashEncoder(){
 
@@ -16,7 +17,7 @@ void MinHashEncoder::Init(Parameters* apParameters, Data* apData) {
 	numFullBins=0;
 	mHashBitMask = numeric_limits<unsigned>::max() >> 1;
 	mHashBitMask = (2 << (mpParameters->mHashBitSize - 1)) - 1;
-
+	cout << "hashbitmask "<< mHashBitMask << endl;
 	if (mpParameters->mNumRepeatsHashFunction == 0 || mpParameters->mNumRepeatsHashFunction > mpParameters->mNumHashShingles * mpParameters->mNumHashFunctions){
 		mpParameters->mNumRepeatsHashFunction = mpParameters->mNumHashShingles * mpParameters->mNumHashFunctions;
 	}
@@ -42,7 +43,7 @@ inline vector<unsigned> MinHashEncoder::HashFuncNSPDK(const string& aString, uns
 
 //void MinHashEncoder::generate_feature_vector(const GraphClass& aG, SVector& x) {
 //void MinHashEncoder::generate_feature_vector(const string& seq, SVector& x) {
-void MinHashEncoder::generate_feature_vector(const string& seq, SVector& x) {
+inline void  MinHashEncoder::generate_feature_vector(const string& seq, SVector& x) {
 //	x.set_empty_key(0);
 //	x.resize(5000);
 	x.resize(pow(2, mpParameters->mHashBitSize));
@@ -91,8 +92,8 @@ void MinHashEncoder::generate_feature_vector(const string& seq, SVector& x) {
 				//				endpoint_list[3] = dest_code;
 				//				unsigned nosrc_code = HashFunc(endpoint_list, mHashBitMask);
 				//				z.coeffRef(nosrc_code) += 1;
-				x.coeffRef(code) = 1;
-				//x.insert(code);
+				//x.coeffRef(code) = 1;
+				x.insert(code);
 			}
 			//z /= z.norm();
 			//x += z;
@@ -461,12 +462,12 @@ void MinHashEncoder::ComputeHashSignature(const SVector& aX, Signature& signatur
 
 	//if we use shingles we need a temp signature of length numHashFunctionsFull
 	// otherwise we directly put values in the provided signature object
-	std::shared_ptr<Signature> signatureP;
+	Signature *signatureP;
 	if (mpParameters->mNumHashShingles>1){
-		signatureP = std::make_shared<Signature>(numHashFunctionsFull);
+		signatureP = new Signature(numHashFunctionsFull);
 	} else {
 		signature.resize(numHashFunctionsFull);
-		signatureP = std::make_shared<Signature>(signature);
+		signatureP = &signature;
 	}
 
 	//init with MAXUNSIGNED
@@ -481,14 +482,15 @@ void MinHashEncoder::ComputeHashSignature(const SVector& aX, Signature& signatur
 		for (unsigned l = 1; l <= mpParameters->mNumRepeatsHashFunction; ++l) {
 			unsigned key = IntHash(feature_id, mHashBitMask, l);
 			for (unsigned kk = 0; kk < sub_hash_range; ++kk) { //for all k values
-				unsigned lower_bound = MAXUNSIGNED / sub_hash_range * kk;
-				unsigned upper_bound = MAXUNSIGNED / sub_hash_range * (kk + 1);
+				unsigned lower_bound = mHashBitMask / sub_hash_range * kk;
+				unsigned upper_bound = mHashBitMask / sub_hash_range * (kk + 1);
 				// upper bound can be different from MAXUNSIGNED due to rounding effects, correct this
-				if (kk+1==sub_hash_range) upper_bound=MAXUNSIGNED;
+				if (kk+1==sub_hash_range) upper_bound=mHashBitMask;
 				if (key >= lower_bound && key < upper_bound) { //if we are in the k-th slot
 					unsigned signature_feature = kk + (l - 1) * sub_hash_range;
 					if (key < (*signatureP)[signature_feature]) //keep the min hash within the slot
 						(*signatureP)[signature_feature] = key;
+					//cout << MAXUNSIGNED << " "<< mpParameters->mNumRepeatsHashFunction << " " << sub_hash_range << " " << lower_bound <<" " << upper_bound << " " << signature_feature << " " << l << " " << kk << " " <<  key<< endl;
 				}
 			}
 		}
@@ -498,15 +500,10 @@ void MinHashEncoder::ComputeHashSignature(const SVector& aX, Signature& signatur
 	if (mpParameters->mNumHashShingles > 1 ) {
 		vector<unsigned> signatureFinal(mpParameters->mNumHashFunctions);
 		for (unsigned i=0;i<mpParameters->mNumHashFunctions;i++){
-			//vector<unsigned> sigShinglet;
-			//for (unsigned j=i*mpParameters->mNumHashShingles;j<=i*mpParameters->mNumHashShingles+mpParameters->mNumHashShingles-1; j++){
-			//	sigShinglet.push_back(signature[j]);
-			//}
-			//signatureFinal[i] = HashFunc(sigShinglet);
-			// give current shingle as vector range to HashFunc
 			signatureFinal[i] = HashFunc(signatureP->begin()+(i*mpParameters->mNumHashShingles),signatureP->begin()+(i*mpParameters->mNumHashShingles+mpParameters->mNumHashShingles),mHashBitMask);
 		}
 		signature.swap(signatureFinal);
+		delete signatureP;
 	}
 }
 

@@ -1,83 +1,83 @@
 #include "Utility.h"
 
 
-void MakeShuffledDataIndicesList(vector<unsigned>& oDataIdList, unsigned aSize) {
-	for (unsigned i = 0; i < aSize; ++i)
-		oDataIdList.push_back(i);
-	std::random_shuffle ( oDataIdList.begin(), oDataIdList.end() );
-	//old manual version
-//	for (unsigned i = 0; i < aSize; ++i) {
-//		unsigned j = rand() * aSize / RAND_MAX;
-//		swap(oDataIdList[i], oDataIdList[j]);
-//	}
-}
+//void MakeShuffledDataIndicesList(vector<unsigned>& oDataIdList, unsigned aSize) {
+//	for (unsigned i = 0; i < aSize; ++i)
+//		oDataIdList.push_back(i);
+//	std::random_shuffle ( oDataIdList.begin(), oDataIdList.end() );
+//	//old manual version
+////	for (unsigned i = 0; i < aSize; ++i) {
+////		unsigned j = rand() * aSize / RAND_MAX;
+////		swap(oDataIdList[i], oDataIdList[j]);
+////	}
+//}
 
 
 //----------------------------------------------------------------------------------------------------------------------------
 //hash functions
 
-unsigned RSHash(const string& aString) {
-	unsigned int b = 378551;
-	unsigned int a = 63689;
-	unsigned int hash = 0;
-	for (std::size_t i = 0; i < aString.length(); i++) {
-		hash = hash * a + aString[i];
-		a = a * b;
-	}
-	return hash;
-}
+//unsigned RSHash(const string& aString) {
+//	unsigned int b = 378551;
+//	unsigned int a = 63689;
+//	unsigned int hash = 0;
+//	for (std::size_t i = 0; i < aString.length(); i++) {
+//		hash = hash * a + aString[i];
+//		a = a * b;
+//	}
+//	return hash;
+//}
+//
+//unsigned RSHash(const vector<unsigned>& aV) {
+//	unsigned int b = 378551;
+//	unsigned int a = 63689;
+//	unsigned int hash = 0;
+//	for (std::size_t i = 0; i < aV.size(); i++) {
+//		hash = hash * a + aV[i];
+//		a = a * b;
+//	}
+//	return hash;
+//}
 
-unsigned RSHash(const vector<unsigned>& aV) {
-	unsigned int b = 378551;
-	unsigned int a = 63689;
-	unsigned int hash = 0;
-	for (std::size_t i = 0; i < aV.size(); i++) {
-		hash = hash * a + aV[i];
-		a = a * b;
-	}
-	return hash;
-}
+//unsigned APHash(const string& aString) {
+//	unsigned int hash = 0xAAAAAAAA;
+//	for (std::size_t i = 0; i < aString.length(); i++) {
+//		hash ^= ((i & 1) == 0) ? ((hash << 7) ^ aString[i] * (hash >> 3)) : (~(((hash << 11) + aString[i]) ^ (hash >> 5)));
+//	}
+//	return hash;
+//}
 
-unsigned APHash(const string& aString) {
-	unsigned int hash = 0xAAAAAAAA;
-	for (std::size_t i = 0; i < aString.length(); i++) {
-		hash ^= ((i & 1) == 0) ? ((hash << 7) ^ aString[i] * (hash >> 3)) : (~(((hash << 11) + aString[i]) ^ (hash >> 5)));
-	}
-	return hash;
-}
+//unsigned APHash(const vector<unsigned>& aV) {
+//	unsigned int hash = 0xAAAAAAAA;
+//	for (std::size_t i = 0; i < aV.size(); i++) {
+//		hash ^= ((i & 1) == 0) ? ((hash << 7) ^ aV[i] * (hash >> 3)) : (~(((hash << 11) + aV[i]) ^ (hash >> 5)));
+//	}
+//	return hash;
+//}
 
-unsigned APHash(const vector<unsigned>& aV) {
-	unsigned int hash = 0xAAAAAAAA;
-	for (std::size_t i = 0; i < aV.size(); i++) {
-		hash ^= ((i & 1) == 0) ? ((hash << 7) ^ aV[i] * (hash >> 3)) : (~(((hash << 11) + aV[i]) ^ (hash >> 5)));
-	}
-	return hash;
-}
+//inline unsigned APHash(const vector<unsigned>::const_iterator& aV_begin,const vector<unsigned>::const_iterator& aV_end){
+//	unsigned int hash = 0xAAAAAAAA;
+//	size_t i=0;
+//	//for (;aV_begin!=aV_end;aV_begin++) {
+//	for (auto it = aV_begin; it !=aV_end;it++) {
+//		hash ^= ((i & 1) == 0) ? ((hash << 7) ^ *it * (hash >> 3)) : (~(((hash << 11) + *it) ^ (hash >> 5)));
+//		i++;
+//	}
+//	return hash;
+//
+//}
 
-unsigned APHash(const vector<unsigned>::const_iterator& aV_begin,const vector<unsigned>::const_iterator& aV_end){
-	unsigned int hash = 0xAAAAAAAA;
-	size_t i=0;
-	//for (;aV_begin!=aV_end;aV_begin++) {
-	for (auto it = aV_begin; it !=aV_end;it++) {
-		hash ^= ((i & 1) == 0) ? ((hash << 7) ^ *it * (hash >> 3)) : (~(((hash << 11) + *it) ^ (hash >> 5)));
-		i++;
-	}
-	return hash;
+//unsigned HashFunc(const string& aString, unsigned aBitMask) { //NOTE: extract the least significant bits from the hash
+//	return APHash(aString) & aBitMask;
+//}
 
-}
-
-unsigned HashFunc(const string& aString, unsigned aBitMask) { //NOTE: extract the least significant bits from the hash
-	return APHash(aString) & aBitMask;
-}
-
-unsigned HashFunc(const vector<unsigned>& aList, unsigned aBitMask) {
-	return APHash(aList) & aBitMask;
-}
+//inline unsigned HashFunc(const vector<unsigned>& aList, unsigned aBitMask) {
+//	return APHash(aList) & aBitMask;
+//}
 
 
-unsigned HashFunc(vector<unsigned>::iterator aList_begin,vector<unsigned>::iterator aList_end,unsigned aBitMask) {
-	return APHash(aList_begin,aList_end) & aBitMask;
-}
+//unsigned HashFunc(vector<unsigned>::iterator aList_begin,vector<unsigned>::iterator aList_end,unsigned aBitMask) {
+//	return APHash(aList_begin,aList_end) & aBitMask;
+//}
 
 
 
