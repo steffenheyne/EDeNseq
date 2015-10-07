@@ -759,12 +759,13 @@ void HistogramIndex::ComputeHistogram(const vector<unsigned>& aSignature, std::v
 	hist *= 0;
 	emptyBins = 0;
 	for (unsigned k = 0; k < aSignature.size(); ++k) {
-		if (mInverseIndex[k].count(aSignature[k]) > 0) {
+		if (mInverseIndex[k][aSignature[k]]) {
 
 			std::valarray<double> t(0.0, hist.size());
+			binKeyTy*& myValue = mInverseIndex[k][aSignature[k]];
 
-			for (uint i=1;i<=mInverseIndex[k][aSignature[k]][0];i++){
-				t[mInverseIndex[k][aSignature[k]][i]-1]=1;
+			for (uint i=1;i<=myValue[0];i++){
+				t[myValue[i]-1]=1;
 			}
 
 			hist += t;
