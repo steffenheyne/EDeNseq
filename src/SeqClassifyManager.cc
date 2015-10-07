@@ -166,7 +166,7 @@ void SeqClassifyManager::finisher_Results(ogzstream* fout_res){
 				*fout_res << (*myResults)[i].output_line;
 				mResultCounter += (*myResults)[i].numInstances;
 				if (mResultCounter%1000 <= 10) {
-					std::ios::fmtflags old = cout.setf(ios::fixed); //,ios::floatfield);
+					cout.setf(ios::fixed); //,ios::floatfield);
 					cout << "\r" <<  std::setprecision(1) << progress_bar.getElapsed()/1000 << " sec elapsed    Finised numSeqs=" << std::setprecision(0) << setw(10);
 					cout << mNumSequences  << "("<<mNumSequences/(progress_bar.getElapsed()/1000) <<" seq/s)  signatures=" << setw(10);
 					cout << mResultCounter << "("<<(double)mResultCounter/((progress_bar.getElapsed()/1000)) <<" sig/s - "<<(double)mResultCounter/((progress_bar.getElapsed()/(1000/mpParameters->mNumThreads)))<<" per thread)  inst=";

@@ -23,7 +23,7 @@
 #CHECKLIMITS activates the limit check for graph operations
 
 CXX=g++
-OPTS=-g -O3 -Wno-deprecated -Wno-unused-local-typedefs -DLOSS=1 -std=c++11 -pthread -fopenmp -DUSEMULTITHREAD -DEIGEN_DONT_PARALLELIZE # -DDEBUGON # -DCHECKLIMITS
+OPTS=-g -O3 -Wno-deprecated -Wno-unused-local-typedefs -DLOSS=1 -std=c++11 -pthread -fopenmp -DNDEBUG -DUSEMULTITHREAD -DEIGEN_DONT_PARALLELIZE # -DDEBUGON # -DCHECKLIMITS
 #OPTS=-g -Wno-deprecated -DLOSS=1 -static -DEIGEN_DONT_PARALLELIZE # -DDEBUGON # -DCHECKLIMITS
 #OPTS=-g -Wno-deprecated -DLOSS=1 #-DDEBUGON
 #OPTS=-g -Wno-deprecated -static -pg

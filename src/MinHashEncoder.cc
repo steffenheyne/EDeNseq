@@ -43,7 +43,7 @@ inline vector<unsigned> MinHashEncoder::HashFuncNSPDK(const string& aString, uns
 
 //void MinHashEncoder::generate_feature_vector(const GraphClass& aG, SVector& x) {
 //void MinHashEncoder::generate_feature_vector(const string& seq, SVector& x) {
-void  MinHashEncoder::generate_feature_vector(const string& seq, SVector& x) {
+inline void  MinHashEncoder::generate_feature_vector(const string& seq, SVector& x) {
 //	x.set_empty_key(0);
 //	x.resize(5000);
 	x.resize(pow(2, mpParameters->mHashBitSize));
@@ -306,7 +306,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 				//}
 
 				cv2.notify_all();
-				if (graph_queue.size()>=numWorkers*50){
+				if (graph_queue.size()>=numWorkers*10){
 					unique_lock<mutex> lk(mut2);
 					cv2.wait(lk,[&]{if ((done) || (graph_queue.size()<=numWorkers*3)) return true; else return false;});
 					lk.unlock();
@@ -338,7 +338,7 @@ void MinHashEncoder::worker_Graph2Signature(int numWorkers){
 				ComputeHashSignature((*myData)[j].svec,(*myData)[j].sig);
 			}
 			sig_queue.push(myData);
-			if (sig_queue.size()>=numWorkers*25){
+			if (sig_queue.size()>=numWorkers*50){
 				unique_lock<mutex> lk(mut2);
 				cv2.wait(lk,[&]{if ((done) || (sig_queue.size()<=numWorkers*3)) return true; else return false;});
 				lk.unlock();
@@ -369,10 +369,10 @@ void MinHashEncoder::finisher(){
 			mSignatureCounter += chunkSize;
 
 		//	if (mInstanceCounter%10 <= 1) {
-				std::ios::fmtflags old = cout.setf(ios::fixed); //,ios::floatfield);
+				cout.setf(ios::fixed); //,ios::floatfield);
 				cout << "\r" <<  std::setprecision(1) << progress_bar.getElapsed()/1000 << " sec elapsed    Finised numSeqs=" << std::setprecision(0) << setw(10);
 				cout << mSequenceCounter  << "("<<mSequenceCounter/(progress_bar.getElapsed()/1000) <<" seq/s)  signatures=" << setw(10);
-				cout << mSignatureCounter << "("<<(double)mSignatureCounter/((progress_bar.getElapsed()/1000)) <<" sig/s - "<<(double)mSignatureCounter/((progress_bar.getElapsed()/(1000/mpParameters->mNumThreads)))<<" per thread)  inst=";
+				cout << mSignatureCounter << "("<<(double)mSignatureCounter/((progress_bar.getElapsed()/1000)) <<" sig/s - inst=";
 				cout << mInstanceCounter << " graphQueue=" << graph_queue.size() << " sigQueue=" << sig_queue.size() << "      ";
 		//	}
 			//if (mInstanceCounter%1000000 <= chunkSize){
@@ -702,11 +702,33 @@ HistogramIndex::binKeyTy HistogramIndex::GetHistogramSize(){
 	return mHistogramSize;
 }
 
+//void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature,const unsigned& aIndex) {
+//	const binKeyTy aIndexT =(binKeyTy)aIndex;
+//	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k) { //for every hash value
+//		unsigned key = aSignature[k];
+//		if (key != MAXUNSIGNED && key != 0) { //if key is equal to markers for empty bins then skip insertion instance in data structure
+//			if (mInverseIndex[k].count(key) == 0) { //if this is the first time that an instance exhibits that specific value for that hash function, then store for the first time the reference to that instance
+//				indexBinTy tmp;
+//				tmp.push_back(aIndex);
+//				mInverseIndex[k].insert(make_pair(key, tmp));
+//				numKeys++; // just for bin statistics
+//			} else if (mInverseIndex[k][key].back() != aIndexT) {
+//				// add key to bin if we not have a full bin
+//				indexBinTy& myValue = mInverseIndex[k][key];
+//				indexBinTy::iterator it = myValue.begin();
+//				while (*it<aIndex && it !=myValue.end() ){
+//					++it;
+//				}
+//				mInverseIndex[k][key].insert(it,aIndexT);
+//			}
+//		}
+//	}
+//}
 
 void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, const unsigned& aIndex) {
 	const binKeyTy& aIndexT =(binKeyTy)aIndex;
 	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k) { //for every hash value
-		unsigned key = aSignature[k];
+		const unsigned& key = aSignature[k];
 		if (key != MAXUNSIGNED && key != 0) { //if key is equal to markers for empty bins then skip insertion instance in data structure
 			if (!mInverseIndex[k][key]) { //if this is the first time that an instance exhibits that specific value for that hash function, then store for the first time the reference to that instance
 
@@ -753,18 +775,46 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 }
 
 
+//void HistogramIndex::ComputeHistogram(const vector<unsigned>& aSignature, std::valarray<double>& hist, unsigned& emptyBins) {
+//
+//	hist.resize(GetHistogramSize());
+//	hist *= 0;
+//	emptyBins = 0;
+//	for (unsigned k = 0; k < aSignature.size(); ++k) {
+//
+//		if (mInverseIndex[k].count(aSignature[k]) != 0) {
+//
+//			indexBinTy& myValue = mInverseIndex[k][aSignature[k]];
+//
+//			std::valarray<double> t(0.0, hist.size());
+//
+//			for (uint i=1;i<=myValue.size();i++){
+//				t[myValue[i]-1]=1;
+//			}
+//
+//			hist += t;
+//
+//		} else {
+//			emptyBins++;
+//		}
+//	}
+//}
+
+
 void HistogramIndex::ComputeHistogram(const vector<unsigned>& aSignature, std::valarray<double>& hist, unsigned& emptyBins) {
 
 	hist.resize(GetHistogramSize());
 	hist *= 0;
 	emptyBins = 0;
 	for (unsigned k = 0; k < aSignature.size(); ++k) {
-		if (mInverseIndex[k].count(aSignature[k]) > 0) {
+		if (mInverseIndex[k][aSignature[k]]) {
+
+			indexBinTy& myValue = mInverseIndex[k][aSignature[k]];
 
 			std::valarray<double> t(0.0, hist.size());
 
-			for (uint i=1;i<=mInverseIndex[k][aSignature[k]][0];i++){
-				t[mInverseIndex[k][aSignature[k]][i]-1]=1;
+			for (uint i=1;i<=myValue[0];i++){
+				t[myValue[i]-1]=1;
 			}
 
 			hist += t;
@@ -880,7 +930,7 @@ bool HistogramIndex::readBinaryIndex2(string filename, indexTy &index){
 				fin.setstate(std::ios::badbit);
 			if (!fin.good())
 				return false;
-
+	//		indexBinTy tmp = indexBinTy(numBinEntries);
 			indexBinTy tmp = new binKeyTy[numBinEntries+1];
 			//cout << "new bin " << binId << " " << numBinEntries << " ";
 			for (unsigned entry = 1; entry <= numBinEntries; entry++ ){
@@ -895,6 +945,7 @@ bool HistogramIndex::readBinaryIndex2(string filename, indexTy &index){
 				//cout << s << " ";
 			}
 			//cout << endl;
+
 			tmp[0] = numBinEntries;
 			index[hashFunc][binId] = tmp;
 		}
