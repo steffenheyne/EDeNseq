@@ -5,6 +5,7 @@
 #include <streambuf>
 #include <valarray>
 #include <list>
+#include <chrono>
 #include "Utility.h"
 #include "Parameters.h"
 #include "Data.h"
@@ -13,8 +14,8 @@
 #include "sparsehash-2.0.2/sparsehash/dense_hash_map"
 //#include "sparsehash-2.0.2/sparsehash/dense_hash_set"
 //#include "sparsehash-2.0.2/sparsehash/sparse_hash_set"
-#include <Eigen/Sparse>
-#include <chrono>
+#include "eigen-eigen-3.20/Eigen/Sparse"
+
 
 using namespace std;
 
@@ -213,8 +214,8 @@ public:
 	};
 	//	typedef std::tr1::unordered_map<unsigned, indexBinTy,hashFunc> indexSingleTy;
 	//	typedef google::dense_hash_map<unsigned, indexBinTy, hashFunc> indexSingleTy;
-		typedef google::sparse_hash_map<unsigned, indexBinTy, hashFunc, hashFunc> indexSingleTy;
-	//typedef google::sparse_hash_map<unsigned, indexBinTy> indexSingleTy;
+	typedef google::sparse_hash_map<unsigned, indexBinTy, hashFunc, hashFunc> indexSingleTy;
+	//	typedef google::sparse_hash_map<unsigned, indexBinTy> indexSingleTy;
 
 	typedef vector<indexSingleTy> indexTy;
 	const binKeyTy MAXBINKEY = std::numeric_limits<binKeyTy>::max();
@@ -229,22 +230,18 @@ public:
 	{
 		mInverseIndex.resize(mpParameters->mNumHashFunctions, indexSingleTy(500000000));
 		for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k){
-			//mInverseIndex.push_back(indexSingleTy(500000000));
-//			mInverseIndex[k].min_load_factor(0.1);
 			mInverseIndex[k].max_load_factor(0.9);
-	//		mInverseIndex.back().resize(500000000);
-	//		mInverseIndex.back().min_load_factor(1000.0);
 	//		mInverseIndex.back().set_empty_key(0);
 		}
 
 	}
 
 	binKeyTy	GetHistogramSize();
-	void  SetHistogramSize(binKeyTy size);
-	void	UpdateInverseIndex(const vector<unsigned>& aSignature, const unsigned& aIndex);
-	void  ComputeHistogram(const vector<unsigned>& aSignature, std::valarray<double>& hist, unsigned& emptyBins);
-	void	writeBinaryIndex2(ostream &out, const indexTy& index);
-	bool	readBinaryIndex2(string filename, indexTy& index);
+	void		SetHistogramSize(binKeyTy size);
+	void		UpdateInverseIndex(const vector<unsigned>& aSignature, const unsigned& aIndex);
+	void  		ComputeHistogram(const vector<unsigned>& aSignature, std::valarray<double>& hist, unsigned& emptyBins);
+	void		writeBinaryIndex2(ostream &out, const indexTy& index);
+	bool		readBinaryIndex2(string filename, indexTy& index);
 };
 
 #endif /* MIN_HASH_ENCODER_H */
