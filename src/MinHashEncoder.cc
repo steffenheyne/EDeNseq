@@ -43,7 +43,7 @@ inline vector<unsigned> MinHashEncoder::HashFuncNSPDK(const string& aString, uns
 
 //void MinHashEncoder::generate_feature_vector(const GraphClass& aG, SVector& x) {
 //void MinHashEncoder::generate_feature_vector(const string& seq, SVector& x) {
-inline void  MinHashEncoder::generate_feature_vector(const string& seq, SVector& x) {
+void  MinHashEncoder::generate_feature_vector(const string& seq, SVector& x) {
 //	x.set_empty_key(0);
 //	x.resize(5000);
 	x.resize(pow(2, mpParameters->mHashBitSize));
@@ -92,8 +92,8 @@ inline void  MinHashEncoder::generate_feature_vector(const string& seq, SVector&
 				//				endpoint_list[3] = dest_code;
 				//				unsigned nosrc_code = HashFunc(endpoint_list, mHashBitMask);
 				//				z.coeffRef(nosrc_code) += 1;
-				//x.coeffRef(code) = 1;
-				x.insert(code);
+				x.coeffRef(code) = 1;
+				//x.insert(code);
 			}
 			//z /= z.norm();
 			//x += z;
@@ -118,8 +118,6 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 			if (!fin)
 				throw range_error("ERROR Data::LoadData: Cannot open file: " + myData->filename);
 
-			int file_instances = 0; // only for log output
-			int file_seqs      = 0;
 			std::tr1::unordered_map<string, uint8_t> seq_names_seen;
 
 			unsigned pos = 0; // tracks the current seq start pos (window/shift)
@@ -156,7 +154,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 								mpData->GetNextFastaSeq(fin, currFullSeq, currSeqName);
 								if (fin.eof() )
 									continue;
-								file_seqs++;
+								mSequenceCounter++;
 								if (myData->checkUniqueSeqNames && seq_names_seen.count(currSeqName) > 0) {
 									throw range_error("Sequence names are not unique in FASTA file! "+currSeqName);
 								} else if (myData->checkUniqueSeqNames) {
@@ -167,8 +165,8 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 								mpData->GetNextStringSeq(fin, currFullSeq);
 								if (fin.eof() )
 									continue;
-								file_seqs++;
-								currSeqName =  std::to_string(file_seqs);
+								mSequenceCounter++;
+								currSeqName =  std::to_string(mSequenceCounter);
 								break;
 							default:
 								throw range_error("ERROR Data::LoadData: file type not recognized: " + myData->filetype);
@@ -176,7 +174,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 
 							// log output
 							if (myData->signatureAction==INDEX){
-								cout << endl << " next found Seq #" <<  seq_names_seen.size() << " length " << currFullSeq.size() << ":" << currSeqName << ": " << endl;
+						//		cout << endl << " next found Seq #" <<  seq_names_seen.size() << " length " << currFullSeq.size() << ":" << currSeqName << ": " << endl;
 							}
 
 							// if we have bed entries for a seq, find them and set iterator to first bed entry
@@ -184,7 +182,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 								annoEntries = myData->dataBED->equal_range(currSeqName);
 								it = annoEntries.first;
 							} else if (myData->dataBED){
-								cout << "no bed entry found! "<< seq_names_seen.size()<< endl;
+							//	cout << "no bed entry found! "<< seq_names_seen.size()<< endl;
 								// bed is present, but no entry for current seq found -> we take next seq
 								valid_input = false;
 								continue;
@@ -224,7 +222,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 							pos = it->second->START;
 							end = it->second->END;
 							//mIndexValue2Feature.insert(make_pair(idx,it->second));
-							cout << endl << "BED entry found for seq name " << currSeqName << " " << it->second->NAME << " MetaIdx "<< idx << " " << pos << "-"<< end << endl;
+							//cout << endl << "BED entry found for seq name " << currSeqName << " " << it->second->NAME << " MetaIdx "<< idx << " " << pos << "-"<< end << endl;
 							it++;
 						} else {
 							// no bed is present, then we set start/end to full seq, eg. in case for clustering
@@ -275,8 +273,6 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 							myChunkP->push_back(myInstance);
 							i++;
 							mInstanceCounter++;
-							file_instances++;
-
 						}
 
 						if (myData->strandType != FWD){
@@ -291,7 +287,6 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 
 							myChunkP->push_back(myInstanceRC);
 							mInstanceCounter++;
-							file_instances++;
 							i++;
 						}
 
@@ -372,10 +367,19 @@ void MinHashEncoder::finisher(){
 			finishUpdate(myData);
 			myData.reset();
 			mSignatureCounter += chunkSize;
-			if (mInstanceCounter%1000000 <= chunkSize){
-				cout << endl << "    finisher updated index with " << chunkSize << " signatures all_sigs=" <<  mSignatureCounter << " inst=" << mInstanceCounter << " sigQueue=" << sig_queue.size() << endl;
-			}
-			progress_bar.Count(mInstanceCounter);
+
+		//	if (mInstanceCounter%10 <= 1) {
+				std::ios::fmtflags old = cout.setf(ios::fixed); //,ios::floatfield);
+				cout << "\r" <<  std::setprecision(1) << progress_bar.getElapsed()/1000 << " sec elapsed    Finised numSeqs=" << std::setprecision(0) << setw(10);
+				cout << mSequenceCounter  << "("<<mSequenceCounter/(progress_bar.getElapsed()/1000) <<" seq/s)  signatures=" << setw(10);
+				cout << mSignatureCounter << "("<<(double)mSignatureCounter/((progress_bar.getElapsed()/1000)) <<" sig/s - "<<(double)mSignatureCounter/((progress_bar.getElapsed()/(1000/mpParameters->mNumThreads)))<<" per thread)  inst=";
+				cout << mInstanceCounter << " graphQueue=" << graph_queue.size() << " sigQueue=" << sig_queue.size() << "      ";
+		//	}
+			//if (mInstanceCounter%1000000 <= chunkSize){
+			//	cout << endl << "    finisher updated index with " << chunkSize << " signatures all_sigs=" <<  mSignatureCounter << " inst=" << mInstanceCounter << " sigQueue=" << sig_queue.size() << endl;
+			//}
+
+//			progress_bar.Count(mInstanceCounter);
 		}
 		cv1.notify_all();
 		cv2.notify_all();
@@ -415,6 +419,7 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 	files_done=0;
 	mSignatureCounter = 0;
 	mInstanceCounter = 0;
+	mSequenceCounter = 0;
 
 	vector<std::thread> threads;
 	threads.push_back( std::thread(&MinHashEncoder::finisher,this));
@@ -703,7 +708,7 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k) { //for every hash value
 		unsigned key = aSignature[k];
 		if (key != MAXUNSIGNED && key != 0) { //if key is equal to markers for empty bins then skip insertion instance in data structure
-			if (mInverseIndex[k].count(key) == 0) { //if this is the first time that an instance exhibits that specific value for that hash function, then store for the first time the reference to that instance
+			if (!mInverseIndex[k][key]) { //if this is the first time that an instance exhibits that specific value for that hash function, then store for the first time the reference to that instance
 
 				binKeyTy * foo;
 				foo = new binKeyTy[2];
@@ -713,26 +718,28 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 				mInverseIndex[k][key] = foo;
 				numKeys++; // just for bin statistics
 			} else if (mInverseIndex[k][key][mInverseIndex[k][key][0]] != aIndexT){
+				//mInverseIndex[k][key][0] < 2 &&
+				binKeyTy*& myValue = mInverseIndex[k][key];
 
 				// find pos for insert, assume sorted array
-				binKeyTy i = mInverseIndex[k][key][0];
-				while ((mInverseIndex[k][key][i]> aIndexT) && (i>1)){
+				binKeyTy i = myValue[0];
+				while ((myValue[i]> aIndexT) && (i>1)){
 					i--;
 				}
 
 				// only insert if element is not there
-				if (mInverseIndex[k][key][i]<aIndexT){
-					binKeyTy newSize = (mInverseIndex[k][key][0])+1;
+				if (myValue[i]<aIndexT){
+					binKeyTy newSize = (myValue[0])+1;
 					binKeyTy * fooNew;
 					fooNew = new binKeyTy[newSize+1];
 
-					memcpy(fooNew,mInverseIndex[k][key],(i+1)*sizeof(binKeyTy));
+					memcpy(fooNew,myValue,(i+1)*sizeof(binKeyTy));
 					fooNew[i+1] = aIndexT;
-					memcpy(&fooNew[i+2],&mInverseIndex[k][key][i+1],(mInverseIndex[k][key][0]-i)*sizeof(binKeyTy));
+					memcpy(&fooNew[i+2],&myValue[i+1],(myValue[0]-i)*sizeof(binKeyTy));
 					fooNew[0] = newSize;
 
-					delete[] mInverseIndex[k][key];
-					mInverseIndex[k][key] = fooNew;
+					delete[] myValue;
+					myValue = fooNew;
 				}
 				//				cout << "bin " << key << " k " <<  k << " aIdx "<< aIndex << "\t";
 				//				for (unsigned j=0; j<=mInverseIndex[k][key][0];j++){
