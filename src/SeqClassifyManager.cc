@@ -450,6 +450,7 @@ void SeqClassifyManager::ClassifySeqs(){
 
 	mClassifiedInstances = 0;
 	mNumSequences = 0;
+	mSequenceCounter = 0;
 	pb.Begin();
 	SeqFilesT myList;
 	myList.push_back(mySet);

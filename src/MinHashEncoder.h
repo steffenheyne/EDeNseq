@@ -120,6 +120,7 @@ protected:
 
 	std::atomic_bool done;
 	std::atomic_uint files_done;
+	std::atomic_uint mSequenceCounter;
 	std::atomic_uint mInstanceCounter;
 	std::atomic_uint mSignatureCounter;
 
