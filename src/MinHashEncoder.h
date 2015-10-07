@@ -10,6 +10,7 @@
 #include "Data.h"
 #include "BaseManager.h"
 #include "sparsehash-2.0.2/sparsehash/sparse_hash_map"
+#include "sparsehash-2.0.2/sparsehash/dense_hash_map"
 //#include "sparsehash-2.0.2/sparsehash/dense_hash_set"
 //#include "sparsehash-2.0.2/sparsehash/sparse_hash_set"
 #include <Eigen/Sparse>
@@ -199,9 +200,15 @@ public:
 	typedef uint16_t binKeyTy;
 	typedef binKeyTy* indexBinTy;
 
+	struct hashFunc {
+	size_t operator() (const unsigned& ujHash) const {
+		return	static_cast<size_t>(ujHash); }
+	};
+
+
 //	typedef std::tr1::unordered_map<unsigned, indexBinTy> indexSingleTy;
 //	typedef google::dense_hash_map<unsigned, indexBinTy> indexSingleTy;
-	typedef google::sparse_hash_map<unsigned, indexBinTy> indexSingleTy;
+	typedef google::sparse_hash_map<unsigned, indexBinTy, hashFunc> indexSingleTy;
 
 	typedef vector<indexSingleTy> indexTy;
 	const binKeyTy MAXBINKEY = std::numeric_limits<binKeyTy>::max();
@@ -216,8 +223,9 @@ public:
 	{
 		mInverseIndex.clear();
 		for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k){
-			mInverseIndex.push_back(indexSingleTy());
-			mInverseIndex.back().resize(500000000);
+			mInverseIndex.push_back(indexSingleTy(500000000));
+	//		mInverseIndex.back().resize(500000000);
+	//		mInverseIndex.back().min_load_factor(1000.0);
 			//mInverseIndex.back().set_empty_key(0);
 		}
 
