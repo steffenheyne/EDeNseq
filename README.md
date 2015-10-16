@@ -24,7 +24,7 @@ contains the test files for the following test run (please adapt path names):
 - [**`test_data/test.genomes.fa.gz`**](https://github.com/steffenheyne/EDeNseq/blob/master/test_data/test.genomes.fa.gz) contains 29 bacterial chromosomes
 - [**`test_data/test.small.bed`**](https://github.com/steffenheyne/EDeNseq/blob/master/test_data/test.small.bed) indicates regions from the genomes that get indexed and against the reads are classified
 
-- The command above produces a results file **`test.reads.fna.gz.classified.tab.gz`**. An example output is
+- The command above produces the index file **`test.small.bed.bhi`** and a results file **`test.reads.fna.gz.classified.tab.gz`**. An example output is
 shown in [**`test_data/test.reads.fna.gz.classified.tab.txt`**](https://github.com/steffenheyne/EDeNseq/blob/master/test_data/test.reads.fna.gz.classified.tab.txt)
 
 - [**`test_data/test.log`**](https://github.com/steffenheyne/EDeNseq/blob/master/test_data/test.log) shows the terminal output of the above example
