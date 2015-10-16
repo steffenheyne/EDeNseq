@@ -55,14 +55,14 @@ The folder `test_data/` contains the test files for the following test run:
 
 `EDeNseq -a CLASSIFY -f FASTA -i test_data/test.reads.fna.gz --index_seqs test_data/test.genomes.fa.gz  --num_repeat_hash_functions 2 --num_hash_shingles 3 --numThreads 4 --index_bed test_data/test.small.bed --seq_window 70 --index_seq_shift 0.15 --seq_shift 0.13 -b 30 -F 5 -r 4 -d 7 --min_radius 4 --min_distance 7 --pure_approximate_sim 0`
 
-- **`test.reads.fna.gz`** contains 231.578 sequences (100nt) sampled from 29 bacterial chromosomes
-- test.genomes.fa.gz contains 29 bacterial chromosomes
-* test.small.bed contains the regions for the index against the reads are classified
+- **`test_data/test.reads.fna.gz`** contains 231.578 sequences (100nt) sampled from 29 bacterial chromosomes
+- **`test_data/test.genomes.fa.gz`** contains 29 bacterial chromosomes
+- **`test_data/test.small.bed contains the regions for the index against the reads are classified
 
-* The command above produces a results file `test.reads.fna.gz.classified.tab.gz`. An example output is
-shown in `test_data/test.reads.fna.gz.classified.tab.txt`
+- The command above produces a results file **`test.reads.fna.gz.classified.tab.gz`**. An example output is
+shown in **`test_data/test.reads.fna.gz.classified.tab.txt`**
 
-* `test_data/test.log` shows the stdout of the example 
+- **`test_data/test.log`** shows the terminal output of the above example
 
 ## Download bacterial reference genomes from NCBI
 
