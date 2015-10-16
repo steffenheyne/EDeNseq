@@ -1,0 +1,97 @@
+EDeNseq -a CLASSIFY -f FASTA -i /home/heyne/install-src/EDeNseq/test_data/test.reads.fna.gz --index_seqs /home/heyne/install-src/EDeNseq/test_data/test.genomes.fa.gz  --num_repeat_hash_functions 2 --num_hash_shingles 3  -y /home/heyne/install-src/EDeNseq/test_data/ --numThreads 4 --index_bed ~/install-src/EDeNseq/test_data/test.small.bed --seq_window 70 --index_seq_shift 0.15 --seq_shift 0.13 -b 30 -F 5 -r 4 -d 7 --min_radius 4 --min_distance 7 --pure_approximate_sim 0
+-----------------------------------------------------------------
+EDeNseq (Explicit Decomposition with Neighborhoods for Biological Sequences)
+Version: 1.0
+Last Update: 20 July 2015
+Author: Steffen Heyne & Fabrizio Costa     Email:heyne@ie-freiburg.mpg.de
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+INVERSE INDEX
+-----------------------------------------------------------------
+BED file loaded with 62 entries
+
+ *** Creating inverse index *** 
+
+bitmask 1073741823
+Using 30 bits to encode features
+Using 1 as random seed
+Using 5 hash functions (with factor 2 for single minhash)
+Using 3 as hash shingle factor
+Using 0 as approximate similarity 
+Using feature radius   4..4
+Using feature distance 7..7
+Using sequence window  70 shift 0.15 (10) clip 0
+Computing MinHash signatures on the fly while reading 1 file(s)...
+Using 4 worker threads and 2 helper threads...
+
+read next file /home/heyne/install-src/EDeNseq/test_data/test.genomes.fa.gz sig_all_counter 0 inst_counter 0
+2.8 sec elapsed    Finised numSeqs=        62(22 seq/s)  signatures=    233072(82562 sig/s - inst=233072 graphQueue=0 sigQueue=0        
+Elapsed time: h: 0.00 m: 0.00 s: 2.00
+
+1 2 3 4 5 6  threads joined
+
+Inverse index ratio of overfull bins (maxSizeBin): 0.00 0/860502 instances 233072
+Instances/signatures produced 233072
+inverse index file : /home/heyne/install-src/EDeNseq/test_data/test.small.bed.bhi
+ write index file ... 
+
+-----------------------------------------------------------------
+CLASSIFICATION
+-----------------------------------------------------------------
+
+ *** Read sequences for classification and create their MinHash signatures *** 
+
+hist size: 29
+bitmask 1073741823
+Using 30 bits to encode features
+Using 1 as random seed
+Using 5 hash functions (with factor 2 for single minhash)
+Using 3 as hash shingle factor
+Using 0.00 as approximate similarity 
+Using feature radius   4..4
+Using feature distance 7..7
+Using sequence window  70 shift 0.13 (9) clip 0
+Computing MinHash signatures on the fly while reading 1 file(s)...
+Using 4 worker threads and 2 helper threads...
+
+read next file /home/heyne/install-src/EDeNseq/test_data/test.reads.fna.gz sig_all_counter 0 inst_counter 0
+19.4 sec elapsed    Finised numSeqs=    231578(11941 seq/s)  signatures=   1852624(95531 sig/s - 23883 per thread)  inst=1852624 resQueue=0 graphQueue=0        
+Elapsed time: h: 0.00 m: 0.00 s: 19.00
+
+1 2 3 4 5 6  threads joined
+Instances/signatures produced 1852624 1852624
+-----------------------------------------------------------------
+ CLASSIFICATION FINISHED
+-----------------------------------------------------------------
+
+
+META histogram - classified seqs: 0.986 (228274) - TOP 20
+1	0.12	22244	21	feature	1358	#features=4	Lactococcus_lactis
+2	0.09	23807	11	feature	1404	#features=6	Bacillus_megaterium
+3	0.09	20886	1	feature	62140	#features=7	Acidiphilium_multivorum
+4	0.05	13406	8	feature	53633	#features=1	Sulfobacillus_acidophilus
+5	0.05	12867	19	feature	1502	#features=1	Clostridium_perfringens
+6	0.05	10519	13	feature	80679	#features=1	Thioflavicoccus_mobilis
+7	0.05	11208	15	feature	86662	#features=3	Bacillus_weihenstephanensis
+8	0.05	11792	6	feature	497965	#features=3	Cyanothece_sp._PCC_7822
+9	0.04	9942	28	feature	366648	#features=3	Xanthomonas_fuscans
+10	0.04	7911	4	feature	2208	#features=1	Methanosarcina_barkeri
+11	0.04	8521	26	feature	680	#features=1	Vibrio_campbellii
+12	0.04	8422	2	feature	395962	#features=4	Cyanothece_sp._PCC_8802
+13	0.04	8253	7	feature	55148	#features=1	Deinococcus_proteolyticus
+14	0.03	5966	29	feature	926	#features=2	Thiomonas_intermedia
+15	0.03	6590	25	feature	1747	#features=1	Propionibacterium_acnes
+16	0.03	6044	27	feature	632	#features=3	Yersinia_pestis
+17	0.02	5679	12	feature	382	#features=1	Sinorhizobium_meliloti
+18	0.02	4809	16	feature	456327	#features=3	Xanthomonas_euvesicatoria
+19	0.02	5422	22	feature	575200	#features=1	Corynebacterium_maris
+20	0.02	5032	18	feature	118323	#features=2	Oscillatoria_acuminata
+SUM	1.00
+
+
+Elapsed time: h: 0.00 m: 0.00 s: 22.00
+Total run-time:
+
+Elapsed time: h: 0.00 m: 0.00 s: 23.00
+
