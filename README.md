@@ -15,7 +15,8 @@ EDeNseq requires C++11 support! GCC 4.8 should be sufficient.
 
 ## Example: classify metagenomic reads against bacterial genomes
 
-The folder [`test_data/`](https://github.com/steffenheyne/EDeNseq/blob/master/test_data/) contains the test files for the following test run:
+The folder [`test_data/`](https://github.com/steffenheyne/EDeNseq/blob/master/test_data/) 
+contains the test files for the following test run (please adapt path names):
 
 `EDeNseq -a CLASSIFY -f FASTA -i test_data/test.reads.fna.gz --index_seqs test_data/test.genomes.fa.gz  --num_repeat_hash_functions 2 --num_hash_shingles 3 --numThreads 4 --index_bed test_data/test.small.bed --seq_window 70 --index_seq_shift 0.15 --seq_shift 0.13 -b 30 -F 5 -r 4 -d 7 --min_radius 4 --min_distance 7 --pure_approximate_sim 0`
 
@@ -64,6 +65,11 @@ if there is a BED entry without sequence in the FASTA file.
 Note: Currently only in clustering mode, no BED file is necessary and all 
 provided sequences are used!
 
+## Create BED file for large fasta file
+
+One can use samtools for this purpose: `samtools faidx my_genomes.fa.gz` 
+
+Then best use `awk` or simlar tools to get the columns in the right order! 
 
 ## Download bacterial reference genomes from NCBI
 
