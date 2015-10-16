@@ -1,4 +1,4 @@
-EDeNseq -a CLASSIFY -f FASTA -i /home/heyne/install-src/EDeNseq/test_data/test.reads.fna.gz --index_seqs /home/heyne/install-src/EDeNseq/test_data/test.genomes.fa.gz  --num_repeat_hash_functions 2 --num_hash_shingles 3  -y /home/heyne/install-src/EDeNseq/test_data/ --numThreads 4 --index_bed ~/install-src/EDeNseq/test_data/test.small.bed --seq_window 70 --index_seq_shift 0.15 --seq_shift 0.13 -b 30 -F 5 -r 4 -d 7 --min_radius 4 --min_distance 7 --pure_approximate_sim 0
+EDeNseq -a CLASSIFY -f FASTA -i test_data/test.reads.fna.gz --index_seqs test_data/test.genomes.fa.gz  --num_repeat_hash_functions 2 --num_hash_shingles 3  --numThreads 4 --index_bed test_data/test.small.bed --seq_window 70 --index_seq_shift 0.15 --seq_shift 0.13 -b 30 -F 5 -r 4 -d 7 --min_radius 4 --min_distance 7 --pure_approximate_sim 0
 -----------------------------------------------------------------
 EDeNseq (Explicit Decomposition with Neighborhoods for Biological Sequences)
 Version: 1.0
@@ -25,7 +25,7 @@ Using sequence window  70 shift 0.15 (10) clip 0
 Computing MinHash signatures on the fly while reading 1 file(s)...
 Using 4 worker threads and 2 helper threads...
 
-read next file /home/heyne/install-src/EDeNseq/test_data/test.genomes.fa.gz sig_all_counter 0 inst_counter 0
+read next file test_data/test.genomes.fa.gz sig_all_counter 0 inst_counter 0
 2.8 sec elapsed    Finised numSeqs=        62(22 seq/s)  signatures=    233072(82562 sig/s - inst=233072 graphQueue=0 sigQueue=0        
 Elapsed time: h: 0.00 m: 0.00 s: 2.00
 
@@ -33,7 +33,7 @@ Elapsed time: h: 0.00 m: 0.00 s: 2.00
 
 Inverse index ratio of overfull bins (maxSizeBin): 0.00 0/860502 instances 233072
 Instances/signatures produced 233072
-inverse index file : /home/heyne/install-src/EDeNseq/test_data/test.small.bed.bhi
+inverse index file : test_data/test.small.bed.bhi
  write index file ... 
 
 -----------------------------------------------------------------
@@ -55,7 +55,7 @@ Using sequence window  70 shift 0.13 (9) clip 0
 Computing MinHash signatures on the fly while reading 1 file(s)...
 Using 4 worker threads and 2 helper threads...
 
-read next file /home/heyne/install-src/EDeNseq/test_data/test.reads.fna.gz sig_all_counter 0 inst_counter 0
+read next file test_data/test.reads.fna.gz sig_all_counter 0 inst_counter 0
 19.4 sec elapsed    Finised numSeqs=    231578(11941 seq/s)  signatures=   1852624(95531 sig/s - 23883 per thread)  inst=1852624 resQueue=0 graphQueue=0        
 Elapsed time: h: 0.00 m: 0.00 s: 19.00
 
