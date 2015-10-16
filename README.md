@@ -40,16 +40,16 @@ provided sequences are used!
 
 ## Installation
 
-EDeNseq requires C++11 support. GCC 4.8 should be sufficient. 
+EDeNseq requires C++11 support! GCC 4.8 should be sufficient. 
 
 1. clone or download EDeNseq
-	git clone https://github.com/steffenheyne/EDeNseq.git
+	`git clone https://github.com/steffenheyne/EDeNseq.git`
 	
-2. The change into source folder: `cd EDeNseq/src` 
+2. Then change into source folder: `cd EDeNseq/src` 
 
 3. Build it with: `make` 
 
-## Example 
+## Example: classify metagenomic reads against bacterial genomes
 
 The folder `test_data/` contains the test files for the following test run:
 
