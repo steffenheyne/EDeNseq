@@ -11,7 +11,7 @@ EDeNseq requires C++11 support! GCC 4.8 should be sufficient.
 	
 2. Then change into source folder: `cd EDeNseq/src` 
 
-3. Build it with: `make` 
+3. Build it with: `make`  - thats it!
 
 ## Example: classify metagenomic reads against bacterial genomes
 
@@ -69,7 +69,7 @@ provided sequences are used!
 
 One can use samtools for this purpose: `samtools faidx my_genomes.fa.gz` 
 
-Then best use `awk` or simlar tools to get the columns in the right order! 
+Then best use `awk` or a simlar tool to get the columns in the right order! 
 
 ## Download bacterial reference genomes from NCBI
 
