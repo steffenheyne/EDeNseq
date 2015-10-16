@@ -319,14 +319,14 @@ public:
 
 	~join_threads()
 	{
-		cout << endl << " join " <<  threads.size() << " threads " << endl;
 		for(unsigned long i=0;i<threads.size();++i)
 		{
 			if(threads[i].joinable())
 				threads[i].join();
-			cout << i << " ";
+			if (i==0) cout << endl<<flush;
+			cout << i+1 << " ";
 		}
-		cout << endl;
+		cout << " threads joined" << endl;
 	}
 };
 

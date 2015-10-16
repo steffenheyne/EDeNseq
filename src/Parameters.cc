@@ -867,6 +867,7 @@ void Parameters::Init(int argc, const char** argv) {
 	//set the boolean parameters to a default value of false
 	mVerbose = false;
 	mNoIndexCacheFile = false;
+	mWriteApproxNeighbors = false;
 	//set the data members of Parameters according to user choice
 	for (map<string, ParameterType>::iterator it = mOptionList.begin(); it != mOptionList.end(); ++it) {
 		ParameterType& param = it->second;

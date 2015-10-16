@@ -17,6 +17,8 @@ SeqClusterManager::SeqClusterManager(Parameters* apParameters, Data* apData)
 	mIndexDataSet->sigCache = mMinHashCache;
 	mIndexDataSet->lastMetaIdx = 0;
 	mIndexDataSet->checkUniqueSeqNames=true;
+	mIndexDataSet->signatureAction	= INDEX_SIGCACHE;
+	mIndexDataSet->strandType			= FWD;
 
 	SeqFilesT myList;
 	myList.push_back(mIndexDataSet);
@@ -30,7 +32,7 @@ void SeqClusterManager::finishUpdate(ChunkP& myData) {
 	switch ((*myData)[0].seqFile->signatureAction){
 	case INDEX_SIGCACHE: {
 		unsigned chunkSize 	= myData->size();
-		unsigned offset 		= (*myData)[0].idx-1;
+		unsigned offset 		= (*myData)[0].idx-1;	//first chunk has idx=1
 		//cout << "offset " << offset << " chunk " << chunkSize << endl;
 		if ((*myData)[0].seqFile->sigCache->size() < offset + chunkSize) {
 			(*myData)[0].seqFile->sigCache->resize( offset + chunkSize);
@@ -41,10 +43,6 @@ void SeqClusterManager::finishUpdate(ChunkP& myData) {
 			(*myData)[0].seqFile->sigCache->at(offset+j) = (*myData)[j].sig;
 			name2idxMap.insert(make_pair((*myData)[j].name, offset+j));
 			idx2nameMap.at(offset+j) = (*myData)[j].name;
-		}
-
-		for (unsigned j = 0; j < myData->size(); j++) {
-			UpdateInverseIndex((*myData)[j].sig, (*myData)[j].idx);
 		}
 	}
 	case INDEX: {
@@ -57,17 +55,6 @@ void SeqClusterManager::finishUpdate(ChunkP& myData) {
 		break;
 	}
 }
-
-//		if (myData->seqFile->sigCache->size()<myData->offset + chunkSize) {
-//			myData->seqFile->sigCache->resize(myData->offset + chunkSize);
-//			idx2nameMap.resize(myData->offset + chunkSize);
-//		}
-//
-//		for (unsigned j = 0; j < chunkSize; j++) {
-//			myData->seqFile->sigCache->at(myData->offset+j) = myData->sigs[j];
-//			name2idxMap.insert(make_pair(myData->names[j],myData->offset+j));
-//			idx2nameMap.at(myData->offset+j) = myData->names[j];
-//		}
 
 
 void SeqClusterManager::Exec() {

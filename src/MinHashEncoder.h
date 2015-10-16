@@ -19,7 +19,50 @@
 
 using namespace std;
 
+
+
+template<typename T>
+class MinHashIndex {
+
+public:
+	typedef	T 				ValueBinTy;
+	typedef	ValueBinTy*	ValueTy;
+	typedef	unsigned 	KeyTy;
+
+	struct hashFunc {
+		size_t operator()(KeyTy a) const {
+			return static_cast<size_t>(a);
+		}
+
+		bool operator()(KeyTy a, KeyTy b) const {
+			return a == b;
+		}
+	};
+	//	typedef std::tr1::unordered_map<unsigned, indexBinTy,hashFunc> indexSingleTy;
+	//	typedef google::dense_hash_map<unsigned, indexBinTy, hashFunc> indexSingleTy;
+	//	typedef google::sparse_hash_map<unsigned, indexBinTy> indexSingleTy;
+
+	typedef google::sparse_hash_map<KeyTy, ValueTy> indexSingleTy;
+
+	typedef vector<indexSingleTy> indexTy;
+	const ValueTy MAXBINKEY = std::numeric_limits<ValueTy>::max();
+
+	int 		mIndexSize;
+	indexTy mInverseIndex;
+
+	MinHashIndex(){};
+	MinHashIndex(int l):mIndexSize(l){
+		mInverseIndex.clear();
+				for (unsigned i = 0; i < mIndexSize; ++i){
+					mInverseIndex.push_back(indexSingleTy());
+					mInverseIndex.back().set_empty_key(0);
+				}
+	};
+
+};
+
 class MinHashEncoder {
+
 
 public:
 
@@ -63,32 +106,23 @@ public:
 	typedef vector<SeqFileP> 				SeqFilesT;
 
 	typedef Eigen::SparseVector<unsigned> SVector;
-//	typedef google::dense_hash_set<unsigned> SVectorMap;
+	//	typedef google::dense_hash_set<unsigned> SVectorMap;
 
 
 	struct instanceS {
-			Signature 	sig;
-			string 		name;
-			unsigned 	idx;
-			unsigned 	pos;
-			string 		seq;
-			SVector 		svec;
-			bool			rc;
-			SeqFileP 	seqFile;
-		};
+		Signature 	sig;
+		string 		name;
+		unsigned 	idx;
+		unsigned 	pos;
+		string 		seq;
+		SVector 		svec;
+		bool			rc;
+		SeqFileP 	seqFile;
+	};
 
 	typedef instanceS InstanceT;
 	typedef vector<InstanceT> ChunkT;
 	typedef std::shared_ptr<ChunkT> ChunkP;
-
-	struct resultS{
-		string output_line;
-		unsigned numInstances;
-	};
-
-	typedef resultS ResultT;
-	typedef vector<ResultT> ResultChunkT;
-	typedef std::shared_ptr<ResultChunkT> ResultChunkP;
 
 	Parameters* mpParameters;
 	Data* 		mpData;
@@ -155,21 +189,25 @@ private:
 
 	// inverse index
 	typedef unsigned binKeyTy;
-	typedef vector<binKeyTy>	indexBinTy;
-	typedef std::tr1::unordered_map<unsigned,indexBinTy> indexSingleTy;
+	//typedef vector<binKeyTy>	indexBinTy;
+	typedef binKeyTy* indexBinTy;
+	//	typedef std::tr1::unordered_map<unsigned,indexBinTy> indexSingleTy;
+	//	typedef google::sparse_hash_map<unsigned, indexBinTy> indexSingleTy;
+	typedef google::dense_hash_map<unsigned, indexBinTy> indexSingleTy;
 	typedef vector<indexSingleTy> indexTy;
 
 	const binKeyTy MAXBINKEY = std::numeric_limits<binKeyTy>::max();
 
 public:
 	NeighborhoodIndex(Parameters* apParameters, Data* apData)
-		:MinHashEncoder(apParameters,apData)
-	{
+	:MinHashEncoder(apParameters,apData)
+	 {
 		mInverseIndex.clear();
 		for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k){
 			mInverseIndex.push_back(indexSingleTy());
+			mInverseIndex.back().set_empty_key(0);
 		}
-	}
+	 }
 
 	indexTy 									mInverseIndex;
 	SigCacheP								mMinHashCache;
@@ -193,7 +231,16 @@ public:
 	double           ComputeApproximateSim(const unsigned& aID, const unsigned& bID);
 	pair<unsigned,unsigned> ComputeApproximateSim(const unsigned& aID, const vector<unsigned>& bSignature);
 
+	virtual ~NeighborhoodIndex(){
+		for (typename indexTy::const_iterator it = mInverseIndex.begin(); it!= mInverseIndex.end(); it++){
+			for (typename indexSingleTy::const_iterator itBin = it->begin(); itBin!=it->end(); itBin++){
+				delete[] itBin->second;
+			}
+		}
+	};
+
 };
+
 
 class HistogramIndex : public MinHashEncoder
 {
@@ -204,13 +251,13 @@ public:
 	//typedef vector<binKeyTy> indexBinTy;
 
 	struct hashFunc {
-	 size_t operator()(unsigned a) const {
-	    return static_cast<size_t>(a);
-	  }
+		size_t operator()(unsigned a) const {
+			return static_cast<size_t>(a);
+		}
 
-	 bool operator()(unsigned a, unsigned b) const {
-	     return a == b;
-	   }
+		bool operator()(unsigned a, unsigned b) const {
+			return a == b;
+		}
 	};
 	//	typedef std::tr1::unordered_map<unsigned, indexBinTy,hashFunc> indexSingleTy;
 	//	typedef google::dense_hash_map<unsigned, indexBinTy, hashFunc> indexSingleTy;
@@ -226,12 +273,12 @@ public:
 	indexTy mInverseIndex;
 
 	HistogramIndex(Parameters* apParameters, Data* apData)
-		:MinHashEncoder(apParameters,apData)
+	:MinHashEncoder(apParameters,apData)
 	{
 		mInverseIndex.resize(mpParameters->mNumHashFunctions, indexSingleTy(500000000));
 		for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k){
 			mInverseIndex[k].max_load_factor(0.9);
-	//		mInverseIndex.back().set_empty_key(0);
+			//		mInverseIndex.back().set_empty_key(0);
 		}
 
 	}
@@ -242,6 +289,14 @@ public:
 	void  		ComputeHistogram(const vector<unsigned>& aSignature, std::valarray<double>& hist, unsigned& emptyBins);
 	void		writeBinaryIndex2(ostream &out, const indexTy& index);
 	bool		readBinaryIndex2(string filename, indexTy& index);
+
+	virtual ~HistogramIndex(){
+		for (typename indexTy::const_iterator it = mInverseIndex.begin(); it!= mInverseIndex.end(); it++){
+			for (typename indexSingleTy::const_iterator itBin = it->begin(); itBin!=it->end(); itBin++){
+				delete[] itBin->second;
+			}
+		}
+	};
 };
 
 #endif /* MIN_HASH_ENCODER_H */

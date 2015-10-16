@@ -1,6 +1,8 @@
 #include "MinHashEncoder.h"
 #include "Utility.h"
 
+
+
 MinHashEncoder::~MinHashEncoder(){
 
 }
@@ -10,6 +12,7 @@ MinHashEncoder::MinHashEncoder(Parameters* apParameters, Data* apData)
 	Init(apParameters, apData);
 }
 
+
 void MinHashEncoder::Init(Parameters* apParameters, Data* apData) {
 	mpParameters = apParameters;
 	mpData = apData;
@@ -17,7 +20,7 @@ void MinHashEncoder::Init(Parameters* apParameters, Data* apData) {
 	numFullBins=0;
 	mHashBitMask = numeric_limits<unsigned>::max() >> 1;
 	mHashBitMask = (2 << (mpParameters->mHashBitSize - 1)) - 1;
-	cout << "hashbitmask "<< mHashBitMask << endl;
+	//cout << "hashbitmask "<< mHashBitMask << endl;
 	if (mpParameters->mNumRepeatsHashFunction == 0 || mpParameters->mNumRepeatsHashFunction > mpParameters->mNumHashShingles * mpParameters->mNumHashFunctions){
 		mpParameters->mNumRepeatsHashFunction = mpParameters->mNumHashShingles * mpParameters->mNumHashFunctions;
 	}
@@ -44,8 +47,8 @@ inline vector<unsigned> MinHashEncoder::HashFuncNSPDK(const string& aString, uns
 //void MinHashEncoder::generate_feature_vector(const GraphClass& aG, SVector& x) {
 //void MinHashEncoder::generate_feature_vector(const string& seq, SVector& x) {
 inline void  MinHashEncoder::generate_feature_vector(const string& seq, SVector& x) {
-//	x.set_empty_key(0);
-//	x.resize(5000);
+	//	x.set_empty_key(0);
+	//	x.resize(5000);
 	x.resize(pow(2, mpParameters->mHashBitSize));
 	//assume there is a mMinRadius and a mMinDistance
 	unsigned& mRadius = mpParameters->mRadius;
@@ -71,7 +74,7 @@ inline void  MinHashEncoder::generate_feature_vector(const string& seq, SVector&
 		endpoint_list[0] = r;
 		for (unsigned d = mMinDistance; d <= mDistance; d++) {
 			endpoint_list[1] = d;
-		//	SVector z(pow(2, mpParameters->mHashBitSize));
+			//	SVector z(pow(2, mpParameters->mHashBitSize));
 			for (unsigned start = 0; start < size; ++start) {
 				unsigned src_code = mFeatureCache[start][r];
 				unsigned effective_dest = min(start + d, size - 1);
@@ -174,7 +177,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 
 							// log output
 							if (myData->signatureAction==INDEX){
-						//		cout << endl << " next found Seq #" <<  seq_names_seen.size() << " length " << currFullSeq.size() << ":" << currSeqName << ": " << endl;
+								//		cout << endl << " next found Seq #" <<  seq_names_seen.size() << " length " << currFullSeq.size() << ":" << currSeqName << ": " << endl;
 							}
 
 							// if we have bed entries for a seq, find them and set iterator to first bed entry
@@ -182,7 +185,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 								annoEntries = myData->dataBED->equal_range(currSeqName);
 								it = annoEntries.first;
 							} else if (myData->dataBED){
-							//	cout << "no bed entry found! "<< seq_names_seen.size()<< endl;
+								//	cout << "no bed entry found! "<< seq_names_seen.size()<< endl;
 								// bed is present, but no entry for current seq found -> we take next seq
 								valid_input = false;
 								continue;
@@ -255,14 +258,13 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 						switch (myData->groupGraphsBy){
 						case NONE:
 						case SEQ_WINDOW:
-							idx = mInstanceCounter;
+							idx = mInstanceCounter+1;
 							break;
 						default:
 							break;
 						}
 
 						if (myData->strandType != REV){
-							//mpData->SetGraphFromSeq(myInstance.seq,myInstance.gr);
 
 							myInstance.seqFile = myData;
 							myInstance.name = currSeqName;
@@ -283,7 +285,6 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 							myInstanceRC.pos = pos;
 							myInstanceRC.rc = true;
 							mpData->GetRevComplSeq(myInstance.seq,myInstanceRC.seq);
-							//mpData->SetGraphFromSeq(myInstanceRC.seq,myInstanceRC.gr);
 
 							myChunkP->push_back(myInstanceRC);
 							mInstanceCounter++;
@@ -368,18 +369,18 @@ void MinHashEncoder::finisher(){
 			myData.reset();
 			mSignatureCounter += chunkSize;
 
-		//	if (mInstanceCounter%10 <= 1) {
-				cout.setf(ios::fixed); //,ios::floatfield);
-				cout << "\r" <<  std::setprecision(1) << progress_bar.getElapsed()/1000 << " sec elapsed    Finised numSeqs=" << std::setprecision(0) << setw(10);
-				cout << mSequenceCounter  << "("<<mSequenceCounter/(progress_bar.getElapsed()/1000) <<" seq/s)  signatures=" << setw(10);
-				cout << mSignatureCounter << "("<<(double)mSignatureCounter/((progress_bar.getElapsed()/1000)) <<" sig/s - inst=";
-				cout << mInstanceCounter << " graphQueue=" << graph_queue.size() << " sigQueue=" << sig_queue.size() << "      ";
-		//	}
+			//	if (mInstanceCounter%10 <= 1) {
+			cout.setf(ios::fixed); //,ios::floatfield);
+			cout << "\r" <<  std::setprecision(1) << progress_bar.getElapsed()/1000 << " sec elapsed    Finised numSeqs=" << std::setprecision(0) << setw(10);
+			cout << mSequenceCounter  << "("<<mSequenceCounter/(progress_bar.getElapsed()/1000) <<" seq/s)  signatures=" << setw(10);
+			cout << mSignatureCounter << "("<<(double)mSignatureCounter/((progress_bar.getElapsed()/1000)) <<" sig/s - inst=";
+			cout << mInstanceCounter << " graphQueue=" << graph_queue.size() << " sigQueue=" << sig_queue.size() << "      ";
+			//	}
 			//if (mInstanceCounter%1000000 <= chunkSize){
 			//	cout << endl << "    finisher updated index with " << chunkSize << " signatures all_sigs=" <<  mSignatureCounter << " inst=" << mInstanceCounter << " sigQueue=" << sig_queue.size() << endl;
 			//}
 
-//			progress_bar.Count(mInstanceCounter);
+			//			progress_bar.Count(mInstanceCounter);
 		}
 		cv1.notify_all();
 		cv2.notify_all();
@@ -392,6 +393,8 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 	for (unsigned i=0;i<myFiles.size(); i++){
 		readFile_queue.push(myFiles[i]);
 	}
+	mHashBitMask = (2 << (mpParameters->mHashBitSize - 1)) - 1;
+	cout << "bitmask " << mHashBitMask << endl;
 	cout << "Using " << mpParameters->mHashBitSize << " bits to encode features" << endl;
 	cout << "Using " << mpParameters->mRandomSeed << " as random seed" << endl;
 	cout << "Using " << mpParameters->mNumHashFunctions << " hash functions (with factor " << mpParameters->mNumRepeatsHashFunction << " for single minhash)" << endl;
@@ -533,24 +536,39 @@ vector<unsigned>& NeighborhoodIndex::ComputeHashSignature(unsigned aID) {
 	}
 }
 
-
 void NeighborhoodIndex::UpdateInverseIndex(vector<unsigned>& aSignature, unsigned aIndex) {
+	const binKeyTy& aIndexT = static_cast<binKeyTy>(aIndex);
 	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k) { //for every hash value
 		unsigned key = aSignature[k];
 		if (key != MAXUNSIGNED && key != 0) { //if key is equal to markers for empty bins then skip insertion instance in data structure
-			if (mInverseIndex[k].count(key) == 0) { //if this is the first time that an instance exhibits that specific value for that hash function, then store for the first time the reference to that instance
-				indexBinTy tmp;
-				tmp.push_back(aIndex);
-				mInverseIndex[k].insert(make_pair(key, tmp));
+			if (!mInverseIndex[k][key]) { //if this is the first time that an instance exhibits that specific value for that hash function, then store for the first time the reference to that instance
+
+				indexBinTy foo;
+				foo = new binKeyTy[2];
+				foo[1]= aIndexT;
+				foo[0]= 1; //index of last element is stored at idx[0]
+
+				mInverseIndex[k][key] = foo;
 				numKeys++; // just for bin statistics
-			} else if (mInverseIndex[k][key].size() < mpParameters->mMaxSizeBin && mInverseIndex[k][key].front() != MAXBINKEY) {
-				// add key to bin if we not have a full bin
-				mInverseIndex[k][key].push_back(aIndex);
-			} else if (mInverseIndex[k][key].size() == mpParameters->mMaxSizeBin){
-				// if a bin is full we clear it and add a key with MAXUNSIGNED to indicate an overfull bin
+
+			} else if (mInverseIndex[k][key][0] < mpParameters->mMaxSizeBin && mInverseIndex[k][key][0] != MAXBINKEY) {
+
+				binKeyTy*& myValue = mInverseIndex[k][key];
+				binKeyTy newSize = (myValue[0])+1;
+				indexBinTy fooNew = new binKeyTy[newSize+1];
+				memcpy(fooNew, myValue, (newSize)*sizeof(binKeyTy));
+				fooNew[newSize] = aIndexT;
+				fooNew[0] = newSize;
+				delete[] myValue;
+				myValue = fooNew;
+
+			} else if (mInverseIndex[k][key][0] == mpParameters->mMaxSizeBin){
+				// if a bin is full we clear it and add a key with MAXUNSIGNED to indicate an overfull/not useful bin
 				numFullBins++; // just for bin statistics
-				mInverseIndex[k][key].clear();
-				mInverseIndex[k][key].push_back(MAXBINKEY);
+				indexBinTy fooNew = new binKeyTy[1];
+				fooNew[0] = MAXBINKEY;
+				delete[] mInverseIndex[k][key];
+				mInverseIndex[k][key] = fooNew;
 			}
 		}
 	}
@@ -563,11 +581,12 @@ void NeighborhoodIndex::ComputeApproximateNeighborhoodCore(const vector<unsigned
 	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k) {
 
 		unsigned hash_id = aSignature[k];
-		if (hash_id != 0 && hash_id != MAXUNSIGNED && mInverseIndex[k][hash_id].front() != MAXBINKEY) {
+		if (hash_id != 0 && hash_id != MAXUNSIGNED && mInverseIndex[k][hash_id][0] != MAXBINKEY) {
 
 			//fill neighborhood set counting number of occurrences
-			for (indexBinTy::iterator it = mInverseIndex[k][hash_id].begin(); it != mInverseIndex[k][hash_id].end(); ++it) {
-				binKeyTy instance_id = *it;
+			for (binKeyTy i = 1; i<=mInverseIndex[k][hash_id][0];i++){
+		//	for (indexBinTy::iterator it = mInverseIndex[k][hash_id].begin(); it != mInverseIndex[k][hash_id].end(); ++it) {
+				binKeyTy instance_id = (mInverseIndex[k][hash_id][i])-1;
 				if (neighborhood.count(instance_id) > 0)
 					neighborhood[instance_id]++;
 				else
@@ -578,6 +597,28 @@ void NeighborhoodIndex::ComputeApproximateNeighborhoodCore(const vector<unsigned
 		}
 	}
 }
+
+//void NeighborhoodIndex::ComputeApproximateNeighborhoodCore(const vector<unsigned>& aSignature, umap_uint_int& neighborhood, unsigned& collisions) {
+//
+//	collisions = 0;
+//	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k) {
+//
+//		unsigned hash_id = aSignature[k];
+//		if (hash_id != 0 && hash_id != MAXUNSIGNED && mInverseIndex[k][hash_id].front() != MAXBINKEY) {
+//
+//			//fill neighborhood set counting number of occurrences
+//			for (indexBinTy::iterator it = mInverseIndex[k][hash_id].begin(); it != mInverseIndex[k][hash_id].end(); ++it) {
+//				binKeyTy instance_id = *it;
+//				if (neighborhood.count(instance_id) > 0)
+//					neighborhood[instance_id]++;
+//				else
+//					neighborhood[instance_id] = 1;
+//			}
+//		} else {
+//			collisions++;
+//		}
+//	}
+//}
 
 vector<unsigned> NeighborhoodIndex::ComputeApproximateNeighborhood(const vector<unsigned>& aSignature, unsigned& collisions, double& density) {
 
@@ -679,11 +720,12 @@ pair<unsigned,unsigned> NeighborhoodIndex::ComputeApproximateSim(const unsigned&
 	unsigned counts_aID = 0;
 	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k) {
 		unsigned hash_id = bSignature[k];
-		if (hash_id != 0 && hash_id != MAXUNSIGNED && mInverseIndex[k][hash_id].front() != MAXBINKEY) {
+		if (hash_id != 0 && hash_id != MAXUNSIGNED && mInverseIndex[k][hash_id][0] != MAXBINKEY) {
 
 			//fill neighborhood set counting number of occurrences
-			for (indexBinTy::iterator it = mInverseIndex[k][hash_id].begin(); it != mInverseIndex[k][hash_id].end(); ++it) {
-				if (*it == aID) counts_aID++;
+			for (binKeyTy i = 1; i<=mInverseIndex[k][hash_id][0];i++){
+			//for (indexBinTy::iterator it = mInverseIndex[k][hash_id].begin(); it != mInverseIndex[k][hash_id].end(); ++it) {
+				if (mInverseIndex[k][hash_id][i] == aID) counts_aID++;
 			}
 
 		} else
@@ -692,6 +734,27 @@ pair<unsigned,unsigned> NeighborhoodIndex::ComputeApproximateSim(const unsigned&
 	pair<unsigned,unsigned> tmp=make_pair(counts_aID,collisions);
 	return tmp;
 }
+
+//pair<unsigned,unsigned> NeighborhoodIndex::ComputeApproximateSim(const unsigned& aID, const vector<unsigned>& bSignature) {
+//
+//	//umap_uint_int neighborhood;
+//	unsigned collisions = 0;
+//	unsigned counts_aID = 0;
+//	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k) {
+//		unsigned hash_id = bSignature[k];
+//		if (hash_id != 0 && hash_id != MAXUNSIGNED && mInverseIndex[k][hash_id].front() != MAXBINKEY) {
+//
+//			//fill neighborhood set counting number of occurrences
+//			for (indexBinTy::iterator it = mInverseIndex[k][hash_id].begin(); it != mInverseIndex[k][hash_id].end(); ++it) {
+//				if (*it == aID) counts_aID++;
+//			}
+//
+//		} else
+//			collisions++;
+//	}
+//	pair<unsigned,unsigned> tmp=make_pair(counts_aID,collisions);
+//	return tmp;
+//}
 
 void HistogramIndex::SetHistogramSize(binKeyTy size){
 	mHistogramSize = size;
@@ -730,7 +793,7 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k) { //for every hash value
 		const unsigned& key = aSignature[k];
 		if (key != MAXUNSIGNED && key != 0) { //if key is equal to markers for empty bins then skip insertion instance in data structure
-			if (!mInverseIndex[k][key]) { //if this is the first time that an instance exhibits that specific value for that hash function, then store for the first time the reference to that instance
+			if (mInverseIndex[k].count(key)==0) { //if this is the first time that an instance exhibits that specific value for that hash function, then store for the first time the reference to that instance
 
 				binKeyTy * foo;
 				foo = new binKeyTy[2];
@@ -761,7 +824,7 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 					fooNew[0] = newSize;
 
 					delete[] myValue;
-					myValue = fooNew;
+					mInverseIndex[k][key] = fooNew;
 				}
 				//				cout << "bin " << key << " k " <<  k << " aIdx "<< aIndex << "\t";
 				//				for (unsigned j=0; j<=mInverseIndex[k][key][0];j++){
@@ -807,13 +870,13 @@ void HistogramIndex::ComputeHistogram(const vector<unsigned>& aSignature, std::v
 	hist *= 0;
 	emptyBins = 0;
 	for (unsigned k = 0; k < aSignature.size(); ++k) {
-		if (mInverseIndex[k][aSignature[k]]) {
+		if (mInverseIndex[k].count(aSignature[k])!=0) {
 
 			std::valarray<double> t(0.0, hist.size());
 
 			indexBinTy& myValue = mInverseIndex[k][aSignature[k]];
 
-			for (uint i=1;i<=myValue[0];i++){
+			for (unsigned i=1;i<=myValue[0];i++){
 				t[myValue[i]-1]=1;
 			}
 
@@ -930,7 +993,7 @@ bool HistogramIndex::readBinaryIndex2(string filename, indexTy &index){
 				fin.setstate(std::ios::badbit);
 			if (!fin.good())
 				return false;
-	//		indexBinTy tmp = indexBinTy(numBinEntries);
+			//		indexBinTy tmp = indexBinTy(numBinEntries);
 			indexBinTy tmp = new binKeyTy[numBinEntries+1];
 			//cout << "new bin " << binId << " " << numBinEntries << " ";
 			for (unsigned entry = 1; entry <= numBinEntries; entry++ ){
@@ -1159,4 +1222,26 @@ bool HistogramIndex::readBinaryIndex2(string filename, indexTy &index){
 //		}
 //	}
 //	SetHistogramSize(bin+1);
+//}
+
+//void NeighborhoodIndex::UpdateInverseIndex(vector<unsigned>& aSignature, unsigned aIndex) {
+//	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k) { //for every hash value
+//		unsigned key = aSignature[k];
+//		if (key != MAXUNSIGNED && key != 0) { //if key is equal to markers for empty bins then skip insertion instance in data structure
+//			if (mInverseIndex[k].count(key) == 0) { //if this is the first time that an instance exhibits that specific value for that hash function, then store for the first time the reference to that instance
+//				indexBinTy tmp;
+//				tmp.push_back(aIndex);
+//				mInverseIndex[k].insert(make_pair(key, tmp));
+//				numKeys++; // just for bin statistics
+//			} else if (mInverseIndex[k][key].size() < mpParameters->mMaxSizeBin && mInverseIndex[k][key].front() != MAXBINKEY) {
+//				// add key to bin if we not have a full bin
+//				mInverseIndex[k][key].push_back(aIndex);
+//			} else if (mInverseIndex[k][key].size() == mpParameters->mMaxSizeBin){
+//				// if a bin is full we clear it and add a key with MAXUNSIGNED to indicate an overfull bin
+//				numFullBins++; // just for bin statistics
+//				mInverseIndex[k][key].clear();
+//				mInverseIndex[k][key].push_back(MAXBINKEY);
+//			}
+//		}
+//	}
 //}

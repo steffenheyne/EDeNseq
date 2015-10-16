@@ -20,6 +20,15 @@ class SeqClassifyManager: public HistogramIndex {
 public:
 	SeqClassifyManager(Parameters* apParameters, Data* apData);
 
+	struct resultS{
+		string output_line;
+		unsigned numInstances;
+	};
+
+	typedef resultS ResultT;
+	typedef vector<ResultT> ResultChunkT;
+	typedef std::shared_ptr<ResultChunkT> ResultChunkP;
+
 	std::atomic_uint mNumSequences;
 	valarray<double> metaHist;
 	valarray<double> metaHistNum;

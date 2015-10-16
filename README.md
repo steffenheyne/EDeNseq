@@ -38,13 +38,16 @@ if there is a BED entry without sequence in the FASTA file.
 Note: Currently only in clustering mode, no BED file is necessary and all 
 provided sequences are used!
 
+## Example 
+`EDeNseq -a CLASSIFY -f FASTA -i test_data/test.reads.fna.gz --index_seqs test_data/test.genomes.fa.gz  --num_repeat_hash_functions 2 --num_hash_shingles 3 --numThreads 4 --index_bed test_data/test.small.bed --seq_window 70 --index_seq_shift 0.15 --seq_shift 0.13 -b 30 -F 5 -r 4 -d 7 --min_radius 4 --min_distance 7 --pure_approximate_sim 0`
+
+
 ## Download bacterial reference genomes from NCBI
 
 Here is an example about creating the index file for bacterial reference genomes. 
 
 1. Get table with reference genomes from NCBI ftp server (prok_reference_genomes.txt)
 2. Download latest version for each refseq entry via eutils in fasta format, zip it and save it in $outdir 
-3. create EDeNseq index table (refseq_bact_genomes.index_list)
 
 `wget ftp://ftp.ncbi.nlm.nih.gov/genomes/GENOME_REPORTS/prok_reference_genomes.txt`
 
@@ -54,8 +57,4 @@ Here is an example about creating the index file for bacterial reference genomes
 	get "http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id="$i"&rettype=fasta&retmode=text" -q -O - | gzip > $outdir/$i.fa.gz; 
 done`
 
-`cat prok_reference_genomes.txt | awk '{FS="\t";OFS="\t";if (NR==1) next;idx++;split($4,CHR,","); for (i in CHR){gsub(" ","_",$3);print CHR[i],idx,$3}}' |  awk -v PATH=$(pwd)/$outdir '{OFS="\t";fasta=PATH"/"$1".fa.gz"; if ((getline _ < fasta)>=0){ print $2,fasta,$1"|"$3 }}' > refseq_bact_genomes.index_list`
 
-
-## Example 
-`EDeNseq -a CLASSIFY -f FASTA -i test_10k_redsea.eden -b 30 --num_hash_shingles 2 --numThreads 4 --index_data_file refseq_bact_genomes.bed --seq_window 80 --seq_shift 0.3 -r 6 -d 14 --min_radius 6 --min_distance 14  --num_repeat_hash_functions 0  -F 10`
