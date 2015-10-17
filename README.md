@@ -11,7 +11,7 @@ EDeNseq requires C++11 support! GCC 4.8 should be sufficient.
 	
 2. Then change into source folder: `cd EDeNseq/src` 
 
-3. Build it with: `make`  - thats it!
+3. Build it with: `make`  - that's it!
 
 ## Example: classify metagenomic reads against bacterial genomes
 
@@ -22,12 +22,14 @@ contains the test files for the following test run (please adapt path names):
 
 - [**`test_data/test.reads.fna.gz`**](https://github.com/steffenheyne/EDeNseq/blob/master/test_data/test.reads.fna.gz) contains 231.578 sequences (100nt) sampled from 29 bacterial chromosomes
 - [**`test_data/test.genomes.fa.gz`**](https://github.com/steffenheyne/EDeNseq/blob/master/test_data/test.genomes.fa.gz) contains 29 bacterial chromosomes
-- [**`test_data/test.small.bed`**](https://github.com/steffenheyne/EDeNseq/blob/master/test_data/test.small.bed) indicates regions from the genomes that get indexed and against the reads are classified
+- [**`test_data/test.small.bed`**](https://github.com/steffenheyne/EDeNseq/blob/master/test_data/test.small.bed) 
+indicates regions from the genomes that get indexed and against the reads are classified. In the given example, column 4 contains the taxonomic id (NCBI) on the organism level. Although there are 63 different sequences given, they map to only 29 organisms. 
+Hence, reads are classified between these 29 organisms. The output file **`test.reads.fna.gz.classified.tab.gz`** gives a mapping table before actual results. 
 
 - The command above produces the index file **`test.small.bed.bhi`** and a results file **`test.reads.fna.gz.classified.tab.gz`**. 
 An example output is shown in 
 [**`test_data/test.reads.fna.gz.classified.tab.txt`**](https://github.com/steffenheyne/EDeNseq/blob/master/test_data/test.reads.fna.gz.classified.tab.txt)
-When re-running the same command the existing index file (*.bhi) is used. 
+When re-running the same command the existing index file (*.bhi) is used and not created again. All lines in the results file startinmg with "#" are header lines. 
 
 - [**`test_data/test.log`**](https://github.com/steffenheyne/EDeNseq/blob/master/test_data/test.log) shows the terminal output of the above example
 
