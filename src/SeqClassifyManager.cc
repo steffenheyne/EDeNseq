@@ -7,7 +7,8 @@
 
 #include "SeqClassifyManager.h"
 #include "MinHashEncoder.h"
-
+#include <stdio.h>
+#include <stdlib.h>
 
 SeqClassifyManager::SeqClassifyManager(Parameters* apParameters, Data* apData):
 HistogramIndex(apParameters,apData),pb(1000)
@@ -82,8 +83,18 @@ void SeqClassifyManager::Exec() {
 		bool indexState = readBinaryIndex2(mpParameters->mIndexBedFile+".bhi",mInverseIndex);
 		cout << "finished! ";
 		if (indexState == true){
-			cout << " Index OK!" << endl;
-			cout <<  endl << "hashbitsize " <<  mpParameters->mHashBitSize << endl;
+			cout << " Index OK!" << endl << endl << "Read index parameters:"<< endl << endl;
+			cout << setw(30) << std::right << " hist size  " << GetHistogramSize() << endl;
+			cout << setw(30) << std::right << " bitmask  " << mHashBitMask << endl;
+			cout << setw(30) << std::right << " hash_bit_size  " << mpParameters->mHashBitSize << endl;
+			cout << setw(30) << std::right << " random_seed  " << mpParameters->mRandomSeed << endl;
+			cout << setw(30) << std::right << " num_hash_functions  " << mpParameters->mNumHashFunctions << endl;
+			cout << setw(30) << std::right << " num_repeat_hash_function  " << mpParameters->mNumRepeatsHashFunction << endl;
+			cout << setw(30) << std::right << " num_hash_shingles  " << mpParameters->mNumHashShingles << endl;
+			cout << setw(30) << std::right << " radius  " << mpParameters->mMinRadius<<".."<<mpParameters->mRadius << endl;
+			cout << setw(30) << std::right << " distance  " << mpParameters->mMinDistance<<".."<<mpParameters->mDistance << endl;
+			cout << setw(30) << std::right << " seq_window  " << mpParameters->mSeqWindow << endl;
+			cout << setw(30) << std::right << " index_seq_shift  " << mpParameters->mIndexSeqShift << " (" << (unsigned)std::max((double)1,(double)mpParameters->mSeqWindow*mpParameters->mIndexSeqShift) << "nt) " << endl;
 		} else
 			throw range_error("Cannot read index from file " + mpParameters->mIndexBedFile+".bhi");
 		mIndexDataSet->filename_index = mpParameters->mIndexBedFile+".bhi";
@@ -167,13 +178,11 @@ void SeqClassifyManager::finisher_Results(ogzstream* fout_res){
 				mResultCounter += (*myResults)[i].numInstances;
 
 			}
-//			if (mResultCounter%1000 <= 10) {
-								cout.setf(ios::fixed); //,ios::floatfield);
-								cout << "\r" <<  std::setprecision(1) << progress_bar.getElapsed()/1000 << " sec elapsed    Finised numSeqs=" << std::setprecision(0) << setw(10);
-								cout << mNumSequences  << "("<<mNumSequences/(progress_bar.getElapsed()/1000) <<" seq/s)  signatures=" << setw(10);
-								cout << mResultCounter << "("<<(double)mResultCounter/((progress_bar.getElapsed()/1000)) <<" sig/s - "<<(double)mResultCounter/((progress_bar.getElapsed()/(1000/mpParameters->mNumThreads)))<<" per thread)  inst=";
-								cout << mInstanceCounter << " resQueue=" << res_queue.size() << " graphQueue=" << graph_queue.size() << "       ";
-	//						}
+			cout.setf(ios::fixed); //,ios::floatfield);
+			cout << "\r" <<  std::setprecision(1) << progress_bar.getElapsed()/1000 << " sec elapsed    Finised numSeqs=" << std::setprecision(0) << setw(10);
+			cout << mNumSequences  << "("<<mNumSequences/(progress_bar.getElapsed()/1000) <<" seq/s)  signatures=" << setw(10);
+			cout << mResultCounter << "("<<(double)mResultCounter/((progress_bar.getElapsed()/1000)) <<" sig/s - "<<(double)mResultCounter/((progress_bar.getElapsed()/(1000/mpParameters->mNumThreads)))<<" per thread)  inst=";
+			cout << mInstanceCounter << " resQueue=" << res_queue.size() << " graphQueue=" << graph_queue.size() << "       ";
 		}
 		cv1.notify_all();
 		cv2.notify_all();
@@ -189,18 +198,19 @@ void SeqClassifyManager::Classify_Signatures(SeqFilesT& myFiles){
 	}
 
 	mHashBitMask = (2 << (mpParameters->mHashBitSize - 1)) - 1;
-	cout << "bitmask " << mHashBitMask << endl;
 	cout << "hist size: " << GetHistogramSize() << endl;
+	cout << "Using " << mHashBitMask << " as bitmask"<< endl;
 	cout << "Using " << mpParameters->mHashBitSize << " bits to encode features" << endl;
 	cout << "Using " << mpParameters->mRandomSeed << " as random seed" << endl;
-	cout << "Using " << mpParameters->mNumHashFunctions << " hash functions (with factor " << mpParameters->mNumRepeatsHashFunction << " for single minhash)" << endl;
+	cout << "Using " << mpParameters->mNumHashFunctions << " final hash VALUES (param 'num_hash_functions' is used as FINAL signature size!), " << endl;
+	cout << "Using " << mpParameters->mNumHashFunctions*mpParameters->mNumHashShingles << " hash values internally (num_hash_functions * num_hash_shingles) from " << mpParameters->mNumRepeatsHashFunction << " independent hash functions (param 'num_repeat_hash_function')" << endl;
 	cout << "Using " << mpParameters->mNumHashShingles << " as hash shingle factor" << endl;
-	cout << "Using " << mpParameters->mPureApproximateSim << " as approximate similarity " << endl;
+	cout << "Using " << mpParameters->mPureApproximateSim << " as minimal approximate similarity (pure_approximate_sim)" << endl;
 	cout << "Using feature radius   " << mpParameters->mMinRadius<<".."<<mpParameters->mRadius << endl;
 	cout << "Using feature distance " << mpParameters->mMinDistance<<".."<<mpParameters->mDistance << endl;
-	cout << "Using sequence window  " << mpParameters->mSeqWindow<<" shift "<<mpParameters->mSeqShift << " ("<< (unsigned)std::max((double)1,(double)mpParameters->mSeqWindow*mpParameters->mSeqShift) << ") clip " << mpParameters->mSeqClip << endl;
+	cout << "Using sequence window  " << mpParameters->mSeqWindow<<" shift "<<mpParameters->mSeqShift << " ("<< (unsigned)std::max((double)1,(double)mpParameters->mSeqWindow*mpParameters->mSeqShift) << "nt) clip " << mpParameters->mSeqClip << endl;
 
-	cout << "Computing MinHash signatures on the fly while reading " << myFiles.size() << " file(s)..." << endl;
+	cout << endl << "Computing MinHash signatures on the fly while reading " << myFiles.size() << " file(s)..." << endl;
 
 	int graphWorkers = std::thread::hardware_concurrency();
 	if (mpParameters->mNumThreads>0)
@@ -249,14 +259,6 @@ void SeqClassifyManager::Classify_Signatures(SeqFilesT& myFiles){
 	cout << " CLASSIFICATION FINISHED" << endl << SEP << endl;
 }
 
-
-
-inline double changeNAN(double i) {if (std::isnan(i)) return 0.0; else return i;}
-
-inline double indicator(double i) {if (i>0) return 1; else return 0;}
-
-//inline double minSim(double i) {if (i<0.1) return 0; else return i;}
-
 void SeqClassifyManager::finishUpdate(ChunkP& myData) {
 
 	// as this is the overloaded virtual function from MinHshEncoder
@@ -266,17 +268,16 @@ void SeqClassifyManager::finishUpdate(ChunkP& myData) {
 	}
 }
 
+inline double changeNAN(double i) {if (std::isnan(i)) return 0.0; else return i;}
+
+inline double indicator(double i) {if (i>0) return 1; else return 0;}
+
 void SeqClassifyManager::finishUpdate(ChunkP& myData, ResultChunkP& myResultChunk) {
 
 	unsigned j = 0;
 	while (j < (*myData).size()) {
 
 		switch ((*myData)[j].seqFile->signatureAction){
-		case INDEX:{
-			UpdateInverseIndex((*myData)[j].sig, (*myData)[j].idx);
-			j++;
-			break;
-		}
 		case CLASSIFY: {
 
 			valarray<double> hist(0.0,GetHistogramSize());
@@ -314,25 +315,25 @@ void SeqClassifyManager::finishUpdate(ChunkP& myData, ResultChunkP& myResultChun
 			switch ((*myData)[j].seqFile->strandType){
 			case FWD:
 				myResult.numInstances = k;
-				myResult.output_line = getResultString(hist,emptyBins,matchingSigs,k,(*myData)[j].name,FWD);
+				getResultString(myResult.output_line,hist,emptyBins,matchingSigs,k,(*myData)[j].name,FWD);
 				myResultChunk->push_back(myResult);
 				break;
 			case REV:
 				myResult.numInstances = k;
-				myResult.output_line = getResultString(histRC,emptyBinsRC,matchingSigsRC,k,(*myData)[j].name,REV);
+				getResultString(myResult.output_line,histRC,emptyBinsRC,matchingSigsRC,k,(*myData)[j].name,REV);
 				myResultChunk->push_back(myResult);
 				break;
 			case FR:
 				myResult.numInstances = k;
-				myResult.output_line = getResultString(hist+histRC,emptyBins+emptyBinsRC,matchingSigs+matchingSigsRC,k,(*myData)[j].name,FR);
+				getResultString(myResult.output_line,hist+histRC,emptyBins+emptyBinsRC,matchingSigs+matchingSigsRC,k,(*myData)[j].name,FR);
 				myResultChunk->push_back(myResult);
 				break;
 			case FR_sep:
 				myResult.numInstances = k;
-				myResult.output_line = getResultString(hist,emptyBins,matchingSigs,k/2,(*myData)[j].name,FWD);
+				getResultString(myResult.output_line,hist,emptyBins,matchingSigs,k/2,(*myData)[j].name,FWD);
 				myResultChunk->push_back(myResult);
 				myResult.numInstances = k;
-				myResult.output_line = getResultString(histRC,emptyBinsRC,matchingSigsRC,k/2,(*myData)[j].name,REV);
+				getResultString(myResult.output_line,histRC,emptyBinsRC,matchingSigsRC,k/2,(*myData)[j].name,REV);
 				myResultChunk->push_back(myResult);
 				break;
 			default:
@@ -358,16 +359,12 @@ void SeqClassifyManager::finishUpdate(ChunkP& myData, ResultChunkP& myResultChun
 			metaHist += hist_t;
 
 			for (unsigned i = 0; i<hist.size(); i++){
-				if (hist[i] >= max  && max != 0) {hist[i] = 1;} else { hist[i]=0.0;};
+				if (hist[i] >= max  && max != 0) {hist[i] = 1;} else { hist[i]=0;};
 			}
 			metaHistNum += hist;
 			j += k;
 			break;
 		}
-		case INDEX_SIGCACHE:{
-
-		}
-		break;
 		default:
 			break;
 		}
@@ -375,7 +372,7 @@ void SeqClassifyManager::finishUpdate(ChunkP& myData, ResultChunkP& myResultChun
 }
 
 
-string SeqClassifyManager::getResultString(histogramT hist,unsigned emptyBins, unsigned matchingSigs, unsigned numSigs, string name, strandTypeT strand){
+void SeqClassifyManager::getResultString(string& resT,histogramT hist,unsigned emptyBins, unsigned matchingSigs, unsigned numSigs, string& name, strandTypeT strand){
 
 	stringstream res;
 
@@ -405,25 +402,32 @@ string SeqClassifyManager::getResultString(histogramT hist,unsigned emptyBins, u
 
 	res << name << "\t" << str << "\t"<< numSigs << "\t" << matchingSigs <<  "\t" << (numSigs*mpParameters->mNumHashFunctions)-emptyBins << "\t" << sum << "\t" << max << "\t";
 
-	string values;
-	string indices;
 	string maxIndices;
+	string indices;
+	string values;
 	for (unsigned i=0; i<hist.size();i++){
-		if (hist[i]>0) {
+		if (hist[i]>0.0) {
+			char buf[30];
+			sprintf( buf,"%.0f",hist[i] );
+			values += std::string(buf) +",";
+			//values += std::to_string((int)hist[i])+",";
+			//sprintf( buf,"%i",i+1 );
 			indices += std::to_string(i+1)+ ",";
-			values += std::to_string((int)hist[i])+",";
+			//indices += std::string(buf) +",";
+			if (hist[i]==max && max!=0){
+				//maxIndices += std::string(buf) +",";
+				maxIndices+=std::to_string(i+1)+ ","; // << i+1 << ",";
+			}
+
 		}
-		if (hist[i]==max && max!=0)
-			maxIndices += std::to_string(i+1)+",";
 	}
 
 	if (max!=0) {
-		res << indices << "\t" << values << "\t";
-		res << maxIndices;
+		res << indices << "\t" <<values << "\t" << maxIndices;
 	}
 
 	res << "\n";
-	return res.str();
+	resT = res.str();
 }
 
 void SeqClassifyManager::ClassifySeqs(){
@@ -446,6 +450,7 @@ void SeqClassifyManager::ClassifySeqs(){
 
 	metaHist.resize(GetHistogramSize());
 	metaHist *= 0;
+
 	metaHistNum.resize(GetHistogramSize());
 	metaHistNum *= 0;
 
@@ -470,13 +475,13 @@ void SeqClassifyManager::ClassifySeqs(){
 	metaHist = metaHist/metaHist.sum();
 	vector<pair<double,uint> > sortedHist;
 	for (unsigned j=0; j<metaHist.size();j++){
-		sortedHist.push_back(make_pair(-metaHist[j],j));
+		sortedHist.push_back(make_pair(-metaHistNum[j],j));
 	}
 	sort(sortedHist.begin(), sortedHist.end());
 	for (unsigned j=0; j<std::min((unsigned)20,(unsigned)sortedHist.size());j++){
 		multimap<uint, Data::BEDentryP>::iterator it = mIndexValue2Feature.find(sortedHist[j].second+1);
 		uint num = mIndexValue2Feature.count(sortedHist[j].second+1);
-		cout << setprecision(2) << j+1 << "\t" << -sortedHist[j].first << "\t" << (uint)metaHistNum[sortedHist[j].second] << "\t" << sortedHist[j].second+1 << "\t";
+		cout << setprecision(2) << j+1 << "\t" << metaHist[sortedHist[j].second] << "\t" << (uint)metaHistNum[sortedHist[j].second] << "\t" << sortedHist[j].second+1 << "\t";
 		if (it != mIndexValue2Feature.end()) cout << "feature\t"<< it->second->NAME << "\t#features=" << num;
 		if (it != mIndexValue2Feature.end() && it->second->COLS.size()>=2) cout << "\t" << it->second->COLS[1];
 		cout << endl;
@@ -540,12 +545,22 @@ ogzstream* SeqClassifyManager::PrepareResultsFile(){
 	*fout << "##" << endl;
 
 	// mapping table histogram idx -> feature
+	vector<pair<uint,string> > items;
 	for (std::map<string,uint>::iterator it = mFeature2IndexValue.begin(); it != mFeature2IndexValue.end();++it) {
-		*fout << "#HIST_IDX\t"<< it->second << "\t" << "feature\t"<< it->first;
-		multimap<uint,Data::BEDentryP>::iterator it2 = mIndexValue2Feature.find(it->second);
+		items.push_back(make_pair(it->second,it->first));
+	}
+
+	sort(items.begin(),items.end());
+
+	for (vector<pair<uint,string> >::iterator item=items.begin(); item != items.end();++item){
+		*fout << "#HIST_IDX\t"<< item->first << "\t" << "feature\t"<< item->second;
+		multimap<uint,Data::BEDentryP>::iterator it2 = mIndexValue2Feature.find(item->first);
 		if (it2 != mIndexValue2Feature.end() && it2->second->COLS.size()>=2) *fout << "\t" << it2->second->COLS[1];
 		*fout << endl;
 	}
+
+	*fout << "##" << endl;
+	*fout << "##SEQUENCE CLASSIFICATION RESULTS" << endl;
 	*fout << "##" << endl;
 	*fout << "#SEQ\tSTR\tSIGS\tSIG_HITS\tHF_HITS\tSUM\tMAX\tIDX\tVALS\tMAX_IDX"<< endl;
 	return fout;

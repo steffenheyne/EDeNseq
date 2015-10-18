@@ -18,12 +18,18 @@ void MinHashEncoder::Init(Parameters* apParameters, Data* apData) {
 	mpData = apData;
 	numKeys=0;
 	numFullBins=0;
-	mHashBitMask = numeric_limits<unsigned>::max() >> 1;
+
 	mHashBitMask = (2 << (mpParameters->mHashBitSize - 1)) - 1;
-	//cout << "hashbitmask "<< mHashBitMask << endl;
+
 	if (mpParameters->mNumRepeatsHashFunction == 0 || mpParameters->mNumRepeatsHashFunction > mpParameters->mNumHashShingles * mpParameters->mNumHashFunctions){
 		mpParameters->mNumRepeatsHashFunction = mpParameters->mNumHashShingles * mpParameters->mNumHashFunctions;
 	}
+
+	while ( (mpParameters->mNumHashFunctions * mpParameters->mNumHashShingles) % mpParameters->mNumRepeatsHashFunction != 0){
+		--mpParameters->mNumRepeatsHashFunction;
+	}
+
+	cout << "Parameter num_repeat_hash_functions adjusted to " <<  mpParameters->mNumRepeatsHashFunction << endl;
 
 	if (mpParameters->mSeqWindow != 0 && mpParameters->mSeqShift == 0){
 		throw range_error("Please provide seq_shift > 0 if seq_window is > 0!");
@@ -114,7 +120,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 
 		if (!done && succ && myData->filename != ""){
 
-			cout << endl << "read next file " << myData->filename << " sig_all_counter " << mSignatureCounter << " inst_counter "<< mInstanceCounter  << endl;
+			cout << endl << "read next file " << myData->filename << " sig_all_counter " << mSignatureCounter << " inst_counter "<< mInstanceCounter  << endl <<endl;
 			igzstream fin;
 			fin.open(myData->filename.c_str(),std::ios::in);
 
@@ -394,17 +400,18 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 		readFile_queue.push(myFiles[i]);
 	}
 	mHashBitMask = (2 << (mpParameters->mHashBitSize - 1)) - 1;
-	cout << "bitmask " << mHashBitMask << endl;
-	cout << "Using " << mpParameters->mHashBitSize << " bits to encode features" << endl;
-	cout << "Using " << mpParameters->mRandomSeed << " as random seed" << endl;
-	cout << "Using " << mpParameters->mNumHashFunctions << " hash functions (with factor " << mpParameters->mNumRepeatsHashFunction << " for single minhash)" << endl;
-	cout << "Using " << mpParameters->mNumHashShingles << " as hash shingle factor" << endl;
-	cout << "Using " << mpParameters->mPureApproximateSim << " as approximate similarity " << endl;
+	cout << "Using " << mHashBitMask << " \t as bitmask"<< endl;
+	cout << "Using " << mpParameters->mHashBitSize << " \t bits to encode features" << endl;
+	cout << "Using " << mpParameters->mRandomSeed << " \t as random seed" << endl;
+	cout << "Using " << mpParameters->mNumHashFunctions << " \t final hash VALUES (param 'num_hash_functions' is used as FINAL signature size!), " << endl;
+	cout << "Using " << mpParameters->mNumHashFunctions*mpParameters->mNumHashShingles << " \t hash values internally (num_hash_functions * num_hash_shingles) from " << mpParameters->mNumRepeatsHashFunction << " independent hash functions (param 'num_repeat_hash_function')" << endl;
+	cout << "Using " << mpParameters->mNumHashShingles << " \t as hash shingle factor (param 'num_hash_shingles')" << endl;
+	cout << "Using " << mpParameters->mPureApproximateSim << " \t as required approximate similarity (param 'pure_approximate_sim')" << endl;
 	cout << "Using feature radius   " << mpParameters->mMinRadius<<".."<<mpParameters->mRadius << endl;
 	cout << "Using feature distance " << mpParameters->mMinDistance<<".."<<mpParameters->mDistance << endl;
-	cout << "Using sequence window  " << mpParameters->mSeqWindow<<" shift "<<mpParameters->mSeqShift << " ("<< (unsigned)std::max((double)1,(double)mpParameters->mSeqWindow*mpParameters->mSeqShift) << ") clip " << mpParameters->mSeqClip << endl;
+	cout << "Using sequence window  " << mpParameters->mSeqWindow<<" shift "<<mpParameters->mSeqShift << " ("<< (unsigned)std::max((double)1,(double)mpParameters->mSeqWindow*mpParameters->mSeqShift) << "nt) clip " << mpParameters->mSeqClip << endl;
 
-	cout << "Computing MinHash signatures on the fly while reading " << myFiles.size() << " file(s)..." << endl;
+	cout << endl << "Computing MinHash signatures on the fly while reading " << myFiles.size() << " file(s)..." << endl;
 
 	// threaded producer-consumer model for signature creation and index update
 	// created threads:
@@ -467,7 +474,7 @@ void MinHashEncoder::ComputeHashSignature(const SVector& aX, Signature& signatur
 
 	unsigned numHashFunctionsFull = mpParameters->mNumHashFunctions * mpParameters->mNumHashShingles;
 	unsigned sub_hash_range = numHashFunctionsFull / mpParameters->mNumRepeatsHashFunction;
-
+	// sub_hash_range is always floor(numHashFunctionsFull / mpParameters->mNumRepeatsHashFunction)
 	//if we use shingles we need a temp signature of length numHashFunctionsFull
 	// otherwise we directly put values in the provided signature object
 	Signature *signatureP;
@@ -942,6 +949,7 @@ bool HistogramIndex::readBinaryIndex2(string filename, indexTy &index){
 	fin.open(filename.c_str());
 	unsigned tmp;
 	fin.read((char*) &mpParameters->mHashBitSize, sizeof(unsigned));
+	mHashBitMask = (2 << (mpParameters->mHashBitSize - 1)) - 1;
 	fin.read((char*) &mpParameters->mRandomSeed, sizeof(unsigned));
 	fin.read((char*) &mpParameters->mRadius, sizeof(unsigned));
 	fin.read((char*) &mpParameters->mMinRadius, sizeof(unsigned));

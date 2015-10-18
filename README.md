@@ -24,7 +24,8 @@ contains the test files for the following test run (please adapt path names):
 - [**`test_data/test.genomes.fa.gz`**](https://github.com/steffenheyne/EDeNseq/blob/master/test_data/test.genomes.fa.gz) contains 29 bacterial chromosomes
 - [**`test_data/test.small.bed`**](https://github.com/steffenheyne/EDeNseq/blob/master/test_data/test.small.bed) 
 indicates regions from the genomes that will be indexed and against that reads are classified. In the given example BED file, column 4 contains the taxonomic id (NCBI) at the organism level. Although there are 63 different entries/sequences given, they map to only 29 organisms. 
-Hence, reads are classified between these 29 organisms. The output file **`test.reads.fna.gz.classified.tab.gz`** gives a mapping table in the header. 
+Hence, reads are classified between these 29 organisms. The output file [**`test.reads.fna.gz.classified.tab.gz`**](https://github.com/steffenheyne/EDeNseq/blob/master/test_data/test.reads.fna.gz.classified.tab.txt) 
+gives a mapping table in the header. 
 
 - The command above produces the index file **`test.small.bed.bhi`** and a results file **`test.reads.fna.gz.classified.tab.gz`**. 
 An example output is shown in 
