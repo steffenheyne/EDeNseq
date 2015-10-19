@@ -2,7 +2,7 @@
 
 EDeNseq is a tool for fast clustering and classification of (metagenomics) reads.
 
-## Installation
+# 1. Installation
 
 EDeNseq requires C++11 support! GCC 4.8 should be sufficient. 
 
@@ -13,7 +13,7 @@ EDeNseq requires C++11 support! GCC 4.8 should be sufficient.
 
 3. Build it with: `make`  - that's it!
 
-## Example: classify metagenomic reads against bacterial genomes
+# 2. Example: classify metagenomic reads against bacterial genomes
 
 The folder [`test_data/`](https://github.com/steffenheyne/EDeNseq/blob/master/test_data/) 
 contains the test files for the following test run (please adapt path names):
@@ -43,10 +43,14 @@ feature ID provided in the BED file.
 
 - [**`test_data/test.log`**](https://github.com/steffenheyne/EDeNseq/blob/master/test_data/test.log) shows the terminal output of the above example
 
-# Read Classification
+# 3. Sequence Classification
 
 EDeNseq classifies sequences (e.g. reads) against an index of e.g. genomes or 
 any desired set of target sequences.
+
+## 3.1 Build the Index
+
+### 3.1.1 Index BED File
 
 In order to build the index, EDeNseq needs a BED file and fasta file. 
 The BED file is used to define regions on sequences that are
@@ -76,14 +80,22 @@ it selects all provided regions in BED file for that sequence and index them.
 This means also that nothing is indexed for a seq without BED entry as well as 
 if there is a BED entry without sequence in the FASTA file. 
 
-Note: Currently only in clustering mode, no BED file is necessary and all 
-provided sequences are used!
-
-## Create BED file for large fasta file
+### 3.1.2 Create BED file for large fasta file
 
 One can use samtools for this purpose: `samtools faidx my_genomes.fa.gz` 
 
 Then best use `awk` or a simlar tool to get the columns in the right order! 
+
+
+# 4. Sequence Clustering
+
+EDeNseq can be used to cluster large-scale sequence dataset.
+
+In clustering mode, no BED file is necessary and all 
+provided sequences are used!
+
+**NOTE:** Clustering is under development!
+
 
 ## Download bacterial reference genomes from NCBI
 
