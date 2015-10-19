@@ -33,7 +33,6 @@ public:
 	histogramT metaHist;
 	histogramT metaHistNum;
 	unsigned mClassifiedInstances;
-	ProgressBar pb;
 
 	std::atomic_bool done_output;
 

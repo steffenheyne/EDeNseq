@@ -110,8 +110,8 @@ ProgressBar::ProgressBar(unsigned aStep) :
 ProgressBar::~ProgressBar() {
 	if (mCounter > 1) {
 		cout << endl << "Counted " << mCounter << " times." << endl;
+		mTimer.Output();
 	}
-	mTimer.Output();
 }
 void ProgressBar::Begin() {
 	mCounter = 0;
@@ -146,6 +146,10 @@ double ProgressBar::getElapsed() {
 
 unsigned ProgressBar::End() {
 	return mCounter;
+}
+
+void ProgressBar::PrintElapsed(){
+	mTimer.Output();
 }
 
 //------------------------------------------------------------------------------------------------------------------------

@@ -898,6 +898,7 @@ void HistogramIndex::ComputeHistogram(const vector<unsigned>& aSignature, std::v
 void HistogramIndex::writeBinaryIndex2(ostream &out, const indexTy& index) {
 	// create binary reverse index representation
 	// format:
+	out.write((const char*) &INDEX_FORMAT_VERSION, sizeof(unsigned));
 	out.write((const char*) &mpParameters->mHashBitSize, sizeof(unsigned));
 	out.write((const char*) &mpParameters->mRandomSeed, sizeof(unsigned));
 	out.write((const char*) &mpParameters->mRadius, sizeof(unsigned));
@@ -948,6 +949,13 @@ bool HistogramIndex::readBinaryIndex2(string filename, indexTy &index){
 	igzstream fin;
 	fin.open(filename.c_str());
 	unsigned tmp;
+	fin.read((char*) &tmp, sizeof(unsigned));
+	if (tmp != INDEX_FORMAT_VERSION) {
+		cout << endl << endl << "Incompatible Index file format - Index file has version " << tmp  << ", but this program uses version " << INDEX_FORMAT_VERSION << "!" << endl;
+		cout << "Please re-create index with this program!" << endl;
+		return false;
+	}
+
 	fin.read((char*) &mpParameters->mHashBitSize, sizeof(unsigned));
 	mHashBitMask = (2 << (mpParameters->mHashBitSize - 1)) - 1;
 	fin.read((char*) &mpParameters->mRandomSeed, sizeof(unsigned));

@@ -178,10 +178,12 @@ class ProgressBar {
 public:
 	ProgressBar(unsigned aStep = 100);
 	~ProgressBar();
-	void Begin();
-	void Count();
-	void Count(int co);
-	double getElapsed();
+
+	void 		Begin();
+	void 		Count();
+	void 		Count(int co);
+	double 	getElapsed();
+	void 		PrintElapsed();
 	unsigned End();
 private:
 	mutable std::mutex mut;

@@ -246,6 +246,9 @@ class HistogramIndex : public MinHashEncoder
 {
 
 public:
+
+	const unsigned INDEX_FORMAT_VERSION = 2;
+
 	typedef uint16_t binKeyTy;
 	typedef binKeyTy* indexBinTy;
 	//typedef vector<binKeyTy> indexBinTy;

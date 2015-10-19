@@ -11,7 +11,7 @@
 #include <stdlib.h>
 
 SeqClassifyManager::SeqClassifyManager(Parameters* apParameters, Data* apData):
-HistogramIndex(apParameters,apData),pb(1000)
+HistogramIndex(apParameters,apData)
 {
 
 }
@@ -19,6 +19,7 @@ HistogramIndex(apParameters,apData),pb(1000)
 
 void SeqClassifyManager::Exec() {
 
+	ProgressBar pb(1000);
 	cout << endl << SEP << endl << "INVERSE INDEX"<< endl << SEP << endl;
 
 	SeqFileT mySet;
@@ -81,8 +82,8 @@ void SeqClassifyManager::Exec() {
 		cout << endl << " *** Read inverse index *** "<< endl << endl;
 		cout << "inverse index file : " << mpParameters->mIndexBedFile+".bhi" << endl << "read index ...";
 		bool indexState = readBinaryIndex2(mpParameters->mIndexBedFile+".bhi",mInverseIndex);
-		cout << "finished! ";
 		if (indexState == true){
+			cout << "finished! ";
 			cout << " Index OK!" << endl << endl << "Read index parameters:"<< endl << endl;
 			cout << setw(30) << std::right << " hist size  " << GetHistogramSize() << endl;
 			cout << setw(30) << std::right << " bitmask  " << mHashBitMask << endl;
@@ -96,7 +97,7 @@ void SeqClassifyManager::Exec() {
 			cout << setw(30) << std::right << " seq_window  " << mpParameters->mSeqWindow << endl;
 			cout << setw(30) << std::right << " index_seq_shift  " << mpParameters->mIndexSeqShift << " nt" << endl;
 		} else
-			throw range_error("Cannot read index from file " + mpParameters->mIndexBedFile+".bhi");
+			throw range_error("\nCannot read index from file " + mpParameters->mIndexBedFile+".bhi\n");
 		mIndexDataSet->filename_index = mpParameters->mIndexBedFile+".bhi";
 	}
 
@@ -127,6 +128,7 @@ void SeqClassifyManager::Exec() {
 	}
 
 	ClassifySeqs();
+	pb.PrintElapsed();
 }
 
 void SeqClassifyManager::worker_Classify(int numWorkers){
@@ -189,6 +191,7 @@ void SeqClassifyManager::finisher_Results(ogzstream* fout_res){
 		cvm.notify_all();
 		cv_res.notify_all();
 	}
+	progress_bar.PrintElapsed();
 }
 
 void SeqClassifyManager::Classify_Signatures(SeqFilesT& myFiles){
