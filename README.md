@@ -7,6 +7,7 @@ EDeNseq is a tool for fast clustering and classification of (metagenomics) reads
 EDeNseq requires C++11 support! GCC 4.8 should be sufficient. 
 
 1. clone or download EDeNseq
+
 	`git clone https://github.com/steffenheyne/EDeNseq.git`
 	
 2. Then change into source folder: `cd EDeNseq/src` 
@@ -47,6 +48,15 @@ feature ID provided in the BED file.
 
 EDeNseq classifies sequences (e.g. reads) against an index of genomes or 
 any desired set of target sequences.
+
+Sequence classifciation mode is started with 
+
+```EdENseq -a CLASSIFY```
+
+Please see all available paramters with   
+
+```EdENseq -a CLASSIFY -h``` or ```EdENseq -a CLASSIFY -H```
+
 
 ## 3.1 Build the Index
 
