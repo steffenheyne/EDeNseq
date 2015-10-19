@@ -84,7 +84,7 @@ void SeqClassifyManager::Exec() {
 		bool indexState = readBinaryIndex2(mpParameters->mIndexBedFile+".bhi",mInverseIndex);
 		if (indexState == true){
 			cout << "finished! ";
-			cout << " Index OK!" << endl << endl << "Read index parameters:"<< endl << endl;
+			cout << " Index OK! Format Version "<< INDEX_FORMAT_VERSION << endl << endl << "Read index parameters:"<< endl << endl;
 			cout << setw(30) << std::right << " hist size  " << GetHistogramSize() << endl;
 			cout << setw(30) << std::right << " bitmask  " << mHashBitMask << endl;
 			cout << setw(30) << std::right << " hash_bit_size  " << mpParameters->mHashBitSize << endl;
@@ -264,7 +264,7 @@ void SeqClassifyManager::Classify_Signatures(SeqFilesT& myFiles){
 
 void SeqClassifyManager::finishUpdate(ChunkP& myData) {
 
-	// as this is the overloaded virtual function from MinHshEncoder
+	// as this is the overloaded virtual function from MinHashEncoder
 	//we assume signatureAction==INDEX always here
 	for (unsigned j = 0; j < myData->size(); j++) {
 		UpdateInverseIndex((*myData)[j].sig, (*myData)[j].idx);
