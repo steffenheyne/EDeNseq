@@ -45,7 +45,7 @@ feature ID provided in the BED file.
 
 # 3. Sequence Classification
 
-EDeNseq classifies sequences (e.g. reads) against an index of e.g. genomes or 
+EDeNseq classifies sequences (e.g. reads) against an index of genomes or 
 any desired set of target sequences.
 
 ## 3.1 Build the Index
@@ -96,6 +96,7 @@ provided sequences are used!
 
 **NOTE:** Clustering is under development!
 
+# Notes
 
 ## Download bacterial reference genomes from NCBI
 
