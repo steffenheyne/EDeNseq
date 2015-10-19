@@ -96,6 +96,11 @@ One can use samtools for this purpose: `samtools faidx my_genomes.fa.gz`
 
 Then best use `awk` or a simlar tool to get the columns in the right order! 
 
+### 3.1.3 Index Parameters
+
+## 3.2 Sequences for Classification
+
+## 3.3 Result Output
 
 # 4. Sequence Clustering
 

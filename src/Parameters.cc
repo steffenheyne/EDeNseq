@@ -646,8 +646,8 @@ void Parameters::SetupOptions() {
 		ParameterType param;
 		param.mShortSwitch = "";
 		param.mLongSwitch = "seq_shift";
-		param.mShortDescription = "For FASTA files only! Defines the fraction as length of seq_window to generate sequence fragments used for classification! 0..1 Can be used to have a different shift for classification and indexing";
-		param.mTypeCode = REAL;
+		param.mShortDescription = "For FASTA files only! Defines the window shift in NTs to generate sequence fragments used for classification! Can be used to have a different shift for classification and indexing";
+		param.mTypeCode = POSITIVE_INTEGER;
 		param.mValue = "0";
 		mOptionList.insert(make_pair(param.mLongSwitch, param));
 		{
@@ -665,8 +665,8 @@ void Parameters::SetupOptions() {
 		ParameterType param;
 		param.mShortSwitch = "";
 		param.mLongSwitch = "index_seq_shift";
-		param.mShortDescription = "For FASTA files only! Defines the fraction as length of seq_window to generate sequence fragments used for encoding! 0..1";
-		param.mTypeCode = REAL;
+		param.mShortDescription = "For FASTA files only! Defines the window shift in NTs to generate sequence fragments used to build the index!";
+		param.mTypeCode = POSITIVE_INTEGER;
 		param.mValue = "0";
 		mOptionList.insert(make_pair(param.mLongSwitch, param));
 		{
@@ -922,9 +922,9 @@ void Parameters::Init(int argc, const char** argv) {
 		if (param.mLongSwitch == "index_seqs")
 			mIndexSeqFile = param.mValue;
 		if (param.mLongSwitch == "seq_shift")
-			mSeqShift = stream_cast<double>(param.mValue);
+			mSeqShift = stream_cast<unsigned>(param.mValue);
 		if (param.mLongSwitch == "index_seq_shift")
-			mIndexSeqShift = stream_cast<double>(param.mValue);
+			mIndexSeqShift = stream_cast<unsigned>(param.mValue);
 		if (param.mLongSwitch == "seq_window")
 			mSeqWindow = stream_cast<unsigned>(param.mValue);
 		if (param.mLongSwitch == "seq_clip")

@@ -409,7 +409,7 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 	cout << "Using " << mpParameters->mPureApproximateSim << " \t as required approximate similarity (param 'pure_approximate_sim')" << endl;
 	cout << "Using feature radius   " << mpParameters->mMinRadius<<".."<<mpParameters->mRadius << endl;
 	cout << "Using feature distance " << mpParameters->mMinDistance<<".."<<mpParameters->mDistance << endl;
-	cout << "Using sequence window  " << mpParameters->mSeqWindow<<" shift "<<mpParameters->mSeqShift << " ("<< (unsigned)std::max((double)1,(double)mpParameters->mSeqWindow*mpParameters->mSeqShift) << "nt) clip " << mpParameters->mSeqClip << endl;
+	cout << "Using sequence window  " << mpParameters->mSeqWindow<<" shift "<<mpParameters->mSeqShift << " nt - clip " << mpParameters->mSeqClip << endl;
 
 	cout << endl << "Computing MinHash signatures on the fly while reading " << myFiles.size() << " file(s)..." << endl;
 
@@ -907,7 +907,7 @@ void HistogramIndex::writeBinaryIndex2(ostream &out, const indexTy& index) {
 	out.write((const char*) &mpParameters->mNumHashShingles, sizeof(unsigned));
 	out.write((const char*) &mpParameters->mNumRepeatsHashFunction, sizeof(unsigned));
 	out.write((const char*) &mpParameters->mSeqWindow, sizeof(unsigned));
-	out.write(reinterpret_cast<char *>(&mpParameters->mIndexSeqShift), sizeof(mpParameters->mIndexSeqShift));
+	out.write((const char*) &mpParameters->mIndexSeqShift, sizeof(unsigned));
 	unsigned tmp = GetHistogramSize();
 	out.write((const char*) &tmp, sizeof(unsigned));
 
@@ -958,7 +958,7 @@ bool HistogramIndex::readBinaryIndex2(string filename, indexTy &index){
 	fin.read((char*) &mpParameters->mNumHashShingles, sizeof(unsigned));
 	fin.read((char*) &mpParameters->mNumRepeatsHashFunction, sizeof(unsigned));
 	fin.read((char*) &mpParameters->mSeqWindow, sizeof(unsigned));
-	fin.read( reinterpret_cast<char*>( &mpParameters->mIndexSeqShift ), sizeof mpParameters->mIndexSeqShift);
+	fin.read((char*) &mpParameters->mIndexSeqShift, sizeof(unsigned));
 	fin.read((char*) &tmp, sizeof(unsigned));
 	SetHistogramSize(tmp);
 

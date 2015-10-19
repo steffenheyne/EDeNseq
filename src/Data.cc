@@ -78,7 +78,7 @@ bool Data::GetNextWinFromSeq(string& currSeq, unsigned& pos, bool& lastGr, strin
 	bool success_status = false;
 	lastGr = false;
 	unsigned win=mpParameters->mSeqWindow;
-	unsigned shift = std::max((double)1,(double)win*mpParameters->mSeqShift);
+	unsigned shift = mpParameters->mSeqShift;
 
 	if (currSeq.size() > pos ) {
 
@@ -98,7 +98,6 @@ bool Data::GetNextWinFromSeq(string& currSeq, unsigned& pos, bool& lastGr, strin
 
 		if (currSize>=1){
 			seq = currSeq.substr(pos,currSize);
-			//SetGraphFromSeq( seq ,oG);
 			//cout << currSeq.size() << " " << currSize  << " pos " << pos << " win " << win << " " << seq << endl;
 		} else
 			throw range_error("ERROR FASTA reader! Too short sequence found. " + std::to_string(pos));

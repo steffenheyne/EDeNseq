@@ -50,7 +50,7 @@ void SeqClassifyManager::Exec() {
 
 		// use desired shift value for index, "LoadData_Threaded" only uses variable mpParameters->mSeqShift
 		// assume 0 as not set
-		double tmp_shift = mpParameters->mSeqShift;
+		unsigned tmp_shift = mpParameters->mSeqShift;
 		if (mpParameters->mIndexSeqShift > 0){
 			mpParameters->mSeqShift = mpParameters->mIndexSeqShift;
 		} else mpParameters->mIndexSeqShift = mpParameters->mSeqShift;
@@ -94,7 +94,7 @@ void SeqClassifyManager::Exec() {
 			cout << setw(30) << std::right << " radius  " << mpParameters->mMinRadius<<".."<<mpParameters->mRadius << endl;
 			cout << setw(30) << std::right << " distance  " << mpParameters->mMinDistance<<".."<<mpParameters->mDistance << endl;
 			cout << setw(30) << std::right << " seq_window  " << mpParameters->mSeqWindow << endl;
-			cout << setw(30) << std::right << " index_seq_shift  " << mpParameters->mIndexSeqShift << " (" << (unsigned)std::max((double)1,(double)mpParameters->mSeqWindow*mpParameters->mIndexSeqShift) << "nt) " << endl;
+			cout << setw(30) << std::right << " index_seq_shift  " << mpParameters->mIndexSeqShift << " nt" << endl;
 		} else
 			throw range_error("Cannot read index from file " + mpParameters->mIndexBedFile+".bhi");
 		mIndexDataSet->filename_index = mpParameters->mIndexBedFile+".bhi";
@@ -208,7 +208,7 @@ void SeqClassifyManager::Classify_Signatures(SeqFilesT& myFiles){
 	cout << "Using " << mpParameters->mPureApproximateSim << " as minimal approximate similarity (pure_approximate_sim)" << endl;
 	cout << "Using feature radius   " << mpParameters->mMinRadius<<".."<<mpParameters->mRadius << endl;
 	cout << "Using feature distance " << mpParameters->mMinDistance<<".."<<mpParameters->mDistance << endl;
-	cout << "Using sequence window  " << mpParameters->mSeqWindow<<" shift "<<mpParameters->mSeqShift << " ("<< (unsigned)std::max((double)1,(double)mpParameters->mSeqWindow*mpParameters->mSeqShift) << "nt) clip " << mpParameters->mSeqClip << endl;
+	cout << "Using sequence window  " << mpParameters->mSeqWindow<<" shift "<<mpParameters->mSeqShift << " nt - clip " << mpParameters->mSeqClip << endl;
 
 	cout << endl << "Computing MinHash signatures on the fly while reading " << myFiles.size() << " file(s)..." << endl;
 

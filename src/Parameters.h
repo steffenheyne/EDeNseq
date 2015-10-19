@@ -90,8 +90,8 @@ public:
 	string mIndexSeqFile;
 	bool mNoIndexCacheFile;
 	unsigned mSeqWindow;
-	double mIndexSeqShift;
-	double mSeqShift;
+	unsigned mIndexSeqShift;
+	unsigned mSeqShift;
 
 	unsigned mSeqClip;
 	unsigned mMinRadius;
