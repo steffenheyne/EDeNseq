@@ -21,17 +21,21 @@ contains the test files for the following test run (please adapt path names):
 `EDeNseq -a CLASSIFY -f FASTA -i test_data/test.reads.fna.gz --index_seqs test_data/test.genomes.fa.gz  --num_repeat_hash_functions 2 --num_hash_shingles 3 --numThreads 4 --index_bed test_data/test.small.bed --seq_window 70 --index_seq_shift 0.15 --seq_shift 0.13 -b 30 -F 5 -r 4 -d 7 --min_radius 4 --min_distance 7 --pure_approximate_sim 0`
 
 - [**`test_data/test.reads.fna.gz`**](https://github.com/steffenheyne/EDeNseq/blob/master/test_data/test.reads.fna.gz) contains 231.578 sequences (100nt) sampled from 29 bacterial chromosomes
-- [**`test_data/test.genomes.fa.gz`**](https://github.com/steffenheyne/EDeNseq/blob/master/test_data/test.genomes.fa.gz) contains 29 bacterial chromosomes
+- [**`test_data/test.genomes.fa.gz`**](https://github.com/steffenheyne/EDeNseq/blob/master/test_data/test.genomes.fa.gz) contains 62 bacterial chromosomes
 - [**`test_data/test.small.bed`**](https://github.com/steffenheyne/EDeNseq/blob/master/test_data/test.small.bed) 
-indicates regions from the genomes that will be indexed and against that reads are classified. In the given example BED file, column 4 contains the taxonomic id (NCBI) at the organism level. Although there are 63 different entries/sequences given, they map to only 29 organisms. 
+indicates regions from the genomes that will be indexed and against that reads are classified. I
+n the given example BED file, column 4 contains the taxonomic id (NCBI) at the organism level. 
+Although there are 62 different entries/sequences given, they map to only 29 organisms. 
 Hence, reads are classified between these 29 organisms. The output file [**`test.reads.fna.gz.classified.tab.gz`**](https://github.com/steffenheyne/EDeNseq/blob/master/test_data/test.reads.fna.gz.classified.tab.txt) 
 gives a mapping table in the header. 
 
 - The command above produces the index file **`test.small.bed.bhi`** and a results file **`test.reads.fna.gz.classified.tab.gz`**. 
 An example output is shown in 
 [**`test_data/test.reads.fna.gz.classified.tab.txt`**](https://github.com/steffenheyne/EDeNseq/blob/master/test_data/test.reads.fna.gz.classified.tab.txt)
-When re-running the same command the existing index file (*.bhi) is used and not created again. All lines in the results file starting with "#" are header lines.
-The tags "#HIST_IDX" give the mapping between the internal ID and the feature ID provided in the BED file. 
+When re-running the same command the existing index file (*.bhi) is used and not created again. 
+All lines in the result file starting with "#" are header lines.
+The tags "#HIST_IDX" give the mapping between the internal ID and the 
+feature ID provided in the BED file. 
 
 - [**`test_data/test.log`**](https://github.com/steffenheyne/EDeNseq/blob/master/test_data/test.log) shows the terminal output of the above example
 
