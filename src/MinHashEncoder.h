@@ -106,8 +106,6 @@ public:
 	typedef vector<SeqFileP> 				SeqFilesT;
 
 	typedef Eigen::SparseVector<unsigned> SVector;
-	//	typedef google::dense_hash_set<unsigned> SVectorMap;
-
 
 	struct instanceS {
 		Signature 	sig;
@@ -152,33 +150,37 @@ protected:
 	threadsafe_queue<SeqFileP> readFile_queue;
 	threadsafe_queue<ChunkP> graph_queue;
 	threadsafe_queue<ChunkP> sig_queue;
+	vector<threadsafe_queue<ChunkP>> index_queue;
 
 	std::atomic_bool done;
 	std::atomic_uint files_done;
 	std::atomic_uint mSequenceCounter;
 	std::atomic_uint mInstanceCounter;
 	std::atomic_uint mSignatureCounter;
-
+	std::atomic_uint mSignatureUpdateCounter;
 
 
 	void					worker_Graph2Signature(int numWorkers);
 	void 					finisher();
 	void 					generate_feature_vector(const string& seq, SVector& x);
 	vector<unsigned>	HashFuncNSPDK(const string& aString, unsigned aStart, unsigned aMaxRadius, unsigned aBitMask);
+	void 					worker_readFiles(int numWorkers);
 
 public:
 
 
 	unsigned 			mHashBitMask;
-	void 					worker_readFiles(int numWorkers);
+
 	MinHashEncoder(Parameters* apParameters, Data* apData);
 	virtual	~MinHashEncoder();
 	void		Init(Parameters* apParameters, Data* apData);
 
-	virtual void 		UpdateInverseIndex(vector<unsigned>& aSignature, unsigned aIndex) {};
+	virtual void 		UpdateInverseIndex(vector<unsigned>& aSignature, unsigned& aIndex) {};
 	virtual void 		finishUpdate(ChunkP& myData) {};
+	virtual void 		finishUpdate(ChunkP& myData, unsigned& min, unsigned& max) {};
 	void 					LoadData_Threaded(SeqFilesT& myFiles);
 	unsigned				GetLoadedInstances();
+	void 					worker_IndexUpdate(unsigned id, unsigned min, unsigned max);
 
 	void					ComputeHashSignature(const SVector& aX, Signature& signaure);
 };
@@ -220,7 +222,7 @@ public:
 
 	void 				  NeighborhoodCacheReset();
 	vector<unsigned>& ComputeHashSignature(unsigned aID);
-	void 				  UpdateInverseIndex(vector<unsigned>& aSignature, unsigned aIndex);
+	void 				  UpdateInverseIndex(vector<unsigned>& aSignature, unsigned& aIndex);
 	void             ComputeApproximateNeighborhoodCore(const vector<unsigned>& aSignature, umap_uint_int& neighborhood, unsigned& collisions);
 	umap_uint_int    ComputeApproximateNeighborhoodExt(const vector<unsigned>& aSignature, unsigned& collisions, double& density);
 	vector<unsigned> ComputeApproximateNeighborhood(const vector<unsigned>& aSignature, unsigned& collisions, double& density);
@@ -289,6 +291,7 @@ public:
 	binKeyTy	GetHistogramSize();
 	void		SetHistogramSize(binKeyTy size);
 	void		UpdateInverseIndex(const vector<unsigned>& aSignature, const unsigned& aIndex);
+	void		UpdateInverseIndex(const vector<unsigned>& aSignature, const unsigned& aIndex, unsigned& min, unsigned& max);
 	void  		ComputeHistogram(const vector<unsigned>& aSignature, std::valarray<double>& hist, unsigned& emptyBins);
 	void		writeBinaryIndex2(ostream &out, const indexTy& index);
 	bool		readBinaryIndex2(string filename, indexTy& index);

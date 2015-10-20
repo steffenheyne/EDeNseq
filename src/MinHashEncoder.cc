@@ -359,6 +359,7 @@ void MinHashEncoder::worker_Graph2Signature(int numWorkers){
 
 void MinHashEncoder::finisher(){
 	ProgressBar progress_bar(1000);
+
 	while (!done){
 
 		ChunkP myData;
@@ -368,29 +369,52 @@ void MinHashEncoder::finisher(){
 
 		if (!done && myData->size()>0) {
 
-			uint chunkSize = myData->size();
-
+			for (unsigned i=0;i<mpParameters->mNumHashFunctions;i++){
+				index_queue[i].push(myData);
+			}
 			// virtual function call that can be overloaded in child classes to do specific stuff
-			finishUpdate(myData);
-			myData.reset();
-			mSignatureCounter += chunkSize;
+			//finishUpdate(myData);
+			mSignatureCounter += myData->size();
 
-			//	if (mInstanceCounter%10 <= 1) {
-			cout.setf(ios::fixed); //,ios::floatfield);
-			cout << "\r" <<  std::setprecision(1) << progress_bar.getElapsed()/1000 << " sec elapsed    Finised numSeqs=" << std::setprecision(0) << setw(10);
-			cout << mSequenceCounter  << "("<<mSequenceCounter/(progress_bar.getElapsed()/1000) <<" seq/s)  signatures=" << setw(10);
-			cout << mSignatureCounter << "("<<(double)mSignatureCounter/((progress_bar.getElapsed()/1000)) <<" sig/s - inst=";
-			cout << mInstanceCounter << " graphQueue=" << graph_queue.size() << " sigQueue=" << sig_queue.size() << "      ";
-			//	}
-			//if (mInstanceCounter%1000000 <= chunkSize){
-			//	cout << endl << "    finisher updated index with " << chunkSize << " signatures all_sigs=" <<  mSignatureCounter << " inst=" << mInstanceCounter << " sigQueue=" << sig_queue.size() << endl;
-			//}
-
-			//			progress_bar.Count(mInstanceCounter);
+			//myData.reset();
+//
+//			cout.setf(ios::fixed); //,ios::floatfield);
+//			cout << "\r" <<  std::setprecision(1) << progress_bar.getElapsed()/1000 << " sec elapsed    Finised numSeqs=" << std::setprecision(0) << setw(10);
+//			cout << mSequenceCounter  << "("<<mSequenceCounter/(progress_bar.getElapsed()/1000) <<" seq/s)  signatures=" << setw(10);
+//			cout << mSignatureCounter << "("<<(double)mSignatureCounter/((progress_bar.getElapsed()/1000)) <<" sig/s - inst=";
+//			cout << mInstanceCounter << " graphQueue=" << graph_queue.size() << " sigQueue=" << sig_queue.size() << " SigUpdateCounter  " << mSignatureUpdateCounter << " " << index_queue[0].size() << "     ";
 		}
+		cv3.notify_all();
 		cv1.notify_all();
 		cv2.notify_all();
 		cvm.notify_all();
+	}
+}
+
+void MinHashEncoder::worker_IndexUpdate(unsigned id, unsigned min, unsigned max){
+	ProgressBar progress_bar(1000);
+	while (!done){
+		ChunkP myData;
+		unique_lock<mutex> lk(mut3);
+		cv3.wait(lk,[&]{if ( (done) || (index_queue[id].try_pop( (myData) ))) return true; else return false;});
+		lk.unlock();
+	//	bool succ = index_queue[id].try_pop( (myData));
+		if (!done && myData->size()>0) {
+
+			finishUpdate(myData,min,max);
+			mSignatureUpdateCounter += myData->size()*( (max-min+1));
+		//	cout << "finishUpdate "<< myData->size() << " " << id << " " << min << " " << max << " " << index_queue[id].size() <<  " " << myData->size()*( (max-min+1)*mpParameters->mNumHashFunctions) << " " << mSignatureUpdateCounter << endl;
+			cv3.notify_all();
+			cvm.notify_all();
+			if (id==0){
+			cout.setf(ios::fixed); //,ios::floatfield);
+				cout << "\r" <<  std::setprecision(1) << progress_bar.getElapsed()/1000 << " sec elapsed    Finised numSeqs=" << std::setprecision(0) << setw(10);
+				cout << mSequenceCounter  << "("<<mSequenceCounter/(progress_bar.getElapsed()/1000) <<" seq/s)  signatures=" << setw(10);
+				cout << mSignatureCounter << "("<<(double)mSignatureCounter/((progress_bar.getElapsed()/1000)) <<" sig/s - inst=";
+				cout << mInstanceCounter << " graphQueue=" << graph_queue.size() << " sigQueue=" << sig_queue.size() << " SigUpdateCounter  " << mSignatureUpdateCounter << " " << index_queue[0].size() << "     ";
+			}
+		}
+
 	}
 }
 
@@ -430,8 +454,15 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 	mSignatureCounter = 0;
 	mInstanceCounter = 0;
 	mSequenceCounter = 0;
+	mSignatureUpdateCounter = 0;
 
 	vector<std::thread> threads;
+	index_queue.resize(mpParameters->mNumHashFunctions);
+	for (unsigned i=0;i<mpParameters->mNumHashFunctions;i++){
+		threads.push_back( std::thread(&MinHashEncoder::worker_IndexUpdate,this,i,i,i));
+	}
+
+
 	threads.push_back( std::thread(&MinHashEncoder::finisher,this));
 	for (int i=0;i<graphWorkers;i++){
 		threads.push_back( std::thread(&MinHashEncoder::worker_Graph2Signature,this,graphWorkers));
@@ -444,7 +475,7 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 		unique_lock<mutex> lk(mutm);
 		cv1.notify_all();
 		while(!done){
-			cvm.wait(lk,[&]{if ( (files_done<myFiles.size()) || (mSignatureCounter < mInstanceCounter)) return false; else return true;});
+			cvm.wait(lk,[&]{if ( (files_done<myFiles.size()) || (mSignatureUpdateCounter < mInstanceCounter*mpParameters->mNumHashFunctions)) return false; else return true;});
 			lk.unlock();
 			done=true;
 			cv3.notify_all();
@@ -453,6 +484,8 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 		}
 
 	} // by leaving this block threads get joined by destruction of joiner
+
+	cout << "SignatureUpdateCounter="<< mSignatureUpdateCounter << endl;
 
 	// threads finished
 	if (numKeys>0)
@@ -543,7 +576,7 @@ vector<unsigned>& NeighborhoodIndex::ComputeHashSignature(unsigned aID) {
 	}
 }
 
-void NeighborhoodIndex::UpdateInverseIndex(vector<unsigned>& aSignature, unsigned aIndex) {
+void NeighborhoodIndex::UpdateInverseIndex(vector<unsigned>& aSignature, unsigned& aIndex) {
 	const binKeyTy& aIndexT = static_cast<binKeyTy>(aIndex);
 	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k) { //for every hash value
 		unsigned key = aSignature[k];
@@ -796,8 +829,16 @@ HistogramIndex::binKeyTy HistogramIndex::GetHistogramSize(){
 //}
 
 void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, const unsigned& aIndex) {
+	unsigned min = 0;
+	unsigned max = mpParameters->mNumHashFunctions-1;
+	UpdateInverseIndex(aSignature, aIndex, min, max);
+}
+
+
+void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, const unsigned& aIndex, unsigned& min, unsigned& max) {
+	//cout << "UpdateInverseIndex "<< aSignature.size() << " " << aIndex << " " << min << " " << max << endl;
 	const binKeyTy& aIndexT =(binKeyTy)aIndex;
-	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k) { //for every hash value
+	for (unsigned k = min; k <= max; ++k) { //for every hash value
 		const unsigned& key = aSignature[k];
 		if (key != MAXUNSIGNED && key != 0) { //if key is equal to markers for empty bins then skip insertion instance in data structure
 			if (mInverseIndex[k].count(key)==0) { //if this is the first time that an instance exhibits that specific value for that hash function, then store for the first time the reference to that instance

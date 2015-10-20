@@ -28,8 +28,8 @@ contains the test files for the following test run (please adapt path names):
 - [**`test_data/test.reads.fna.gz`**](https://github.com/steffenheyne/EDeNseq/blob/master/test_data/test.reads.fna.gz) contains 231.578 sequences (100nt) sampled from 29 bacterial chromosomes
 - [**`test_data/test.genomes.fa.gz`**](https://github.com/steffenheyne/EDeNseq/blob/master/test_data/test.genomes.fa.gz) contains 62 bacterial chromosomes
 - [**`test_data/test.small.bed`**](https://github.com/steffenheyne/EDeNseq/blob/master/test_data/test.small.bed) 
-indicates regions from the genomes that will be indexed and against that reads are classified. I
-n the given example BED file, column 4 contains the taxonomic id (NCBI) at the organism level. 
+indicates regions from the genomes that will be indexed and against that reads are classified. 
+In the given example BED file, column 4 contains the taxonomic id (NCBI) at the organism level. 
 Although there are 62 different entries/sequences given, they map to only 29 organisms. 
 Hence, reads are classified between these 29 organisms. The output file [**`test.reads.fna.gz.classified.tab.gz`**](https://github.com/steffenheyne/EDeNseq/blob/master/test_data/test.reads.fna.gz.classified.tab.txt) 
 gives a mapping table in the header. 
@@ -53,7 +53,7 @@ Sequence classifciation mode is started with
 
 ```EdENseq -a CLASSIFY```
 
-Please see all available paramters with   
+Please see all available parameters with   
 
 ```EdENseq -a CLASSIFY -h``` or ```EdENseq -a CLASSIFY -H```
 

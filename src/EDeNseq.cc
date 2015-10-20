@@ -7,13 +7,10 @@
 
 #include <iostream>
 
-#include "BaseManager.h"
-#include "Data.h"
 #include "Parameters.h"
 #include "SeqClusterManager.h"
 #include "SeqClassifyManager.h"
 #include "TestManager.h"
-#include "MinHashEncoder.h"
 
 using namespace std;
 

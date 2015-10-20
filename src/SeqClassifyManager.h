@@ -45,6 +45,7 @@ public:
 	void 			Exec();
 	void 			finishUpdate(ChunkP& myData);
 	void 			finishUpdate(ChunkP& myData, ResultChunkP& myResult);
+	void 			finishUpdate(ChunkP& myData, unsigned& min, unsigned& max);
 
 	void 			ClassifySeqs();
 	void 			Classify_Signatures(SeqFilesT& myFiles);

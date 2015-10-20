@@ -7,8 +7,6 @@
 
 #include "SeqClassifyManager.h"
 #include "MinHashEncoder.h"
-#include <stdio.h>
-#include <stdlib.h>
 
 SeqClassifyManager::SeqClassifyManager(Parameters* apParameters, Data* apData):
 HistogramIndex(apParameters,apData)
@@ -77,7 +75,6 @@ void SeqClassifyManager::Exec() {
 		}
 
 	} else {
-
 		// read existing index file (*.bhi)
 		cout << endl << " *** Read inverse index *** "<< endl << endl;
 		cout << "inverse index file : " << mpParameters->mIndexBedFile+".bhi" << endl << "read index ...";
@@ -127,7 +124,9 @@ void SeqClassifyManager::Exec() {
 		}
 	}
 
+	// do the classification
 	ClassifySeqs();
+
 	pb.PrintElapsed();
 }
 
@@ -270,6 +269,16 @@ void SeqClassifyManager::finishUpdate(ChunkP& myData) {
 		UpdateInverseIndex((*myData)[j].sig, (*myData)[j].idx);
 	}
 }
+
+void SeqClassifyManager::finishUpdate(ChunkP& myData, unsigned& min, unsigned& max) {
+
+	// as this is the overloaded virtual function from MinHashEncoder
+	//we assume signatureAction==INDEX always here
+	for (unsigned j = 0; j < myData->size(); j++) {
+		UpdateInverseIndex((*myData)[j].sig, (*myData)[j].idx, min, max);
+	}
+}
+
 
 inline double changeNAN(double i) {if (std::isnan(i)) return 0.0; else return i;}
 
