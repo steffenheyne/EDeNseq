@@ -21,9 +21,9 @@ contains the test files for the following test run (please adapt path names):
 
 ```EDeNseq -a CLASSIFY -i test_data/test.reads.fna.gz 
 --index_seqs test_data/test.genomes.fa.gz  --index_bed test_data/test.small.bed  
---numThreads 4  -b 30 -F 5 --num_hash_shingles 3 --num_repeat_hash_functions 2
--r 4 -d 7 --min_radius 4 --min_distance 7 --seq_window 70 --index_seq_shift 0.15 
---seq_shift 0.13 --pure_approximate_sim 0```
+--numThreads 4  -b 30 -F 5 --num_hash_shingles 3 --num_repeat_hash_functions 3
+-r 4 -d 7 --min_radius 4 --min_distance 7 --seq_window 70 --index_seq_shift 10 
+--seq_shift 9 --pure_approximate_sim 0```
 
 - [**`test_data/test.reads.fna.gz`**](https://github.com/steffenheyne/EDeNseq/blob/master/test_data/test.reads.fna.gz) contains 231.578 sequences (100nt) sampled from 29 bacterial chromosomes
 - [**`test_data/test.genomes.fa.gz`**](https://github.com/steffenheyne/EDeNseq/blob/master/test_data/test.genomes.fa.gz) contains 62 bacterial chromosomes
