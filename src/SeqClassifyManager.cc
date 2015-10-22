@@ -269,6 +269,7 @@ void SeqClassifyManager::finishUpdate(ChunkP& myData) {
 	for (unsigned j = 0; j < myData->size(); j++) {
 		UpdateInverseIndex((*myData)[j].sig, (*myData)[j].idx);
 	}
+	//	cout << "stat lf=" << mInverseIndex[0].load_factor() << " maxlf=" <<mInverseIndex[0].max_load_factor() << " minlf=" <<mInverseIndex[0].min_load_factor() << " bc=" << mInverseIndex[0].bucket_count() << " mbc="<< mInverseIndex[0].max_bucket_count() << endl;
 }
 
 inline double changeNAN(double i) {if (std::isnan(i)) return 0.0; else return i;}

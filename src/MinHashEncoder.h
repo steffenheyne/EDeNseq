@@ -162,7 +162,7 @@ protected:
 
 
 	void					worker_Graph2Signature(int numWorkers);
-	void 					finisher();
+	void 					finisher(int numWorkers);
 	void 					generate_feature_vector(const string& seq, SVector& x);
 	vector<unsigned>	HashFuncNSPDK(const string& aString, unsigned aStart, unsigned aMaxRadius, unsigned aBitMask);
 
@@ -175,7 +175,7 @@ public:
 	virtual	~MinHashEncoder();
 	void		Init(Parameters* apParameters, Data* apData);
 
-	virtual void 		UpdateInverseIndex(vector<unsigned>& aSignature, unsigned aIndex) {};
+	virtual void 		UpdateInverseIndex(const vector<unsigned>& aSignature,const unsigned& aIndex) {};
 	virtual void 		finishUpdate(ChunkP& myData) {};
 	void 					LoadData_Threaded(SeqFilesT& myFiles);
 	unsigned				GetLoadedInstances();
@@ -249,9 +249,9 @@ public:
 
 	const unsigned INDEX_FORMAT_VERSION = 2;
 
-	typedef uint16_t binKeyTy;
-	typedef binKeyTy* indexBinTy;
-	//typedef vector<binKeyTy> indexBinTy;
+	typedef uint16_t	binKeyTy;
+	typedef binKeyTy*	indexBinTy;
+	typedef uint32_t 	hashKeyTy;
 
 	struct hashFunc {
 		size_t operator()(unsigned a) const {
@@ -264,7 +264,7 @@ public:
 	};
 	//	typedef std::tr1::unordered_map<unsigned, indexBinTy,hashFunc> indexSingleTy;
 	//	typedef google::dense_hash_map<unsigned, indexBinTy, hashFunc> indexSingleTy;
-	typedef google::sparse_hash_map<unsigned, indexBinTy, hashFunc, hashFunc> indexSingleTy;
+	typedef google::sparse_hash_map<hashKeyTy, indexBinTy, hashFunc, hashFunc> indexSingleTy;
 	//	typedef google::sparse_hash_map<unsigned, indexBinTy> indexSingleTy;
 
 	typedef vector<indexSingleTy> indexTy;
@@ -280,16 +280,17 @@ public:
 	{
 		mInverseIndex.resize(mpParameters->mNumHashFunctions, indexSingleTy(500000000));
 		for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k){
-			mInverseIndex[k].max_load_factor(0.9);
-			//		mInverseIndex.back().set_empty_key(0);
+			mInverseIndex[k].max_load_factor(0.5);
+			//	mInverseIndex.back().set_empty_key(0);
+			// mInverseIndex.back().set_deleted_key(0);
+			//	mInverseIndex[k].rehash(2^22);
 		}
-
 	}
 
 	binKeyTy	GetHistogramSize();
 	void		SetHistogramSize(binKeyTy size);
 	void		UpdateInverseIndex(const vector<unsigned>& aSignature, const unsigned& aIndex);
-	void  		ComputeHistogram(const vector<unsigned>& aSignature, std::valarray<double>& hist, unsigned& emptyBins);
+	void  	ComputeHistogram(const vector<unsigned>& aSignature, std::valarray<double>& hist, unsigned& emptyBins);
 	void		writeBinaryIndex2(ostream &out, const indexTy& index);
 	bool		readBinaryIndex2(string filename, indexTy& index);
 

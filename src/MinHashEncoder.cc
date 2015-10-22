@@ -150,6 +150,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 				// necessary to have all fragments for one seq/feature if we want to combine signatures in finisher
 
 				ChunkP 		myChunkP = std::make_shared<ChunkT>();
+				myChunkP->reserve(currBuff);
 
 				while ( ((i<currBuff) && !fin.eof()) || (myData->signatureAction==CLASSIFY && i>=currBuff && lastSeqGr == false) ) {
 
@@ -264,7 +265,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 						switch (myData->groupGraphsBy){
 						case NONE:
 						case SEQ_WINDOW:
-							idx = mInstanceCounter+1;
+							idx = mInstanceCounter+1; // first should be 1 not 0
 							break;
 						default:
 							break;
@@ -313,12 +314,12 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 				//}
 
 				cv2.notify_all();
-				if (graph_queue.size()>=numWorkers*10){
+				if (graph_queue.size()>=numWorkers*50){
 					unique_lock<mutex> lk(mut2);
-					cv2.wait(lk,[&]{if ((done) || (graph_queue.size()<=numWorkers*3)) return true; else return false;});
+					cv2.wait(lk,[&]{if ((done) || (graph_queue.size()<=numWorkers*10)) return true; else return false;});
 					lk.unlock();
 				}
-				cv2.notify_all();
+
 			} // while eof
 			fin.close();
 			files_done++;
@@ -332,11 +333,11 @@ void MinHashEncoder::worker_Graph2Signature(int numWorkers){
 	while (!done){
 
 		ChunkP myData;
-		unique_lock<mutex> lk(mut2);
-		cv2.wait(lk,[&]{if ( (done) ||  (graph_queue.try_pop( (myData) )) ) return true; else return false;});
-		lk.unlock();
-
-		if (!done && myData->size()>0) {
+//		unique_lock<mutex> lk(mut2);
+//		cv2.wait(lk,[&]{if ( (done) ||  (graph_queue.try_pop( (myData) )) ) return true; else return false;});
+//		lk.unlock();
+		bool succ = graph_queue.try_pop(myData);
+		if (!done && succ && myData->size()>0) {
 			//cout << "  graph2sig thread got chunk " << myData->size() << " offset " << myData->offset << " " << mpParameters->mHashBitSize << endl;
 
 			for (unsigned j = 0; j < myData->size(); j++) {
@@ -345,6 +346,8 @@ void MinHashEncoder::worker_Graph2Signature(int numWorkers){
 				ComputeHashSignature((*myData)[j].svec,(*myData)[j].sig);
 			}
 			sig_queue.push(myData);
+			cv3.notify_all();
+			cv2.notify_all();
 			if (sig_queue.size()>=numWorkers*50){
 				unique_lock<mutex> lk(mut2);
 				cv2.wait(lk,[&]{if ((done) || (sig_queue.size()<=numWorkers*3)) return true; else return false;});
@@ -352,12 +355,10 @@ void MinHashEncoder::worker_Graph2Signature(int numWorkers){
 			}
 
 		}
-		cv2.notify_all();
-		cv3.notify_all();
 	}
 }
 
-void MinHashEncoder::finisher(){
+void MinHashEncoder::finisher(int graphWorkers){
 	ProgressBar progress_bar(1000);
 	while (!done){
 
@@ -375,20 +376,13 @@ void MinHashEncoder::finisher(){
 			myData.reset();
 			mSignatureCounter += chunkSize;
 
-			//	if (mInstanceCounter%10 <= 1) {
 			cout.setf(ios::fixed); //,ios::floatfield);
-			cout << "\r" <<  std::setprecision(1) << progress_bar.getElapsed()/1000 << " sec elapsed    Finised numSeqs=" << std::setprecision(0) << setw(10);
-			cout << mSequenceCounter  << "("<<mSequenceCounter/(progress_bar.getElapsed()/1000) <<" seq/s)  signatures=" << setw(10);
-			cout << mSignatureCounter << "("<<(double)mSignatureCounter/((progress_bar.getElapsed()/1000)) <<" sig/s - inst=";
+			double elap = progress_bar.getElapsed()/1000;
+			cout << "\r" <<  std::setprecision(1) << elap << " sec elapsed    Finised numSeqs=" << std::setprecision(0) << setw(10);
+			cout << mSequenceCounter  << "("<<mSequenceCounter/elap <<" seq/s)  signatures=" << setw(10);
+			cout << mSignatureCounter << "("<< mSignatureCounter/elap <<" sig/s - " << mSignatureCounter/(elap*graphWorkers) << " sig/s per thread) inst=";
 			cout << mInstanceCounter << " graphQueue=" << graph_queue.size() << " sigQueue=" << sig_queue.size() << "      ";
-			//	}
-			//if (mInstanceCounter%1000000 <= chunkSize){
-			//	cout << endl << "    finisher updated index with " << chunkSize << " signatures all_sigs=" <<  mSignatureCounter << " inst=" << mInstanceCounter << " sigQueue=" << sig_queue.size() << endl;
-			//}
-
-			//			progress_bar.Count(mInstanceCounter);
 		}
-		cv1.notify_all();
 		cv2.notify_all();
 		cvm.notify_all();
 	}
@@ -432,7 +426,7 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 	mSequenceCounter = 0;
 
 	vector<std::thread> threads;
-	threads.push_back( std::thread(&MinHashEncoder::finisher,this));
+	threads.push_back( std::thread(&MinHashEncoder::finisher,this, graphWorkers));
 	for (int i=0;i<graphWorkers;i++){
 		threads.push_back( std::thread(&MinHashEncoder::worker_Graph2Signature,this,graphWorkers));
 	}
@@ -514,8 +508,12 @@ void MinHashEncoder::ComputeHashSignature(const SVector& aX, Signature& signatur
 	// compute shingles, i.e. rehash mNumHashShingles hash values into one hash value
 	if (mpParameters->mNumHashShingles > 1 ) {
 		vector<unsigned> signatureFinal(mpParameters->mNumHashFunctions);
-		for (unsigned i=0;i<mpParameters->mNumHashFunctions;i++){
-			signatureFinal[i] = HashFunc(signatureP->begin()+(i*mpParameters->mNumHashShingles),signatureP->begin()+(i*mpParameters->mNumHashShingles+mpParameters->mNumHashShingles),mHashBitMask);
+		//for (unsigned i=0;i<mpParameters->mNumHashFunctions;i++){
+		int i = 0;
+		for (Signature::iterator it = signatureP->begin(); it != signatureP->end(); it += mpParameters->mNumHashShingles) {
+			signatureFinal[i] = HashFunc(it,it+mpParameters->mNumHashShingles,mHashBitMask);
+	//		signatureFinal[i] = HashFunc(signatureP->begin()+(i*mpParameters->mNumHashShingles),signatureP->begin()+(i*mpParameters->mNumHashShingles+mpParameters->mNumHashShingles),mHashBitMask);
+			i++;
 		}
 		signature.swap(signatureFinal);
 		delete signatureP;
@@ -808,6 +806,9 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 				foo[0]= 1; //index of last element is stored at idx[0]
 
 				mInverseIndex[k][key] = foo;
+				//mInverseIndex[k].insert(make_pair(key,foo));
+
+				//mInverseIndex[k].resize(0);
 				numKeys++; // just for bin statistics
 			} else if (mInverseIndex[k][key][mInverseIndex[k][key][0]] != aIndexT){
 				//mInverseIndex[k][key][0] < 2 &&
