@@ -508,7 +508,6 @@ void MinHashEncoder::ComputeHashSignature(const SVector& aX, Signature& signatur
 	// compute shingles, i.e. rehash mNumHashShingles hash values into one hash value
 	if (mpParameters->mNumHashShingles > 1 ) {
 		vector<unsigned> signatureFinal(mpParameters->mNumHashFunctions);
-		//for (unsigned i=0;i<mpParameters->mNumHashFunctions;i++){
 		int i = 0;
 		for (Signature::iterator it = signatureP->begin(); it != signatureP->end(); it += mpParameters->mNumHashShingles) {
 			signatureFinal[i] = HashFunc(it,it+mpParameters->mNumHashShingles,mHashBitMask);
@@ -519,6 +518,13 @@ void MinHashEncoder::ComputeHashSignature(const SVector& aX, Signature& signatur
 		delete signatureP;
 	}
 }
+
+//#################################################################################
+//
+//	NeighborhoodIndex members
+//
+//#################################################################################
+
 
 void NeighborhoodIndex::NeighborhoodCacheReset() {
 	cout << "... nearest neighbor cache reset ..." << endl;
@@ -602,28 +608,6 @@ void NeighborhoodIndex::ComputeApproximateNeighborhoodCore(const vector<unsigned
 		}
 	}
 }
-
-//void NeighborhoodIndex::ComputeApproximateNeighborhoodCore(const vector<unsigned>& aSignature, umap_uint_int& neighborhood, unsigned& collisions) {
-//
-//	collisions = 0;
-//	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k) {
-//
-//		unsigned hash_id = aSignature[k];
-//		if (hash_id != 0 && hash_id != MAXUNSIGNED && mInverseIndex[k][hash_id].front() != MAXBINKEY) {
-//
-//			//fill neighborhood set counting number of occurrences
-//			for (indexBinTy::iterator it = mInverseIndex[k][hash_id].begin(); it != mInverseIndex[k][hash_id].end(); ++it) {
-//				binKeyTy instance_id = *it;
-//				if (neighborhood.count(instance_id) > 0)
-//					neighborhood[instance_id]++;
-//				else
-//					neighborhood[instance_id] = 1;
-//			}
-//		} else {
-//			collisions++;
-//		}
-//	}
-//}
 
 vector<unsigned> NeighborhoodIndex::ComputeApproximateNeighborhood(const vector<unsigned>& aSignature, unsigned& collisions, double& density) {
 
@@ -740,26 +724,12 @@ pair<unsigned,unsigned> NeighborhoodIndex::ComputeApproximateSim(const unsigned&
 	return tmp;
 }
 
-//pair<unsigned,unsigned> NeighborhoodIndex::ComputeApproximateSim(const unsigned& aID, const vector<unsigned>& bSignature) {
+//#################################################################################
 //
-//	//umap_uint_int neighborhood;
-//	unsigned collisions = 0;
-//	unsigned counts_aID = 0;
-//	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k) {
-//		unsigned hash_id = bSignature[k];
-//		if (hash_id != 0 && hash_id != MAXUNSIGNED && mInverseIndex[k][hash_id].front() != MAXBINKEY) {
+//	HistogramIndex members
 //
-//			//fill neighborhood set counting number of occurrences
-//			for (indexBinTy::iterator it = mInverseIndex[k][hash_id].begin(); it != mInverseIndex[k][hash_id].end(); ++it) {
-//				if (*it == aID) counts_aID++;
-//			}
-//
-//		} else
-//			collisions++;
-//	}
-//	pair<unsigned,unsigned> tmp=make_pair(counts_aID,collisions);
-//	return tmp;
-//}
+//#################################################################################
+
 
 void HistogramIndex::SetHistogramSize(binKeyTy size){
 	mHistogramSize = size;
@@ -769,29 +739,6 @@ void HistogramIndex::SetHistogramSize(binKeyTy size){
 HistogramIndex::binKeyTy HistogramIndex::GetHistogramSize(){
 	return mHistogramSize;
 }
-
-//void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature,const unsigned& aIndex) {
-//	const binKeyTy aIndexT =(binKeyTy)aIndex;
-//	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k) { //for every hash value
-//		unsigned key = aSignature[k];
-//		if (key != MAXUNSIGNED && key != 0) { //if key is equal to markers for empty bins then skip insertion instance in data structure
-//			if (mInverseIndex[k].count(key) == 0) { //if this is the first time that an instance exhibits that specific value for that hash function, then store for the first time the reference to that instance
-//				indexBinTy tmp;
-//				tmp.push_back(aIndex);
-//				mInverseIndex[k].insert(make_pair(key, tmp));
-//				numKeys++; // just for bin statistics
-//			} else if (mInverseIndex[k][key].back() != aIndexT) {
-//				// add key to bin if we not have a full bin
-//				indexBinTy& myValue = mInverseIndex[k][key];
-//				indexBinTy::iterator it = myValue.begin();
-//				while (*it<aIndex && it !=myValue.end() ){
-//					++it;
-//				}
-//				mInverseIndex[k][key].insert(it,aIndexT);
-//			}
-//		}
-//	}
-//}
 
 void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, const unsigned& aIndex) {
 	const binKeyTy& aIndexT =(binKeyTy)aIndex;
@@ -844,32 +791,6 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 		}
 	}
 }
-
-
-//void HistogramIndex::ComputeHistogram(const vector<unsigned>& aSignature, std::valarray<double>& hist, unsigned& emptyBins) {
-//
-//	hist.resize(GetHistogramSize());
-//	hist *= 0;
-//	emptyBins = 0;
-//	for (unsigned k = 0; k < aSignature.size(); ++k) {
-//
-//		if (mInverseIndex[k].count(aSignature[k]) != 0) {
-//
-//			indexBinTy& myValue = mInverseIndex[k][aSignature[k]];
-//
-//			std::valarray<double> t(0.0, hist.size());
-//
-//			for (uint i=1;i<=myValue.size();i++){
-//				t[myValue[i]-1]=1;
-//			}
-//
-//			hist += t;
-//
-//		} else {
-//			emptyBins++;
-//		}
-//	}
-//}
 
 
 void HistogramIndex::ComputeHistogram(const vector<unsigned>& aSignature, std::valarray<double>& hist, unsigned& emptyBins) {
@@ -1259,6 +1180,98 @@ bool HistogramIndex::readBinaryIndex2(string filename, indexTy &index){
 //				mInverseIndex[k][key].clear();
 //				mInverseIndex[k][key].push_back(MAXBINKEY);
 //			}
+//		}
+//	}
+//}
+
+
+//pair<unsigned,unsigned> NeighborhoodIndex::ComputeApproximateSim(const unsigned& aID, const vector<unsigned>& bSignature) {
+//
+//	//umap_uint_int neighborhood;
+//	unsigned collisions = 0;
+//	unsigned counts_aID = 0;
+//	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k) {
+//		unsigned hash_id = bSignature[k];
+//		if (hash_id != 0 && hash_id != MAXUNSIGNED && mInverseIndex[k][hash_id].front() != MAXBINKEY) {
+//
+//			//fill neighborhood set counting number of occurrences
+//			for (indexBinTy::iterator it = mInverseIndex[k][hash_id].begin(); it != mInverseIndex[k][hash_id].end(); ++it) {
+//				if (*it == aID) counts_aID++;
+//			}
+//
+//		} else
+//			collisions++;
+//	}
+//	pair<unsigned,unsigned> tmp=make_pair(counts_aID,collisions);
+//	return tmp;
+//}
+
+//void HistogramIndex::ComputeHistogram(const vector<unsigned>& aSignature, std::valarray<double>& hist, unsigned& emptyBins) {
+//
+//	hist.resize(GetHistogramSize());
+//	hist *= 0;
+//	emptyBins = 0;
+//	for (unsigned k = 0; k < aSignature.size(); ++k) {
+//
+//		if (mInverseIndex[k].count(aSignature[k]) != 0) {
+//
+//			indexBinTy& myValue = mInverseIndex[k][aSignature[k]];
+//
+//			std::valarray<double> t(0.0, hist.size());
+//
+//			for (uint i=1;i<=myValue.size();i++){
+//				t[myValue[i]-1]=1;
+//			}
+//
+//			hist += t;
+//
+//		} else {
+//			emptyBins++;
+//		}
+//	}
+//}
+
+//void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature,const unsigned& aIndex) {
+//	const binKeyTy aIndexT =(binKeyTy)aIndex;
+//	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k) { //for every hash value
+//		unsigned key = aSignature[k];
+//		if (key != MAXUNSIGNED && key != 0) { //if key is equal to markers for empty bins then skip insertion instance in data structure
+//			if (mInverseIndex[k].count(key) == 0) { //if this is the first time that an instance exhibits that specific value for that hash function, then store for the first time the reference to that instance
+//				indexBinTy tmp;
+//				tmp.push_back(aIndex);
+//				mInverseIndex[k].insert(make_pair(key, tmp));
+//				numKeys++; // just for bin statistics
+//			} else if (mInverseIndex[k][key].back() != aIndexT) {
+//				// add key to bin if we not have a full bin
+//				indexBinTy& myValue = mInverseIndex[k][key];
+//				indexBinTy::iterator it = myValue.begin();
+//				while (*it<aIndex && it !=myValue.end() ){
+//					++it;
+//				}
+//				mInverseIndex[k][key].insert(it,aIndexT);
+//			}
+//		}
+//	}
+//}
+
+//void NeighborhoodIndex::ComputeApproximateNeighborhoodCore(const vector<unsigned>& aSignature, umap_uint_int& neighborhood, unsigned& collisions) {
+//
+//	collisions = 0;
+//	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k) {
+//
+//		unsigned hash_id = aSignature[k];
+//		if (hash_id != 0 && hash_id != MAXUNSIGNED && mInverseIndex[k][hash_id].front() != MAXBINKEY) {
+//
+//			//fill neighborhood set counting number of occurrences
+//			for (indexBinTy::iterator it = mInverseIndex[k][hash_id].begin(); it != mInverseIndex[k][hash_id].end(); ++it) {
+//				binKeyTy instance_id = *it;
+//				if (neighborhood.count(instance_id) > 0)
+//					neighborhood[instance_id]++;
+//				else
+//					neighborhood[instance_id] = 1;
+//			}
+//		} else {
+//			collisions++;
 //		}
 //	}
 //}
