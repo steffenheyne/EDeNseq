@@ -143,7 +143,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 
 			while (!fin.eof()) {
 
-				unsigned maxB = max(1000,(int)log2((double)mSignatureCounter)*100);
+				unsigned maxB = max(1000,(int)log2((double)mSignatureCounter)*200);
 				unsigned currBuff = rand()%(maxB*5 - maxB + 1) + maxB; // curr chunk size
 				unsigned i = 0;			// current fragment in currBuff
 				bool lastSeqGr = false; // indicates that we have the last fragment from current seq, used to get all fragments from current seq into current chunk
@@ -331,11 +331,11 @@ void MinHashEncoder::worker_Graph2Signature(int numWorkers){
 	while (!done){
 
 		ChunkP myData;
-//		unique_lock<mutex> lk(mut2);
-//		cv2.wait(lk,[&]{if ( (done) ||  (graph_queue.try_pop( (myData) )) ) return true; else return false;});
-//		lk.unlock();
-		bool succ = graph_queue.try_pop( (myData));
-		if (!done && succ && myData->size()>0) {
+		unique_lock<mutex> lk(mut2);
+		cv2.wait(lk,[&]{if ( (done) ||  (graph_queue.try_pop( (myData) )) ) return true; else return false;});
+		lk.unlock();
+//		bool succ = graph_queue.try_pop( (myData));
+		if (!done && myData->size()>0) {
 			//cout << "  graph2sig thread got chunk " << myData->size() << " offset " << myData->offset << " " << mpParameters->mHashBitSize << endl;
 
 			for (unsigned j = 0; j < myData->size(); j++) {
@@ -363,11 +363,11 @@ void MinHashEncoder::finisher(){
 	while (!done){
 
 		ChunkP myData;
-		unique_lock<mutex> lk(mut3);
-		cv1.wait(lk,[&]{if ( (done) || (sig_queue.try_pop( (myData) ))) return true; else return false;});
-		lk.unlock();
-
-		if (!done  && myData->size()>0) {
+/*		unique_lock<mutex> lk(mut3);
+		cv2.wait(lk,[&]{if ( (done) || (sig_queue.try_pop( (myData) ))) return true; else return false;});
+		lk.unlock();*/
+		bool succ = sig_queue.try_pop(myData);
+		if (!done && succ  && myData->size()>0) {
 
 			for (unsigned i=0;i<index_queue.size();i++){
 				index_queue[i].push(myData);
@@ -376,9 +376,9 @@ void MinHashEncoder::finisher(){
 			uint fillstatus=0;
 			for (uint i=0; i<index_queue.size(); ++i){ fillstatus += index_queue[i].size();}
 
-			if (fillstatus>index_queue.size()*10){
+			if (fillstatus>index_queue.size()*100){
 				unique_lock<mutex> lk(mut2);
-				cv2.wait(lk,[&]{fillstatus = 0;for (uint i=0; i<index_queue.size(); ++i){ fillstatus += index_queue[i].size();} if ((done) || (fillstatus<index_queue.size()*10)) return true; else return false;});
+				cv3.wait(lk,[&]{fillstatus = 0;for (uint i=0; i<index_queue.size(); ++i){ fillstatus += index_queue[i].size();} if ((done) || (fillstatus<index_queue.size()*10)) return true; else return false;});
 				lk.unlock();
 			}
 
@@ -396,7 +396,7 @@ void MinHashEncoder::finisher(){
 		}
 		cv3.notify_all();
 //		cv1.notify_all();
-//		cv2.notify_all();
+		cv2.notify_all();
 //		cvm.notify_all();
 	}
 }

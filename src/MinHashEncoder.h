@@ -265,8 +265,8 @@ public:
 		}
 	};
 	//typedef std::tr1::unordered_map<unsigned, indexBinTy> indexSingleTy;
-	typedef google::dense_hash_map<unsigned, indexBinTy, hashFunc,hashFunc> indexSingleTy;
-	//typedef google::sparse_hash_map<unsigned, indexBinTy, hashFunc, hashFunc> indexSingleTy;
+	//typedef google::dense_hash_map<unsigned, indexBinTy, hashFunc,hashFunc> indexSingleTy;
+	typedef google::sparse_hash_map<unsigned, indexBinTy, hashFunc, hashFunc> indexSingleTy;
 	//typedef google::sparse_hash_map<unsigned, indexBinTy> indexSingleTy;
 
 	typedef vector<indexSingleTy> indexTy;
@@ -283,7 +283,7 @@ public:
 		mInverseIndex.resize(mpParameters->mNumHashFunctions, indexSingleTy(2^22));
 		for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k){
 		//	mInverseIndex[k].max_load_factor(0.999);
-		mInverseIndex[k].set_empty_key(0);
+		//mInverseIndex[k].set_empty_key(0);
 		}
 
 	}
