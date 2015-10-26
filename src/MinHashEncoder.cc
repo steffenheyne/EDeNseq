@@ -411,7 +411,11 @@ void MinHashEncoder::worker_IndexUpdate(unsigned id, unsigned min, unsigned max)
 				cout << "\r" <<  std::setprecision(1) << progress_bar.getElapsed()/1000 << " sec elapsed    Finised numSeqs=" << std::setprecision(0) << setw(10);
 				cout << mSequenceCounter  << "("<<mSequenceCounter/(progress_bar.getElapsed()/1000) <<" seq/s)  signatures=" << setw(10);
 				cout << mSignatureCounter << "("<<(double)mSignatureCounter/((progress_bar.getElapsed()/1000)) <<" sig/s - inst=";
-				cout << mInstanceCounter << " graphQueue=" << graph_queue.size() << " sigQueue=" << sig_queue.size() << " SigUpdateCounter  " << mSignatureUpdateCounter << " " << index_queue[0].size() << "     ";
+				cout << mInstanceCounter << " graphQueue=" << graph_queue.size() << " sigQueue=" << sig_queue.size() << " SigUpdateCounter  " << mSignatureUpdateCounter << " ";
+				for (uint i=0;i<index_queue.size(); i++){
+					cout << index_queue[i].size() << " ";
+				}
+				cout << "     ";
 			}
 		}
 
