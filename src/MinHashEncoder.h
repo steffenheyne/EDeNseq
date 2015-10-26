@@ -282,8 +282,8 @@ public:
 	{
 		mInverseIndex.resize(mpParameters->mNumHashFunctions, indexSingleTy(2^22));
 		for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k){
-			mInverseIndex[k].max_load_factor(0.9);
-			//		mInverseIndex.back().set_empty_key(0);
+		//	mInverseIndex[k].max_load_factor(0.999);
+		//mInverseIndex[k].set_empty_key(0);
 		}
 
 	}

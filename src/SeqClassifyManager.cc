@@ -158,7 +158,7 @@ void SeqClassifyManager::worker_Classify(int numWorkers){
 			//			}
 			res_queue.push(myResultChunk);
 		}
-		cv2.notify_all();
+		//cv2.notify_all();
 		cv_res.notify_all();
 	}
 }
@@ -175,7 +175,7 @@ void SeqClassifyManager::finisher_Results(ogzstream* fout_res){
 		if (!done && myResults->size()>0) {
 
 			for (unsigned i=0; i<myResults->size(); i++){
-				*fout_res << (*myResults)[i].output_line;
+				//*fout_res << (*myResults)[i].output_line;
 				mResultCounter += (*myResults)[i].numInstances;
 
 			}
@@ -188,7 +188,7 @@ void SeqClassifyManager::finisher_Results(ogzstream* fout_res){
 		cv1.notify_all();
 		cv2.notify_all();
 		cvm.notify_all();
-		cv_res.notify_all();
+		//cv_res.notify_all();
 	}
 	progress_bar.PrintElapsed();
 }

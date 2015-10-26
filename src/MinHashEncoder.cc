@@ -144,7 +144,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 			while (!fin.eof()) {
 
 				unsigned maxB = max(1000,(int)log2((double)mSignatureCounter)*200);
-				unsigned currBuff = rand()%(maxB*3 - maxB + 1) + maxB; // curr chunk size
+				unsigned currBuff = rand()%(maxB*5 - maxB + 1) + maxB; // curr chunk size
 				unsigned i = 0;			// current fragment in currBuff
 				bool lastSeqGr = false; // indicates that we have the last fragment from current seq, used to get all fragments from current seq into current chunk
 				// necessary to have all fragments for one seq/feature if we want to combine signatures in finisher
@@ -410,7 +410,7 @@ void MinHashEncoder::worker_IndexUpdate(unsigned id, unsigned min, unsigned max)
 //		lk.unlock();
 		bool succ = index_queue[id].try_pop( (myData));
 		if (!done && succ && myData->size()>0) {
-		
+
 			finishUpdate(myData,min,max);
 			mSignatureUpdateCounter += myData->size()*( (max-min+1));
 		//	cout << "finishUpdate "<< myData->size() << " " << id << " " << min << " " << max << " " << index_queue[id].size() <<  " " << myData->size()*( (max-min+1)*mpParameters->mNumHashFunctions) << " " << mSignatureUpdateCounter << endl;
