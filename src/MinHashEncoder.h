@@ -264,10 +264,10 @@ public:
 			return a == b;
 		}
 	};
-	//	typedef std::tr1::unordered_map<unsigned, indexBinTy,hashFunc> indexSingleTy;
-	//	typedef google::dense_hash_map<unsigned, indexBinTy, hashFunc> indexSingleTy;
+	//typedef std::tr1::unordered_map<unsigned, indexBinTy> indexSingleTy;
+	//typedef google::dense_hash_map<unsigned, indexBinTy, hashFunc,hashFunc> indexSingleTy;
 	typedef google::sparse_hash_map<unsigned, indexBinTy, hashFunc, hashFunc> indexSingleTy;
-	//	typedef google::sparse_hash_map<unsigned, indexBinTy> indexSingleTy;
+	//typedef google::sparse_hash_map<unsigned, indexBinTy> indexSingleTy;
 
 	typedef vector<indexSingleTy> indexTy;
 	const binKeyTy MAXBINKEY = std::numeric_limits<binKeyTy>::max();
@@ -280,7 +280,7 @@ public:
 	HistogramIndex(Parameters* apParameters, Data* apData)
 	:MinHashEncoder(apParameters,apData)
 	{
-		mInverseIndex.resize(mpParameters->mNumHashFunctions, indexSingleTy(500000000));
+		mInverseIndex.resize(mpParameters->mNumHashFunctions, indexSingleTy(2^22));
 		for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k){
 			mInverseIndex[k].max_load_factor(0.9);
 			//		mInverseIndex.back().set_empty_key(0);

@@ -135,10 +135,10 @@ void SeqClassifyManager::worker_Classify(int numWorkers){
 	while (!done){
 
 		ChunkP myData;
-		unique_lock<mutex> lk(mut2);
+		unique_lock<mutex> lk(mut1);
 		cv2.wait(lk,[&]{if ( (done) ||  (graph_queue.try_pop( (myData) )) ) return true; else return false;});
 		lk.unlock();
-
+		//bool succ = graph_queue.try_pop(myData);
 		if (!done && myData->size()>0) {
 			//cout << "  graph2sig thread got chunk " << myData->size() << " offset " << (*myData)[0].idx << " " << mpParameters->mHashBitSize << endl;
 
