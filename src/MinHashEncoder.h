@@ -15,6 +15,7 @@
 //#include "sparsehash-2.0.2/sparsehash/dense_hash_set"
 //#include "sparsehash-2.0.2/sparsehash/sparse_hash_set"
 #include "eigen-eigen-3.20/Eigen/Sparse"
+#include "cedar.h"
 
 
 using namespace std;
@@ -127,7 +128,9 @@ public:
 
 	SeqFileP 	mIndexDataSet;
 
-
+	unsigned numHashFunctionsFull;
+	unsigned sub_hash_range;
+	vector<unsigned>  bounds;
 
 protected:
 
@@ -165,6 +168,7 @@ protected:
 	void 					generate_feature_vector(const string& seq, SVector& x);
 	vector<unsigned>	HashFuncNSPDK(const string& aString, unsigned aStart, unsigned aMaxRadius, unsigned aBitMask);
 	void 					worker_readFiles(int numWorkers);
+	void 					HashSignatureHelper();
 
 public:
 
@@ -182,7 +186,7 @@ public:
 	unsigned				GetLoadedInstances();
 	void 					worker_IndexUpdate(unsigned id, unsigned min, unsigned max);
 
-	void					ComputeHashSignature(const SVector& aX, Signature& signaure);
+	void					ComputeHashSignature(const SVector& aX, Signature& signaure, Signature* tmpSig);
 };
 
 class NeighborhoodIndex : public MinHashEncoder
@@ -285,6 +289,8 @@ public:
 		//	mInverseIndex[k].max_load_factor(0.999);
 		//mInverseIndex[k].set_empty_key(0);
 		}
+
+		//Index.resize(mpParameters->mNumHashFunctions, new cedar::da<int>());
 
 	}
 

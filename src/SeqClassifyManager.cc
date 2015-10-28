@@ -132,6 +132,8 @@ void SeqClassifyManager::Exec() {
 
 void SeqClassifyManager::worker_Classify(int numWorkers){
 
+	Signature* tmpSig = new Signature(numHashFunctionsFull);
+
 	while (!done){
 
 		ChunkP myData;
@@ -147,7 +149,7 @@ void SeqClassifyManager::worker_Classify(int numWorkers){
 			for (unsigned j = 0; j < myData->size(); j++) {
 
 				generate_feature_vector((*myData)[j].seq, (*myData)[j].svec);
-				MinHashEncoder::ComputeHashSignature((*myData)[j].svec,(*myData)[j].sig);
+				MinHashEncoder::ComputeHashSignature((*myData)[j].svec,(*myData)[j].sig,tmpSig);
 
 			}
 			finishUpdate(myData,myResultChunk);
@@ -161,6 +163,7 @@ void SeqClassifyManager::worker_Classify(int numWorkers){
 		//cv2.notify_all();
 		cv_res.notify_all();
 	}
+	delete tmpSig;
 }
 
 void SeqClassifyManager::finisher_Results(ogzstream* fout_res){
@@ -175,7 +178,7 @@ void SeqClassifyManager::finisher_Results(ogzstream* fout_res){
 		if (!done && myResults->size()>0) {
 
 			for (unsigned i=0; i<myResults->size(); i++){
-				//*fout_res << (*myResults)[i].output_line;
+				*fout_res << (*myResults)[i].output_line;
 				mResultCounter += (*myResults)[i].numInstances;
 
 			}
@@ -213,6 +216,8 @@ void SeqClassifyManager::Classify_Signatures(SeqFilesT& myFiles){
 	cout << "Using sequence window  " << mpParameters->mSeqWindow<<" shift "<<mpParameters->mSeqShift << " nt - clip " << mpParameters->mSeqClip << endl;
 
 	cout << endl << "Computing MinHash signatures on the fly while reading " << myFiles.size() << " file(s)..." << endl;
+
+	HashSignatureHelper();
 
 	int graphWorkers = std::thread::hardware_concurrency();
 	if (mpParameters->mNumThreads>0)
