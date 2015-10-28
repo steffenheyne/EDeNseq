@@ -143,7 +143,7 @@ void MinHashEncoder::worker_readFiles(int numWorkers){
 
 			while (!fin.eof()) {
 
-				unsigned maxB = max(1000,(int)log2((double)mSignatureCounter)*200);
+				unsigned maxB = max(1000,(int)log2((double)mSignatureCounter)*100);
 				unsigned currBuff = rand()%(maxB*5 - maxB + 1) + maxB; // curr chunk size
 				unsigned i = 0;			// current fragment in currBuff
 				bool lastSeqGr = false; // indicates that we have the last fragment from current seq, used to get all fragments from current seq into current chunk
@@ -334,7 +334,7 @@ void MinHashEncoder::worker_Graph2Signature(int numWorkers){
 		unique_lock<mutex> lk(mut2);
 		cv2.wait(lk,[&]{if ( (done) ||  (graph_queue.try_pop( (myData) )) ) return true; else return false;});
 		lk.unlock();
-//		bool succ = graph_queue.try_pop( (myData));
+		//		bool succ = graph_queue.try_pop( (myData));
 		if (!done && myData->size()>0) {
 			//cout << "  graph2sig thread got chunk " << myData->size() << " offset " << myData->offset << " " << mpParameters->mHashBitSize << endl;
 
@@ -363,7 +363,7 @@ void MinHashEncoder::finisher(){
 	while (!done){
 
 		ChunkP myData;
-/*		unique_lock<mutex> lk(mut3);
+		/*		unique_lock<mutex> lk(mut3);
 		cv2.wait(lk,[&]{if ( (done) || (sig_queue.try_pop( (myData) ))) return true; else return false;});
 		lk.unlock();*/
 		bool succ = sig_queue.try_pop(myData);
@@ -376,7 +376,7 @@ void MinHashEncoder::finisher(){
 			uint fillstatus=0;
 			for (uint i=0; i<index_queue.size(); ++i){ fillstatus += index_queue[i].size();}
 
-			if (fillstatus>index_queue.size()*100){
+			if (fillstatus>index_queue.size()*10){
 				unique_lock<mutex> lk(mut2);
 				cv3.wait(lk,[&]{fillstatus = 0;for (uint i=0; i<index_queue.size(); ++i){ fillstatus += index_queue[i].size();} if ((done) || (fillstatus<index_queue.size()*10)) return true; else return false;});
 				lk.unlock();
@@ -387,17 +387,17 @@ void MinHashEncoder::finisher(){
 			//mSignatureCounter += myData->size();
 
 			//myData.reset();
-//
-//			cout.setf(ios::fixed); //,ios::floatfield);
-//			cout << "\r" <<  std::setprecision(1) << progress_bar.getElapsed()/1000 << " sec elapsed    Finised numSeqs=" << std::setprecision(0) << setw(10);
-//			cout << mSequenceCounter  << "("<<mSequenceCounter/(progress_bar.getElapsed()/1000) <<" seq/s)  signatures=" << setw(10);
-//			cout << mSignatureCounter << "("<<(double)mSignatureCounter/((progress_bar.getElapsed()/1000)) <<" sig/s - inst=";
-//			cout << mInstanceCounter << " graphQueue=" << graph_queue.size() << " sigQueue=" << sig_queue.size() << " SigUpdateCounter  " << mSignatureUpdateCounter << " " << index_queue[0].size() << "     ";
+			//
+			//			cout.setf(ios::fixed); //,ios::floatfield);
+			//			cout << "\r" <<  std::setprecision(1) << progress_bar.getElapsed()/1000 << " sec elapsed    Finised numSeqs=" << std::setprecision(0) << setw(10);
+			//			cout << mSequenceCounter  << "("<<mSequenceCounter/(progress_bar.getElapsed()/1000) <<" seq/s)  signatures=" << setw(10);
+			//			cout << mSignatureCounter << "("<<(double)mSignatureCounter/((progress_bar.getElapsed()/1000)) <<" sig/s - inst=";
+			//			cout << mInstanceCounter << " graphQueue=" << graph_queue.size() << " sigQueue=" << sig_queue.size() << " SigUpdateCounter  " << mSignatureUpdateCounter << " " << index_queue[0].size() << "     ";
 		}
 		cv3.notify_all();
-//		cv1.notify_all();
+		//		cv1.notify_all();
 		cv2.notify_all();
-//		cvm.notify_all();
+		//		cvm.notify_all();
 	}
 }
 
@@ -405,20 +405,20 @@ void MinHashEncoder::worker_IndexUpdate(unsigned id, unsigned min, unsigned max)
 	ProgressBar progress_bar(1000);
 	while (!done){
 		ChunkP myData;
-//		unique_lock<mutex> lk(mut3);
-//		cv3.wait(lk,[&]{if ( (done) || (index_queue[id].try_pop( (myData) ))) return true; else return false;});
-//		lk.unlock();
+		//		unique_lock<mutex> lk(mut3);
+		//		cv3.wait(lk,[&]{if ( (done) || (index_queue[id].try_pop( (myData) ))) return true; else return false;});
+		//		lk.unlock();
 		bool succ = index_queue[id].try_pop( (myData));
 		if (!done && succ && myData->size()>0) {
 
 			finishUpdate(myData,min,max);
 			mSignatureUpdateCounter += myData->size()*( (max-min+1));
-		//	cout << "finishUpdate "<< myData->size() << " " << id << " " << min << " " << max << " " << index_queue[id].size() <<  " " << myData->size()*( (max-min+1)*mpParameters->mNumHashFunctions) << " " << mSignatureUpdateCounter << endl;
+			//	cout << "finishUpdate "<< myData->size() << " " << id << " " << min << " " << max << " " << index_queue[id].size() <<  " " << myData->size()*( (max-min+1)*mpParameters->mNumHashFunctions) << " " << mSignatureUpdateCounter << endl;
 			cv3.notify_all();
 			cvm.notify_all();
 			if (id==0){
 				mSignatureCounter += myData->size();
-			cout.setf(ios::fixed); //,ios::floatfield);
+				cout.setf(ios::fixed); //,ios::floatfield);
 				cout << "\r" <<  std::setprecision(1) << progress_bar.getElapsed()/1000 << " sec elapsed    Finised numSeqs=" << std::setprecision(0) << setw(10);
 				cout << mSequenceCounter  << "("<<mSequenceCounter/(progress_bar.getElapsed()/1000) <<" seq/s)  signatures=" << setw(10);
 				cout << mSignatureCounter << "("<<(double)mSignatureCounter/((progress_bar.getElapsed()/1000)) <<" sig/s - inst=";
@@ -471,7 +471,7 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 	mSignatureUpdateCounter = 0;
 
 	vector<std::thread> threads;
-	uint splitsize= 2;
+	uint splitsize= 1; //mpParameters->mNumHashFunctions;
 	index_queue.resize(mpParameters->mNumHashFunctions/splitsize);
 
 	for (unsigned i=0;i<(mpParameters->mNumHashFunctions/splitsize);i++){
@@ -641,7 +641,7 @@ void NeighborhoodIndex::ComputeApproximateNeighborhoodCore(const vector<unsigned
 
 			//fill neighborhood set counting number of occurrences
 			for (binKeyTy i = 1; i<=mInverseIndex[k][hash_id][0];i++){
-		//	for (indexBinTy::iterator it = mInverseIndex[k][hash_id].begin(); it != mInverseIndex[k][hash_id].end(); ++it) {
+				//	for (indexBinTy::iterator it = mInverseIndex[k][hash_id].begin(); it != mInverseIndex[k][hash_id].end(); ++it) {
 				binKeyTy instance_id = (mInverseIndex[k][hash_id][i])-1;
 				if (neighborhood.count(instance_id) > 0)
 					neighborhood[instance_id]++;
@@ -780,7 +780,7 @@ pair<unsigned,unsigned> NeighborhoodIndex::ComputeApproximateSim(const unsigned&
 
 			//fill neighborhood set counting number of occurrences
 			for (binKeyTy i = 1; i<=mInverseIndex[k][hash_id][0];i++){
-			//for (indexBinTy::iterator it = mInverseIndex[k][hash_id].begin(); it != mInverseIndex[k][hash_id].end(); ++it) {
+				//for (indexBinTy::iterator it = mInverseIndex[k][hash_id].begin(); it != mInverseIndex[k][hash_id].end(); ++it) {
 				if (mInverseIndex[k][hash_id][i] == aID) counts_aID++;
 			}
 
@@ -858,50 +858,92 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 		const unsigned& key = aSignature[k];
 		if (key != MAXUNSIGNED && key != 0) { //if key is equal to markers for empty bins then skip insertion instance in data structure
 			if (mInverseIndex[k].count(key)==0) { //if this is the first time that an instance exhibits that specific value for that hash function, then store for the first time the reference to that instance
+				//		if (Hash[k].Find(key) == NULL) { //if this is the first time that an instance exhibits that specific value for that hash function, then store for the first time the reference to that instance
 
-				binKeyTy * foo;
-				foo = new binKeyTy[2];
-				foo[1]= aIndexT;
-				foo[0]= 1; //index of last element is stored at idx[0]
+				binKeyTy (*foo)[2];
+				foo = mMemPool[k]->newElement();
+				//foo = new binKeyTy[2];
+				(*foo)[1] = (binKeyTy)aIndex;
+				(*foo)[0]= 1; //index of last element is stored at idx[0]
 
-				mInverseIndex[k][key] = foo;
+				mInverseIndex[k][key] = reinterpret_cast<binKeyTy(*)>(foo);
 				numKeys++; // just for bin statistics
-			} else if (mInverseIndex[k][key][mInverseIndex[k][key][0]] != aIndexT){
-				//mInverseIndex[k][key][0] < 2 &&
-				binKeyTy*& myValue = mInverseIndex[k][key];
+				//			CTest * test = new CTest(key,foo);
+				//			Hash[k].Add(test);
+				//	} else if (mInverseIndex[k][key][mInverseIndex[k][key][0]] != aIndexT){
+			} else {
+				binKeyTy* myValue = mInverseIndex[k][key];
+				if (myValue[0] == 1){
+					//binKeyTy* myValue = Hash[k].Find(key)->m_data;
+//					binKeyTy* myValue = mInverseIndex[k][key];
+					binKeyTy (*foo)[2] = reinterpret_cast<newIndexBin(*)>(mInverseIndex[k][key]);
+					if ((*foo)[(*foo)[0]] != aIndexT){
+						//mInverseIndex[k][key][0] < 2 &&
+						//				binKeyTy*& myValue = mInverseIndex[k][key];
+						//binKeyTy* myValue = Hash[k].Find(key)->m_data;
 
-				// find pos for insert, assume sorted array
-				binKeyTy i = myValue[0];
-				while ((myValue[i]> aIndexT) && (i>1)){
-					i--;
+						// find pos for insert, assume sorted array
+						binKeyTy i = (*foo)[0];
+						while (((*foo)[i]> aIndexT) && (i>1)){
+							i--;
+						}
+
+						// only insert if element is not there
+						if ((*foo)[i]<aIndexT){
+							binKeyTy newSize = ((*foo)[0])+1;
+							binKeyTy * fooNew;
+							fooNew = new binKeyTy[newSize+1];
+
+							memcpy(fooNew,foo,(i+1)*sizeof(binKeyTy));
+							fooNew[i+1] = aIndexT;
+							memcpy(&fooNew[i+2],&(*foo)[i+1],((*foo)[0]-i)*sizeof(binKeyTy));
+							fooNew[0] = newSize;
+
+							mMemPool[k]->deleteElement(foo);
+							mInverseIndex[k][key] = fooNew;
+						}
+					}
+				} else {
+
+					//binKeyTy* myValue = Hash[k].Find(key)->m_data;
+					if (myValue[myValue[0]] != aIndexT){
+						//mInverseIndex[k][key][0] < 2 &&
+						//				binKeyTy*& myValue = mInverseIndex[k][key];
+						//binKeyTy* myValue = Hash[k].Find(key)->m_data;
+
+						// find pos for insert, assume sorted array
+						binKeyTy i = myValue[0];
+						while ((myValue[i]> aIndexT) && (i>1)){
+							i--;
+						}
+
+						// only insert if element is not there
+						if (myValue[i]<aIndexT){
+							binKeyTy newSize = (myValue[0])+1;
+							binKeyTy * fooNew;
+							fooNew = new binKeyTy[newSize+1];
+
+							memcpy(fooNew,myValue,(i+1)*sizeof(binKeyTy));
+							fooNew[i+1] = aIndexT;
+							memcpy(&fooNew[i+2],&myValue[i+1],(myValue[0]-i)*sizeof(binKeyTy));
+							fooNew[0] = newSize;
+								delete[] myValue;
+
+							mInverseIndex[k][key] = fooNew;
+							//	CTest * test = new CTest(key,fooNew);
+							//	Hash[k].Add(test);
+						}
+						//				cout << "bin " << key << " k " <<  k << " aIdx "<< aIndex << "\t";
+						//				for (unsigned j=0; j<=mInverseIndex[k][key][0];j++){
+						//					cout << mInverseIndex[k][key][j] <<"\t";
+						//				}
+						//				cout << endl;
+					}
 				}
-
-				// only insert if element is not there
-				if (myValue[i]<aIndexT){
-					binKeyTy newSize = (myValue[0])+1;
-					binKeyTy * fooNew;
-					fooNew = new binKeyTy[newSize+1];
-
-					memcpy(fooNew,myValue,(i+1)*sizeof(binKeyTy));
-					fooNew[i+1] = aIndexT;
-					memcpy(&fooNew[i+2],&myValue[i+1],(myValue[0]-i)*sizeof(binKeyTy));
-					fooNew[0] = newSize;
-
-					delete[] myValue;
-					mInverseIndex[k][key] = fooNew;
-				}
-				//				cout << "bin " << key << " k " <<  k << " aIdx "<< aIndex << "\t";
-				//				for (unsigned j=0; j<=mInverseIndex[k][key][0];j++){
-				//					cout << mInverseIndex[k][key][j] <<"\t";
-				//				}
-				//				cout << endl;
-
 			}
 		}
 	}
 }
-
-
 //void HistogramIndex::ComputeHistogram(const vector<unsigned>& aSignature, std::valarray<double>& hist, unsigned& emptyBins) {
 //
 //	hist.resize(GetHistogramSize());
