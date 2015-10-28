@@ -379,7 +379,7 @@ void MinHashEncoder::finisher(){
 
 			if (fillstatus>index_queue.size()*10){
 				unique_lock<mutex> lk(mut2);
-				cv3.wait(lk,[&]{fillstatus = 0;for (uint i=0; i<index_queue.size(); ++i){ fillstatus += index_queue[i].size();} if ((done) || (fillstatus<index_queue.size()*10)) return true; else return false;});
+				cv3.wait(lk,[&]{fillstatus = 0;for (uint i=0; i<index_queue.size(); ++i){ fillstatus += index_queue[i].size();} if ((done) || (fillstatus<index_queue.size()*5)) return true; else return false;});
 				lk.unlock();
 			}
 
