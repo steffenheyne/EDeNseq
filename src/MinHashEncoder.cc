@@ -21,9 +21,9 @@ void MinHashEncoder::Init(Parameters* apParameters, Data* apData) {
 
 	mHashBitMask = (2 << (mpParameters->mHashBitSize - 1)) - 1;
 
-	if (mpParameters->mMinRadius == 0) {
+	/*if (mpParameters->mMinRadius == 0) {
 		throw range_error("Please provide Radius > 0!");
-	}
+	}*/
 
 	if (mpParameters->mMinRadius>mpParameters->mRadius  || mpParameters->mMinDistance>mpParameters->mDistance) {
 			throw range_error("Radius and Distance cannot be smaller than minRadius/minDistance!");
@@ -48,8 +48,8 @@ void MinHashEncoder::Init(Parameters* apParameters, Data* apData) {
 
 inline vector<unsigned> MinHashEncoder::HashFuncNSPDK(const string& aString, unsigned& aStart, unsigned& aMinRadius, unsigned& aMaxRadius, unsigned& aBitMask) {
 	unsigned int hash = 0xAAAAAAAA;
-	unsigned effective_end = min((unsigned) aString.size() - 1, aStart + aMaxRadius -1);
-	unsigned radius = 1;
+	unsigned effective_end = min((unsigned) aString.size() - 1, aStart + aMaxRadius);
+	unsigned radius = 0;
 	vector<unsigned> code_list(aMaxRadius + 1, 0);
 	for (std::size_t i = aStart; i <= effective_end; i++) {
 		hash ^= ((radius & 1) == 0) ? ((hash << 7) ^ aString[i] * (hash >> 3)) : (~(((hash << 11) + aString[i]) ^ (hash >> 5)));
@@ -88,17 +88,18 @@ inline void  MinHashEncoder::generate_feature_vector(const string& seq, SVector&
 		for (unsigned d = mMinDistance; d <= mDistance; d++) {
 			endpoint_list[1] = d;
 			//	SVector z(pow(2, mpParameters->mHashBitSize));
-			for (unsigned start = 0; start < size; ++start) {
-				unsigned src_code = mFeatureCache[start][r];
-				unsigned effective_dest = min(start + d, size - 1);
-				unsigned dest_code = mFeatureCache[effective_dest][r];
-				if (src_code > dest_code) {
-					endpoint_list[2] = src_code;
-					endpoint_list[3] = dest_code;
-				} else {
-					endpoint_list[3] = src_code;
-					endpoint_list[2] = dest_code;
-				}
+			for (unsigned start = 0; start < size-r-d; ++start) {
+		//		unsigned src_code = mFeatureCache[start][r];
+		//		unsigned effective_dest = min(start + d, size - 1);
+		//		unsigned dest_code = mFeatureCache[effective_dest][r];
+		//		if (src_code > dest_code) {
+					endpoint_list[2] = mFeatureCache[start][r];
+					endpoint_list[3] = mFeatureCache[start + d][r];
+		//			cout << start << " " << start+d << "   " << endpoint_list[2] << "  " << endpoint_list[3]<< endl;
+		//		} else {
+		//			endpoint_list[3] = src_code;
+		//			endpoint_list[2] = dest_code;
+		//		} //  0 1 2 3 4   5 6 7 8 9   r=4 d=5
 				unsigned code = HashFunc(endpoint_list, mHashBitMask);
 				//				z.coeffRef(code) += 1;
 				//
