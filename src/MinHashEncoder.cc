@@ -1070,7 +1070,12 @@ bool HistogramIndex::readBinaryIndex2(string filename, indexTy &index){
 			if (!fin.good())
 				return false;
 			//		indexBinTy tmp = indexBinTy(numBinEntries);
-			indexBinTy tmp = new binKeyTy[numBinEntries+1];
+			indexBinTy tmp;
+			if (numBinEntries == 1){
+				tmp = reinterpret_cast<binKeyTy(*)>(mMemPool[0]->newElement());
+			} else {
+				tmp = new binKeyTy[numBinEntries+1];
+			}
 			//cout << "new bin " << binId << " " << numBinEntries << " ";
 			for (unsigned entry = 1; entry <= numBinEntries; entry++ ){
 
