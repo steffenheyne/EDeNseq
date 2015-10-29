@@ -21,6 +21,15 @@ void MinHashEncoder::Init(Parameters* apParameters, Data* apData) {
 
 	mHashBitMask = (2 << (mpParameters->mHashBitSize - 1)) - 1;
 
+	if (mpParameters->mMinRadius == 0) {
+		throw range_error("Please provide Radius > 0!");
+	}
+
+	if (mpParameters->mMinRadius>mpParameters->mRadius  || mpParameters->mMinDistance>mpParameters->mDistance) {
+			throw range_error("Radius and Distance cannot be smaller than minRadius/minDistance!");
+		}
+
+
 	if (mpParameters->mNumRepeatsHashFunction == 0 || mpParameters->mNumRepeatsHashFunction > mpParameters->mNumHashShingles * mpParameters->mNumHashFunctions){
 		mpParameters->mNumRepeatsHashFunction = mpParameters->mNumHashShingles * mpParameters->mNumHashFunctions;
 	}
@@ -37,13 +46,13 @@ void MinHashEncoder::Init(Parameters* apParameters, Data* apData) {
 
 }
 
-inline vector<unsigned> MinHashEncoder::HashFuncNSPDK(const string& aString, unsigned aStart, unsigned aMaxRadius, unsigned aBitMask) {
+inline vector<unsigned> MinHashEncoder::HashFuncNSPDK(const string& aString, unsigned& aStart, unsigned& aMinRadius, unsigned& aMaxRadius, unsigned& aBitMask) {
 	unsigned int hash = 0xAAAAAAAA;
-	unsigned effective_end = min((unsigned) aString.size() - 1, aStart + aMaxRadius);
-	unsigned radius = 0;
+	unsigned effective_end = min((unsigned) aString.size() - 1, aStart + aMaxRadius -1);
+	unsigned radius = 1;
 	vector<unsigned> code_list(aMaxRadius + 1, 0);
 	for (std::size_t i = aStart; i <= effective_end; i++) {
-		hash ^= ((i & 1) == 0) ? ((hash << 7) ^ aString[i] * (hash >> 3)) : (~(((hash << 11) + aString[i]) ^ (hash >> 5)));
+		hash ^= ((radius & 1) == 0) ? ((hash << 7) ^ aString[i] * (hash >> 3)) : (~(((hash << 11) + aString[i]) ^ (hash >> 5)));
 		code_list[radius] = hash & aBitMask;
 		radius++;
 	}
@@ -71,7 +80,7 @@ inline void  MinHashEncoder::generate_feature_vector(const string& seq, SVector&
 
 	//create neighborhood features
 	for (unsigned start = 0; start < size; ++start)
-		mFeatureCache[start] = HashFuncNSPDK(seq, start, mRadius, mHashBitMask);
+		mFeatureCache[start] = HashFuncNSPDK(seq, start, mMinRadius, mRadius, mHashBitMask);
 
 	vector<unsigned> endpoint_list(4);
 	for (unsigned r = mMinRadius; r <= mRadius; r++) {
@@ -474,7 +483,7 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 	mSignatureUpdateCounter = 0;
 
 	vector<std::thread> threads;
-	uint splitsize= 1; //mpParameters->mNumHashFunctions;
+	uint splitsize = mpParameters->mNumHashFunctions;
 	index_queue.resize(mpParameters->mNumHashFunctions/splitsize);
 
 	for (unsigned i=0;i<(mpParameters->mNumHashFunctions/splitsize);i++){
@@ -867,87 +876,51 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 		const unsigned& key = aSignature[k];
 		if (key != MAXUNSIGNED && key != 0) { //if key is equal to markers for empty bins then skip insertion instance in data structure
 			if (mInverseIndex[k].count(key)==0) { //if this is the first time that an instance exhibits that specific value for that hash function, then store for the first time the reference to that instance
-				//		if (Hash[k].Find(key) == NULL) { //if this is the first time that an instance exhibits that specific value for that hash function, then store for the first time the reference to that instance
 
-				binKeyTy (*foo)[2];
-				foo = mMemPool[k]->newElement();
-				//foo = new binKeyTy[2];
-				(*foo)[1] = (binKeyTy)aIndex;
-				(*foo)[0]= 1; //index of last element is stored at idx[0]
+				binKeyTy *foo;
+				foo = reinterpret_cast<binKeyTy(*)>(mMemPool[k]->newElement());
+				foo[1] = aIndexT;
+				foo[0] = 1; //index of last element is stored at idx[0]
 
-				mInverseIndex[k][key] = reinterpret_cast<binKeyTy(*)>(foo);
+				mInverseIndex[k][key] = foo;
 				numKeys++; // just for bin statistics
-				//			CTest * test = new CTest(key,foo);
-				//			Hash[k].Add(test);
 				//	} else if (mInverseIndex[k][key][mInverseIndex[k][key][0]] != aIndexT){
 			} else {
-				binKeyTy* myValue = mInverseIndex[k][key];
-				if (myValue[0] == 1){
-					//binKeyTy* myValue = Hash[k].Find(key)->m_data;
-//					binKeyTy* myValue = mInverseIndex[k][key];
-					binKeyTy (*foo)[2] = reinterpret_cast<newIndexBin(*)>(mInverseIndex[k][key]);
-					if ((*foo)[(*foo)[0]] != aIndexT){
-						//mInverseIndex[k][key][0] < 2 &&
-						//				binKeyTy*& myValue = mInverseIndex[k][key];
-						//binKeyTy* myValue = Hash[k].Find(key)->m_data;
-				
-						// find pos for insert, assume sorted array
-						binKeyTy i = (*foo)[0];
-						while (((*foo)[i]> aIndexT) && (i>1)){
-							i--;
-						}
 
-						// only insert if element is not there
-						if ((*foo)[i]<aIndexT){
-							binKeyTy newSize = ((*foo)[0])+1;
-							binKeyTy * fooNew;
-							fooNew = new binKeyTy[newSize+1];
+				binKeyTy*& myValue = mInverseIndex[k][key];
 
-							memcpy(fooNew,foo,(i+1)*sizeof(binKeyTy));
-							fooNew[i+1] = aIndexT;
-							memcpy(&fooNew[i+2],&(*foo)[i+1],((*foo)[0]-i)*sizeof(binKeyTy));
-							fooNew[0] = newSize;
+				if (myValue[myValue[0]] != aIndexT){
 
-							mMemPool[k]->deleteElement(foo);
-							mInverseIndex[k][key] = fooNew;
-						}
+					// find pos for insert, assume sorted array
+					binKeyTy i = myValue[0];
+					while ((myValue[i]> aIndexT) && (i>1)){
+						i--;
 					}
-				} else {
 
-					//binKeyTy* myValue = Hash[k].Find(key)->m_data;
-					if (myValue[myValue[0]] != aIndexT){
-						//mInverseIndex[k][key][0] < 2 &&
-						//				binKeyTy*& myValue = mInverseIndex[k][key];
-						//binKeyTy* myValue = Hash[k].Find(key)->m_data;
+					// only insert if element is not there
+					if (myValue[i]<aIndexT){
+						binKeyTy newSize = (myValue[0])+1;
+						binKeyTy * fooNew;
+						fooNew = new binKeyTy[newSize+1];
 
-						// find pos for insert, assume sorted array
-						binKeyTy i = myValue[0];
-						while ((myValue[i]> aIndexT) && (i>1)){
-							i--;
+						memcpy(fooNew,myValue,(i+1)*sizeof(binKeyTy));
+						fooNew[i+1] = aIndexT;
+						memcpy(&fooNew[i+2],&myValue[i+1],(myValue[0]-i)*sizeof(binKeyTy));
+						fooNew[0] = newSize;
+
+						if (myValue[0] > 1 ){
+							delete[] myValue;
+						} else {
+							mMemPool[k]->deleteElement(reinterpret_cast<newIndexBin(*)>(myValue));
 						}
 
-						// only insert if element is not there
-						if (myValue[i]<aIndexT){
-							binKeyTy newSize = (myValue[0])+1;
-							binKeyTy * fooNew;
-							fooNew = new binKeyTy[newSize+1];
-
-							memcpy(fooNew,myValue,(i+1)*sizeof(binKeyTy));
-							fooNew[i+1] = aIndexT;
-							memcpy(&fooNew[i+2],&myValue[i+1],(myValue[0]-i)*sizeof(binKeyTy));
-							fooNew[0] = newSize;
-								delete[] myValue;
-
-							mInverseIndex[k][key] = fooNew;
-							//	CTest * test = new CTest(key,fooNew);
-							//	Hash[k].Add(test);
-						}
-						//				cout << "bin " << key << " k " <<  k << " aIdx "<< aIndex << "\t";
-						//				for (unsigned j=0; j<=mInverseIndex[k][key][0];j++){
-						//					cout << mInverseIndex[k][key][j] <<"\t";
-						//				}
-						//				cout << endl;
+						mInverseIndex[k][key] = fooNew;
 					}
+					//				cout << "bin " << key << " k " <<  k << " aIdx "<< aIndex << "\t";
+					//				for (unsigned j=0; j<=mInverseIndex[k][key][0];j++){
+					//					cout << mInverseIndex[k][key][j] <<"\t";
+					//				}
+					//				cout << endl;
 				}
 			}
 		}
@@ -1369,3 +1342,42 @@ bool HistogramIndex::readBinaryIndex2(string filename, indexTy &index){
 //		}
 //	}
 //}
+
+
+//if (myValue[0] == 0){
+//				//binKeyTy* myValue = Hash[k].Find(key)->m_data;
+////					binKeyTy* myValue = mInverseIndex[k][key];
+//				binKeyTy (*foo)[2] = reinterpret_cast<newIndexBin(*)>(mInverseIndex[k][key]);
+//				if ((*foo)[(*foo)[0]] != aIndexT){
+//					//mInverseIndex[k][key][0] < 2 &&
+//					//				binKeyTy*& myValue = mInverseIndex[k][key];
+//					//binKeyTy* myValue = Hash[k].Find(key)->m_data;
+//
+//					// find pos for insert, assume sorted array
+//					binKeyTy i = (*foo)[0];
+//					while (((*foo)[i]> aIndexT) && (i>1)){
+//						i--;
+//					}
+//
+//					// only insert if element is not there
+//					if ((*foo)[i]<aIndexT){
+//						binKeyTy newSize = ((*foo)[0])+1;
+//						binKeyTy * fooNew;
+//						fooNew = new binKeyTy[newSize+1];
+//
+//						memcpy(fooNew,foo,(i+1)*sizeof(binKeyTy));
+//						fooNew[i+1] = aIndexT;
+//						memcpy(&fooNew[i+2],&(*foo)[i+1],((*foo)[0]-i)*sizeof(binKeyTy));
+//						fooNew[0] = newSize;
+//
+//						mMemPool[k]->deleteElement(foo);
+//						mInverseIndex[k][key] = fooNew;
+//					}
+//				}
+//			} else {
+
+//binKeyTy (*foo)[2];
+//		foo = mMemPool[k]->newElement();
+//		//foo = new binKeyTy[2];
+//		(*foo)[1] = (binKeyTy)aIndex;
+//		(*foo)[0]= 1; //index of last element is stored at idx[0]

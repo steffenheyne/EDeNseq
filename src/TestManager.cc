@@ -105,9 +105,9 @@ inline double indicator(double i) {if (i>0) return 1; else return 0;}
 
 inline double minSim(double i) {if (i<0.1) return 0; else return i;}
 
-void TestManager::finishUpdate(ChunkP& myData) {
+void TestManager::finishUpdate(ChunkP& myData, unsigned& min, unsigned& max) {
 
-	unsigned shift = std::max((double)1,(double)mpParameters->mSeqWindow*mpParameters->mSeqShift);
+	unsigned shift = mpParameters->mSeqShift;
 	uint k = 20;
 	for (unsigned j = k; j < myData->size(); j++) {
 

@@ -12,12 +12,9 @@
 #include "BaseManager.h"
 #include "sparsehash-2.0.2/sparsehash/sparse_hash_map"
 #include "sparsehash-2.0.2/sparsehash/dense_hash_map"
-//#include "sparsehash-2.0.2/sparsehash/dense_hash_set"
-//#include "sparsehash-2.0.2/sparsehash/sparse_hash_set"
 #include "eigen-eigen-3.20/Eigen/Sparse"
 
 #include "MemoryPool.h"
-//#include "HashTrie.h"
 
 using namespace std;
 
@@ -167,7 +164,7 @@ protected:
 	void					worker_Graph2Signature(int numWorkers);
 	void 					finisher();
 	void 					generate_feature_vector(const string& seq, SVector& x);
-	vector<unsigned>	HashFuncNSPDK(const string& aString, unsigned aStart, unsigned aMaxRadius, unsigned aBitMask);
+	vector<unsigned>	HashFuncNSPDK(const string& aString, unsigned& aStart, unsigned& aMinRadius, unsigned& aMaxRadius, unsigned& aBitMask);
 	void 					worker_readFiles(int numWorkers);
 	void 					HashSignatureHelper();
 
@@ -274,22 +271,6 @@ public:
 	//typedef google::sparse_hash_map<unsigned, indexBinTy, hashFunc, hashFunc> indexSingleTy;
 	//typedef google::sparse_hash_map<unsigned, indexBinTy> indexSingleTy;
 
-//	struct CTest : THashKey32<unsigned> {
-//	        CTest (unsigned key,indexBinTy value) : THashKey32<unsigned>(key), m_data(value) { }
-//	        indexBinTy    m_data;
-//
-//	        inline bool operator== (const CTest & rhs) const { return m_key == rhs.m_key; }
-//
-//
-//			inline uint32 GetHash() const {
-//				return (uint32)m_key;
-//			}
-//
-//	    };
-
-//	typedef THashTrie<CTest, THashKey32<uint32> > Table;
-//	vector<Table> Hash;
-
 	typedef vector<indexSingleTy> indexTy;
 	const binKeyTy MAXBINKEY = std::numeric_limits<binKeyTy>::max();
 
@@ -298,24 +279,21 @@ public:
 	binKeyTy mHistogramSize;
 	indexTy mInverseIndex;
 
+	const static unsigned mMemPool_BlockSize = 524288; // (2^19)
 
 	typedef binKeyTy newIndexBin[2];
-	vector<MemoryPool<newIndexBin,262144>*>  mMemPool;
+	vector<MemoryPool<newIndexBin,mMemPool_BlockSize>*>  mMemPool;
 
 	HistogramIndex(Parameters* apParameters, Data* apData)
 	:MinHashEncoder(apParameters,apData)
 	{
 		mInverseIndex.resize(mpParameters->mNumHashFunctions, indexSingleTy(2^22));
-	//	Hash.resize(mpParameters->mNumHashFunctions);
 
 		for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k){
 			mInverseIndex[k].max_load_factor(0.999);
 			mInverseIndex[k].set_empty_key(0);
-			//CHash.push_back(new Table());
-			mMemPool.push_back(new MemoryPool<newIndexBin,262144>());
+			mMemPool.push_back(new MemoryPool<newIndexBin,mMemPool_BlockSize>());
 		}
-
-		//Index.resize(mpParameters->mNumHashFunctions, new cedar::da<int>());
 
 	}
 
@@ -328,10 +306,16 @@ public:
 	bool		readBinaryIndex2(string filename, indexTy& index);
 
 	virtual ~HistogramIndex(){
+		uint k=0;
 		for (typename indexTy::const_iterator it = mInverseIndex.begin(); it!= mInverseIndex.end(); it++){
 			for (typename indexSingleTy::const_iterator itBin = it->begin(); itBin!=it->end(); itBin++){
-				delete[] itBin->second;
+				if ( itBin->second[0]>1){
+					delete[] itBin->second;
+				} else {
+					mMemPool[k]->deleteElement(reinterpret_cast<newIndexBin(*)>(itBin->second));
+				}
 			}
+			k++;
 		}
 	};
 };
