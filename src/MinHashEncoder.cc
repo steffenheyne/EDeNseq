@@ -59,18 +59,16 @@ inline vector<unsigned> MinHashEncoder::HashFuncNSPDK(const string& aString, uns
 	return code_list;
 }
 
-//void MinHashEncoder::generate_feature_vector(const GraphClass& aG, SVector& x) {
-//void MinHashEncoder::generate_feature_vector(const string& seq, SVector& x) {
 inline void  MinHashEncoder::generate_feature_vector(const string& seq, SVector& x) {
+
 	x.resize(pow(2, mpParameters->mHashBitSize));
+
 	//assume there is a mMinRadius and a mMinDistance
 	unsigned& mRadius = mpParameters->mRadius;
 	unsigned& mDistance = mpParameters->mDistance;
 	unsigned& mMinRadius = mpParameters->mMinRadius;
 	unsigned& mMinDistance = mpParameters->mMinDistance;
 
-	//assume 1 vertex with all info on the label
-	//string seq = aG.GetVertexLabel(0);
 	unsigned size = seq.size();
 
 	vector<vector<unsigned> > mFeatureCache;
@@ -87,36 +85,16 @@ inline void  MinHashEncoder::generate_feature_vector(const string& seq, SVector&
 		endpoint_list[0] = r;
 		for (unsigned d = mMinDistance; d <= mDistance; d++) {
 			endpoint_list[1] = d;
-			//	SVector z(pow(2, mpParameters->mHashBitSize));
 			for (unsigned start = 0; start < size-r-d; ++start) {
-		//		unsigned src_code = mFeatureCache[start][r];
-		//		unsigned effective_dest = min(start + d, size - 1);
-		//		unsigned dest_code = mFeatureCache[effective_dest][r];
-		//		if (src_code > dest_code) {
 					endpoint_list[2] = mFeatureCache[start][r];
 					endpoint_list[3] = mFeatureCache[start + d][r];
-		//			cout << start << " " << start+d << "   " << endpoint_list[2] << "  " << endpoint_list[3]<< endl;
-		//		} else {
-		//			endpoint_list[3] = src_code;
-		//			endpoint_list[2] = dest_code;
-		//		} //  0 1 2 3 4   5 6 7 8 9   r=4 d=5
+					//cout << start << " " << start+d << "   " << endpoint_list[2] << "  " << endpoint_list[3]<< endl;
+					//  0 1 2 3 4   5 6 7 8 9   r=4 d=5
 				unsigned code = HashFunc(endpoint_list, mHashBitMask);
-				//				z.coeffRef(code) += 1;
-				//
-				//				//add feature that ignore src endpoint
-				//				//NOTE: this is important when the label of src vertex is considered noisy, in this way, it is only the context that will define the features
-				//				endpoint_list[2] = 0;
-				//				endpoint_list[3] = dest_code;
-				//				unsigned nosrc_code = HashFunc(endpoint_list, mHashBitMask);
-				//				z.coeffRef(nosrc_code) += 1;
 				x.coeffRef(code) = 1;
-				//x.insert(code);
 			}
-			//z /= z.norm();
-			//x += z;
 		}
 	}
-	//x /= x.norm();
 }
 
 void MinHashEncoder::worker_readFiles(int numWorkers){
@@ -344,7 +322,7 @@ void MinHashEncoder::worker_Graph2Signature(int numWorkers){
 		unique_lock<mutex> lk(mut2);
 		cv2.wait(lk,[&]{if ( (done) ||  (graph_queue.try_pop( (myData) )) ) return true; else return false;});
 		lk.unlock();
-		//		bool succ = graph_queue.try_pop( (myData));
+//		bool succ = graph_queue.try_pop( (myData));
 		if (!done && myData->size()>0) {
 			//cout << "  graph2sig thread got chunk " << myData->size() << " offset " << myData->offset << " " << mpParameters->mHashBitSize << endl;
 
@@ -354,7 +332,7 @@ void MinHashEncoder::worker_Graph2Signature(int numWorkers){
 				ComputeHashSignature((*myData)[j].svec,(*myData)[j].sig,tmpSig);
 			}
 			sig_queue.push(myData);
-			if (sig_queue.size()>=numWorkers*50){
+			if (sig_queue.size()>=numWorkers*10){
 				unique_lock<mutex> lk(mut2);
 				cv2.wait(lk,[&]{if ((done) || (sig_queue.size()<=numWorkers*3)) return true; else return false;});
 				lk.unlock();
@@ -484,7 +462,7 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 	mSignatureUpdateCounter = 0;
 
 	vector<std::thread> threads;
-	uint splitsize = mpParameters->mNumHashFunctions;
+	uint splitsize = 2;//(mpParameters->mNumHashFunctions);
 	index_queue.resize(mpParameters->mNumHashFunctions/splitsize);
 
 	for (unsigned i=0;i<(mpParameters->mNumHashFunctions/splitsize);i++){
