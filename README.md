@@ -75,7 +75,7 @@ RNA family (Rfam).
 
 The BED file has the following format:
 
-`<SEQNAME>	<START>	<END>	<LABEL>	.	0	<SEQ_DESC>	<LABEL_DESC>`
+`<SEQNAME>	<START>	<END>	<LABEL>	0	.	<SEQ_DESC>	<LABEL_DESC>`
 
 The first 4 cols are required. Columns 7 and 8 are optional, but then also 
 columns 5 and 6 have to be provided.

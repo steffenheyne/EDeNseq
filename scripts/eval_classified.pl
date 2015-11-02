@@ -29,12 +29,11 @@ while ( $line = <RES> ) {
     my @tmp = split( " ", $line );
     $idx2feature{ $tmp[1] } = $tmp[3];
     $feature2idx{ $tmp[3] } = $tmp[1];
-    #print "RES HIST IDX\t", $tmp[1], " -> ", $tmp[3], "\n";
+   # print "RES HIST IDX\t", $tmp[1], " -> ", $tmp[3], "\n";
   } elsif ( $line !~ /^#/ ) {
     last;
   }
 }
-
 
 ## read in used index bed file
 open( BED, $bed_file );
@@ -47,36 +46,46 @@ while ( my $line = <BED> ) {
 }
 close(BED);
 
+print "keys in bed", scalar keys %feature2BED, "\n";
+
 my %counts;
 my $num = 0;
 
-## continue with resulkts file
-do {
+my $numNotEval = 0;
+
+## continue with results file
+{do {
   chomp $line;
   my @tmp = split("\t",$line);
   my @id = split("-",$tmp[0]);
   my @max = split(",",$tmp[9]);
   my @all = split(",",$tmp[7]);
   
-  $num++;
-  if ($num%1000000 == 0){
+   if ($num%1000000 == 0){
     print $num." analyzed seqs\n";
   }
-
+   
   my $targetFeature = "";
   if (!exists $BED{$id[0]}){
-    #print "cannot eval ".$id[0]." - no BED entry\n";
+   # print "cannot eval ".$id[0]." - no BED entry\n";
     #$targetFeature = -1;
-    #next;
+    $numNotEval++;
+    next;
   } else {
     $targetFeature = $BED{$id[0]}->[3];
   }
   my $targetIdx = $feature2idx{$targetFeature};
+ 
+  $num++;  
+  if ($num%2000000 == 0){
+    #last;
+  }
   
   if (!exists $counts{$targetFeature}){
     #$counts{$targetFeature} = {};
+	#print "cannot eval 2 ".$id[0]." - no BED entry\n";
   }
-  
+ 
   $counts{$targetFeature}->{"SEQS"}++;
   
   if (@tmp <=7){
@@ -100,7 +109,7 @@ do {
   }
   
 } while ( $line = <RES> );
-
+}
 close(RES);
 
 #print "keys:".join(":",keys %counts)."\n";
@@ -123,4 +132,5 @@ foreach my $feature ("UNIQ","NUNIQ","HIT","NOMAX","NOMATCH","NOCLASS"){
 }
 
 
-print "\n\nNot evaluated (unknown) seqs: ",$num,"\n\n";
+print "\n\n                   seqs left: ",$num,"\n";
+print "Not evaluated (unknown) seqs: ",$numNotEval,"\n\n";
