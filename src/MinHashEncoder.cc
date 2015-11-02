@@ -20,7 +20,7 @@ void MinHashEncoder::Init(Parameters* apParameters, Data* apData) {
 	numFullBins=0;
 
 	mHashBitMask = (2 << (mpParameters->mHashBitSize - 1)) - 1;
-
+	cout << "MAXUNSIGNED "<< MAXUNSIGNED << endl;
 	/*if (mpParameters->mMinRadius == 0) {
 		throw range_error("Please provide Radius > 0!");
 	}*/
@@ -860,7 +860,7 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 			if (mInverseIndex[k].count(key)==0) { //if this is the first time that an instance exhibits that specific value for that hash function, then store for the first time the reference to that instance
 
 				binKeyTy *foo;
-				foo = reinterpret_cast<binKeyTy(*)>(mMemPool[k]->newElement());
+				foo = reinterpret_cast<binKeyTy(*)>(mMemPool_2[k]->newElement());
 				foo[1] = aIndexT;
 				foo[0] = 1; //index of last element is stored at idx[0]
 
@@ -883,17 +883,56 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 					if (myValue[i]<aIndexT){
 						binKeyTy newSize = (myValue[0])+1;
 						binKeyTy * fooNew;
-						fooNew = new binKeyTy[newSize+1];
+						//fooNew = new binKeyTy[newSize+1];
+
+						switch (newSize){
+						case 2:
+							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_3[k]->newElement());
+							break;
+						case 3:
+							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_4[k]->newElement());
+							break;
+						case 4:
+							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_5[k]->newElement());
+							break;
+						case 5:
+							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_6[k]->newElement());
+							break;
+						default:
+							fooNew = new binKeyTy[newSize+1];
+							break;
+						}
 
 						memcpy(fooNew,myValue,(i+1)*sizeof(binKeyTy));
 						fooNew[i+1] = aIndexT;
 						memcpy(&fooNew[i+2],&myValue[i+1],(myValue[0]-i)*sizeof(binKeyTy));
 						fooNew[0] = newSize;
 
-						if (myValue[0] > 1 ){
+/*						if (myValue[0] > 1 ){
 							delete[] myValue;
 						} else {
 							mMemPool[k]->deleteElement(reinterpret_cast<newIndexBin(*)>(myValue));
+						}
+*/
+						switch (myValue[0]) {
+						case 1:
+							mMemPool_2[k]->deleteElement(reinterpret_cast<newIndexBin_2(*)>(myValue));
+							break;
+						case 2:
+							mMemPool_3[k]->deleteElement(reinterpret_cast<newIndexBin_3(*)>(myValue));
+							break;
+						case 3:
+							mMemPool_4[k]->deleteElement(reinterpret_cast<newIndexBin_4(*)>(myValue));
+							break;
+						case 4:
+							mMemPool_5[k]->deleteElement(reinterpret_cast<newIndexBin_5(*)>(myValue));
+							break;
+						case 5:
+							mMemPool_6[k]->deleteElement(reinterpret_cast<newIndexBin_6(*)>(myValue));
+							break;
+						default:
+							delete[] myValue;
+							break;
 						}
 
 						mInverseIndex[k][key] = fooNew;
@@ -1053,6 +1092,7 @@ bool HistogramIndex::readBinaryIndex2(string filename, indexTy &index){
 	if (!fin.good())
 		return false;
 	index.resize(numHashFunc);
+	cout << endl << "read "<< numHashFunc << " sub indices ..." << endl;
 	for (unsigned  hashFunc = 0; hashFunc < numHashFunc; hashFunc++){
 
 		unsigned numBins = 0;
@@ -1062,8 +1102,11 @@ bool HistogramIndex::readBinaryIndex2(string filename, indexTy &index){
 		if (!fin.good())
 			return false;
 		index[hashFunc].rehash(numBins);
+		cout << "sub index "<< hashFunc+1 << " : "<< flush;
 		for (unsigned  bin = 0; bin < numBins; bin++){
-
+			if (bin%(numBins/100)==0){
+				cout << "." << flush;
+			}
 			unsigned binId = 0;
 			unsigned numBinEntries = 0;
 			fin.read((char*) &binId, sizeof(unsigned));
@@ -1074,10 +1117,25 @@ bool HistogramIndex::readBinaryIndex2(string filename, indexTy &index){
 				return false;
 			//		indexBinTy tmp = indexBinTy(numBinEntries);
 			indexBinTy tmp;
-			if (numBinEntries == 1){
-				tmp = reinterpret_cast<binKeyTy(*)>(mMemPool[0]->newElement());
-			} else {
+			switch (numBinEntries){
+			case 1:
+				tmp = reinterpret_cast<binKeyTy(*)>(mMemPool_2[hashFunc]->newElement());
+				break;
+			case 2:
+				tmp = reinterpret_cast<binKeyTy(*)>(mMemPool_3[hashFunc]->newElement());
+				break;
+			case 3:
+				tmp = reinterpret_cast<binKeyTy(*)>(mMemPool_4[hashFunc]->newElement());
+				break;
+			case 4:
+				tmp = reinterpret_cast<binKeyTy(*)>(mMemPool_5[hashFunc]->newElement());
+				break;
+			case 5:
+				tmp = reinterpret_cast<binKeyTy(*)>(mMemPool_6[hashFunc]->newElement());
+				break;
+			default:
 				tmp = new binKeyTy[numBinEntries+1];
+				break;
 			}
 			//cout << "new bin " << binId << " " << numBinEntries << " ";
 			for (unsigned entry = 1; entry <= numBinEntries; entry++ ){
@@ -1096,6 +1154,7 @@ bool HistogramIndex::readBinaryIndex2(string filename, indexTy &index){
 			tmp[0] = numBinEntries;
 			index[hashFunc][binId] = tmp;
 		}
+		cout << endl;
 	}
 	fin.close();
 	return true;

@@ -235,15 +235,30 @@ public:
 	// the index
 	typedef vector<indexSingleTy> indexTy;
 	// used for memory pool
-	typedef binKeyTy newIndexBin[2];
+	//typedef binKeyTy newIndexBin[2];
+
+	typedef binKeyTy newIndexBin_2[2];
+	typedef binKeyTy newIndexBin_3[3];
+	typedef binKeyTy newIndexBin_4[4];
+	typedef binKeyTy newIndexBin_5[5];
+	typedef binKeyTy newIndexBin_6[6];
 
 	typedef valarray<double> histogramT;
 
-	const static unsigned mMemPool_BlockSize = 524288; // (2^19)
+	//const static unsigned mMemPool_BlockSize = 720*4096; // (2*3*4*5*6*4096)
+	const static unsigned mMemPool_BlockSize = 491520; // kgv(2*3*4*5*6)=60*4096*2
+	//const static unsigned mMemPool_BlockSize = 443530; // (2*3*4*5*6*4096)
+	//const static unsigned mMemPool_maxEnt = 2;
 
-	// a vector of memory pools, we use for each single Index a different memory pool
-	vector<MemoryPool<newIndexBin,mMemPool_BlockSize>*>  mMemPool;
-
+	// a vector of memory pools,
+	// in case of building a new index, we use for each index updater thread a different memory pool,
+	// in case of reading index from file, we use only a single Memory pool: mMemPool[0]
+	//vector<MemoryPool<newIndexBin,mMemPool_BlockSize>*>  mMemPool;
+	vector<MemoryPool<newIndexBin_2,mMemPool_BlockSize>*>  mMemPool_2;
+	vector<MemoryPool<newIndexBin_3,mMemPool_BlockSize>*>  mMemPool_3;
+	vector<MemoryPool<newIndexBin_4,mMemPool_BlockSize>*>  mMemPool_4;
+	vector<MemoryPool<newIndexBin_5,mMemPool_BlockSize>*>  mMemPool_5;
+	vector<MemoryPool<newIndexBin_6,mMemPool_BlockSize>*>  mMemPool_6;
 	binKeyTy mHistogramSize;
 	indexTy mInverseIndex;
 
@@ -256,10 +271,20 @@ public:
 	:MinHashEncoder(apParameters,apData)
 	{
 		mInverseIndex.resize(mpParameters->mNumHashFunctions, indexSingleTy(2^22));
+		mMemPool_2.resize(mpParameters->mNumHashFunctions);
+		mMemPool_3.resize(mpParameters->mNumHashFunctions);
+		mMemPool_4.resize(mpParameters->mNumHashFunctions);
+		mMemPool_5.resize(mpParameters->mNumHashFunctions);
+		mMemPool_6.resize(mpParameters->mNumHashFunctions);
+
 		for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k){
 			mInverseIndex[k].max_load_factor(0.999);
 			mInverseIndex[k].set_empty_key(0);
-			mMemPool.push_back(new MemoryPool<newIndexBin,mMemPool_BlockSize>());
+			mMemPool_2[k] = new MemoryPool<newIndexBin_2,mMemPool_BlockSize>();
+			mMemPool_3[k] = new MemoryPool<newIndexBin_3,mMemPool_BlockSize>();
+			mMemPool_4[k] = new MemoryPool<newIndexBin_4,mMemPool_BlockSize>();
+			mMemPool_5[k] = new MemoryPool<newIndexBin_5,mMemPool_BlockSize>();
+			mMemPool_6[k] = new MemoryPool<newIndexBin_6,mMemPool_BlockSize>();
 		}
 	}
 
@@ -267,7 +292,7 @@ public:
 	void		SetHistogramSize(binKeyTy size);
 	void		UpdateInverseIndex(const vector<unsigned>& aSignature, const unsigned& aIndex);
 	void		UpdateInverseIndex(const vector<unsigned>& aSignature, const unsigned& aIndex, unsigned& min, unsigned& max);
-	void  	ComputeHistogram(const vector<unsigned>& aSignature, std::valarray<double>& hist, unsigned& emptyBins);
+	void		ComputeHistogram(const vector<unsigned>& aSignature, std::valarray<double>& hist, unsigned& emptyBins);
 	void		writeBinaryIndex2(ostream &out, const indexTy& index);
 	bool		readBinaryIndex2(string filename, indexTy& index);
 
@@ -276,10 +301,25 @@ public:
 		uint k=0;
 		for (typename indexTy::const_iterator it = mInverseIndex.begin(); it!= mInverseIndex.end(); it++){
 			for (typename indexSingleTy::const_iterator itBin = it->begin(); itBin!=it->end(); itBin++){
-				if ( itBin->second[0]>1){
+				switch (itBin->second[0]){
+				case 1:
+					mMemPool_2[k]->deleteElement(reinterpret_cast<newIndexBin_2(*)>(itBin->second));
+					break;
+				case 2:
+					mMemPool_3[k]->deleteElement(reinterpret_cast<newIndexBin_3(*)>(itBin->second));
+					break;
+				case 3:
+					mMemPool_4[k]->deleteElement(reinterpret_cast<newIndexBin_4(*)>(itBin->second));
+					break;
+				case 4:
+					mMemPool_5[k]->deleteElement(reinterpret_cast<newIndexBin_5(*)>(itBin->second));
+					break;
+				case 5:
+					mMemPool_6[k]->deleteElement(reinterpret_cast<newIndexBin_6(*)>(itBin->second));
+					break;
+				default:
 					delete[] itBin->second;
-				} else {
-					mMemPool[k]->deleteElement(reinterpret_cast<newIndexBin(*)>(itBin->second));
+					break;
 				}
 			}
 			k++;
