@@ -73,17 +73,16 @@ public:
 
 	bool mVerbose;
 	unsigned mNumThreads;
+	unsigned mNumIndexThreads;
 
 	unsigned mNumHashFunctions;
 	unsigned mNumRepeatsHashFunction;
 	double mMaxSizeBin;
-	double mFractionCenterScan;
 	string mClusterType;
 	unsigned mNumHashShingles;
 	double mPureApproximateSim;
 
 	string mDirectoryPath;
-	double mMaxFractionOfDataset;
 
 	// MetaGenome
 	string mIndexBedFile;

@@ -149,7 +149,7 @@ void SeqClassifyManager::worker_Classify(int numWorkers){
 			for (unsigned j = 0; j < myData->size(); j++) {
 
 				generate_feature_vector((*myData)[j].seq, (*myData)[j].svec);
-				MinHashEncoder::ComputeHashSignature((*myData)[j].svec,(*myData)[j].sig,tmpSig);
+				ComputeHashSignature((*myData)[j].svec,(*myData)[j].sig,tmpSig);
 
 			}
 			finishUpdate(myData,myResultChunk);
@@ -266,14 +266,14 @@ void SeqClassifyManager::Classify_Signatures(SeqFilesT& myFiles){
 	cout << " CLASSIFICATION FINISHED" << endl << SEP << endl;
 }
 
-void SeqClassifyManager::finishUpdate(ChunkP& myData) {
-
-	// as this is the overloaded virtual function from MinHashEncoder
-	//we assume signatureAction==INDEX always here
-	for (unsigned j = 0; j < myData->size(); j++) {
-		UpdateInverseIndex((*myData)[j].sig, (*myData)[j].idx);
-	}
-}
+//void SeqClassifyManager::finishUpdate(ChunkP& myData) {
+//
+//	// as this is the overloaded virtual function from MinHashEncoder
+//	//we assume signatureAction==INDEX always here
+//	for (unsigned j = 0; j < myData->size(); j++) {
+//		UpdateInverseIndex((*myData)[j].sig, (*myData)[j].idx);
+//	}
+//}
 
 void SeqClassifyManager::finishUpdate(ChunkP& myData, unsigned& min, unsigned& max) {
 

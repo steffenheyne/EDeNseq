@@ -9,7 +9,6 @@
 #define TESTMANAGER_H_
 
 #include "MinHashEncoder.h"
-#include "BaseManager.h"
 #include "Data.h"
 #include "Parameters.h"
 

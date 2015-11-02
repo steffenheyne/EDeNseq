@@ -9,7 +9,6 @@
 #define SEQCLASSIFYMANAGER_H_
 
 #include "MinHashEncoder.h"
-#include "BaseManager.h"
 #include "Data.h"
 #include "Parameters.h"
 
@@ -43,7 +42,7 @@ public:
 
 
 	void 			Exec();
-	void 			finishUpdate(ChunkP& myData);
+//	void 			finishUpdate(ChunkP& myData);
 	void 			finishUpdate(ChunkP& myData, ResultChunkP& myResult);
 	void 			finishUpdate(ChunkP& myData, unsigned& min, unsigned& max);
 

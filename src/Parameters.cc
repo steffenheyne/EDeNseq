@@ -605,6 +605,30 @@ void Parameters::SetupOptions() {
 		}
 	}
 	{
+			ParameterType param;
+			param.mShortSwitch = "";
+			param.mLongSwitch = "numIndexThreads";
+			param.mShortDescription = "Used number of threads (std::thread) for index updates; each thread updates then only a partition of num_hash_functions";
+			param.mTypeCode = POSITIVE_INTEGER;
+			param.mValue = "1";
+			mOptionList.insert(make_pair(param.mLongSwitch, param));
+			{
+				vector<ParameterType*>& vec = mActionOptionList[CLUSTER];
+				ParameterType& p = mOptionList[param.mLongSwitch];
+				vec.push_back(&p);
+			}
+			{
+				vector<ParameterType*>& vec = mActionOptionList[CLASSIFY];
+				ParameterType& p = mOptionList[param.mLongSwitch];
+				vec.push_back(&p);
+			}
+			{
+				vector<ParameterType*>& vec = mActionOptionList[TEST];
+				ParameterType& p = mOptionList[param.mLongSwitch];
+				vec.push_back(&p);
+			}
+		}
+	{
 		ParameterType param;
 		param.mShortSwitch = "";
 		param.mLongSwitch = "seq_window";
@@ -905,18 +929,16 @@ void Parameters::Init(int argc, const char** argv) {
 			mNumHashFunctions = stream_cast<unsigned>(param.mValue);
 		if (param.mShortSwitch == "z")
 			mMaxSizeBin = stream_cast<double>(param.mValue);
-		if (param.mLongSwitch == "fraction_center_scan")
-			mFractionCenterScan = stream_cast<double>(param.mValue);
 		if (param.mLongSwitch == "num_repeat_hash_functions")
 			mNumRepeatsHashFunction = stream_cast<unsigned>(param.mValue);
 		if (param.mLongSwitch == "num_hash_shingles")
-			mNumHashShingles = stream_cast<double>(param.mValue);
+			mNumHashShingles = stream_cast<unsigned>(param.mValue);
 		if (param.mLongSwitch == "cluster_type")
 			mClusterType = param.mValue;
 		if (param.mLongSwitch == "numThreads")
-			mNumThreads = stream_cast<double>(param.mValue);
-		if (param.mLongSwitch == "max_fraction_of_dataset")
-			mMaxFractionOfDataset = stream_cast<double>(param.mValue);
+			mNumThreads = stream_cast<unsigned>(param.mValue);
+		if (param.mLongSwitch == "numIndexThreads")
+			mNumIndexThreads = stream_cast<unsigned>(param.mValue);
 		if (param.mLongSwitch == "index_bed")
 			mIndexBedFile = param.mValue;
 		if (param.mLongSwitch == "index_seqs")

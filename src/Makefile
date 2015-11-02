@@ -64,8 +64,6 @@ TestManager.o:TestManager.cc TestManager.h MinHashEncoder.h
 
 MinHashEncoder.o:MinHashEncoder.h Data.h
 
-BaseManager.o:BaseManager.h
-
 Data.o:Data.h	
 
 Parameters.o:Parameters.h Utility.h

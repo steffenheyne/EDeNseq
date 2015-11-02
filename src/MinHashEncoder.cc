@@ -80,14 +80,14 @@ inline void  MinHashEncoder::generate_feature_vector(const string& seq, SVector&
 	for (unsigned start = 0; start < size; ++start)
 		mFeatureCache[start] = HashFuncNSPDK(seq, start, mMinRadius, mRadius, mHashBitMask);
 
-	vector<unsigned> endpoint_list(4);
+	vector<unsigned> endpoint_list(3);
 	for (unsigned r = mMinRadius; r <= mRadius; r++) {
-		endpoint_list[0] = r;
+	//	endpoint_list[0] = r;
 		for (unsigned d = mMinDistance; d <= mDistance; d++) {
-			endpoint_list[1] = d;
+			endpoint_list[0] = d;
 			for (unsigned start = 0; start < size-r-d; ++start) {
-					endpoint_list[2] = mFeatureCache[start][r];
-					endpoint_list[3] = mFeatureCache[start + d][r];
+					endpoint_list[1] = mFeatureCache[start][r];
+					endpoint_list[2] = mFeatureCache[start + d][r];
 					//cout << start << " " << start+d << "   " << endpoint_list[2] << "  " << endpoint_list[3]<< endl;
 					//  0 1 2 3 4   5 6 7 8 9   r=4 d=5
 				unsigned code = HashFunc(endpoint_list, mHashBitMask);
@@ -462,13 +462,16 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 	mSignatureUpdateCounter = 0;
 
 	vector<std::thread> threads;
-	uint splitsize = 2;//(mpParameters->mNumHashFunctions);
-	index_queue.resize(mpParameters->mNumHashFunctions/splitsize);
 
-	for (unsigned i=0;i<(mpParameters->mNumHashFunctions/splitsize);i++){
-		threads.push_back( std::thread(&MinHashEncoder::worker_IndexUpdate,this,i,i*splitsize,(i+1)*splitsize-1));
+	unsigned numIndexThreads = max((unsigned)1,mpParameters->mNumIndexThreads);
+	index_queue.resize(min(numIndexThreads,mpParameters->mNumHashFunctions));
+	unsigned hf_left = mpParameters->mNumHashFunctions;
+	for (unsigned t=min(numIndexThreads,mpParameters->mNumHashFunctions);t>=1;t--){
+		unsigned range = std::ceil((double)hf_left / (double)(t));
+		threads.push_back( std::thread(&MinHashEncoder::worker_IndexUpdate,this,t-1,hf_left-range,hf_left-1));
+		cout << "index update thread " << t << " range " << hf_left-range+1 << ".." << hf_left << endl;
+		hf_left -= range;
 	}
-
 
 	threads.push_back( std::thread(&MinHashEncoder::finisher,this));
 	for (int i=0;i<graphWorkers;i++){
