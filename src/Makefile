@@ -58,7 +58,7 @@ EDeNseq.o: EDeNseq.cc gzstream.h MinHashEncoder.h
 
 SeqClassifyManager.o:SeqClassifyManager.cc SeqClassifyManager.h MinHashEncoder.h
 
-SeqClusterManager.o:SeqClusterManager.h MinHashEncoder.h MinHashEncoder.cc
+SeqClusterManager.o:SeqClusterManager.h MinHashEncoder.h
 
 TestManager.o:TestManager.cc TestManager.h MinHashEncoder.h
 

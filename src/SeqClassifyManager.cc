@@ -130,15 +130,14 @@ void SeqClassifyManager::Exec() {
 	pb.PrintElapsed();
 }
 
-void SeqClassifyManager::worker_Classify(int numWorkers){
+void SeqClassifyManager::worker_Classify(int numWorkers, unsigned id){
 
 	Signature* tmpSig = new Signature(numHashFunctionsFull);
-
 	while (!done){
 
 		ChunkP myData;
 		unique_lock<mutex> lk(mut1);
-		cv2.wait(lk,[&]{if ( (done) ||  (graph_queue.try_pop( (myData) )) ) return true; else return false;});
+		cv2.wait(lk,[&]{if ( (done) ||  (graph_queue[id].try_pop( (myData) )) ) return true; else return false;});
 		lk.unlock();
 		//bool succ = graph_queue.try_pop(myData);
 		if (!done && myData->size()>0) {
@@ -148,7 +147,7 @@ void SeqClassifyManager::worker_Classify(int numWorkers){
 
 			for (unsigned j = 0; j < myData->size(); j++) {
 
-				generate_feature_vector((*myData)[j].seq, (*myData)[j].svec);
+				//generate_feature_vector((*myData)[j].seq, (*myData)[j].svec);
 				ComputeHashSignature((*myData)[j].svec,(*myData)[j].sig,tmpSig);
 
 			}
@@ -235,7 +234,7 @@ void SeqClassifyManager::Classify_Signatures(SeqFilesT& myFiles){
 
 	threads.push_back( std::thread(&SeqClassifyManager::finisher_Results,this,myFiles[0]->out_results_fh));
 	for (int i=0;i<graphWorkers;i++){
-		threads.push_back( std::thread(&SeqClassifyManager::worker_Classify,this,graphWorkers));
+		threads.push_back( std::thread(&SeqClassifyManager::worker_Classify,this,graphWorkers,i));
 	}
 	threads.push_back( std::thread(&SeqClassifyManager::worker_readFiles,this,graphWorkers));
 

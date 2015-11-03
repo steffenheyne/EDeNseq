@@ -99,14 +99,17 @@ protected:
 	mutable std::mutex mut1;
 	mutable std::mutex mut2;
 	mutable std::mutex mut3;
+	mutable std::mutex mut4;
+	mutable std::mutex mut5;
 
 	std::condition_variable cvm;
 	std::condition_variable cv1;
 	std::condition_variable cv2;
 	std::condition_variable cv3;
+	std::condition_variable cv4;
 
 	threadsafe_queue<SeqFileP> readFile_queue;
-	threadsafe_queue<ChunkP> graph_queue;
+	vector<threadsafe_queue<ChunkP>> graph_queue;
 	threadsafe_queue<ChunkP> sig_queue;
 	vector<threadsafe_queue<ChunkP>> index_queue;
 
@@ -118,15 +121,13 @@ protected:
 	std::atomic_uint mSignatureUpdateCounter;
 
 
-	void					worker_Graph2Signature(int numWorkers);
+	void					worker_Graph2Signature(int numWorkers,unsigned id);
 	void 					finisher();
-	void 					generate_feature_vector(const string& seq, SVector& x);
-	vector<unsigned>	HashFuncNSPDK(const string& aString, unsigned& aStart, unsigned& aMinRadius, unsigned& aMaxRadius, unsigned& aBitMask);
-	void 					worker_readFiles(int numWorkers);
+	vector<unsigned>		HashFuncNSPDK(const string& aString, unsigned& aStart, unsigned& aMinRadius, unsigned& aMaxRadius, unsigned& aBitMask);
+	void 					worker_readFiles(unsigned numWorkers);
 	void 					HashSignatureHelper();
 
 public:
-
 
 	unsigned 			mHashBitMask;
 
@@ -134,13 +135,14 @@ public:
 	virtual	~MinHashEncoder();
 	void		Init(Parameters* apParameters, Data* apData);
 
+	void 					generate_feature_vector(const string& seq, SVector& x);
 	virtual void 		UpdateInverseIndex(vector<unsigned>& aSignature, unsigned& aIndex) {};
 //	virtual void 		finishUpdate(ChunkP& myData) {};
 	virtual void 		finishUpdate(ChunkP& myData, unsigned& min, unsigned& max) {};
 	void 					LoadData_Threaded(SeqFilesT& myFiles);
 	unsigned				GetLoadedInstances();
 	void 					worker_IndexUpdate(unsigned id, unsigned min, unsigned max);
-
+	void 					wakeup();
 	void					ComputeHashSignature(const SVector& aX, Signature& signaure, Signature* tmpSig);
 };
 
@@ -246,7 +248,8 @@ public:
 	typedef valarray<double> histogramT;
 
 	//const static unsigned mMemPool_BlockSize = 720*4096; // (2*3*4*5*6*4096)
-	const static unsigned mMemPool_BlockSize = 491520; // kgv(2*3*4*5*6)=60*4096*2
+	//const static unsigned mMemPool_BlockSize = 491520; // kgv(2*3*4*5*6)=60*4096*2
+	const static unsigned mMemPool_BlockSize = 1966080; // kgv(2*3*4*5*6)=60*4096*2
 	//const static unsigned mMemPool_BlockSize = 443530; // (2*3*4*5*6*4096)
 	//const static unsigned mMemPool_maxEnt = 2;
 
@@ -295,6 +298,7 @@ public:
 	void		ComputeHistogram(const vector<unsigned>& aSignature, std::valarray<double>& hist, unsigned& emptyBins);
 	void		writeBinaryIndex2(ostream &out, const indexTy& index);
 	bool		readBinaryIndex2(string filename, indexTy& index);
+	void* 		memcpy2(void* dest,const void* src, size_t count);
 
 	// destructor
 	virtual ~HistogramIndex(){

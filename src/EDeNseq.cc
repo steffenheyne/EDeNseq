@@ -8,6 +8,7 @@
 #include <iostream>
 
 #include "Parameters.h"
+#include "MinHashEncoder.h"
 #include "SeqClusterManager.h"
 #include "SeqClassifyManager.h"
 #include "TestManager.h"
