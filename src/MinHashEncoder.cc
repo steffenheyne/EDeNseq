@@ -851,6 +851,16 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 }
 
 
+inline void* memcpy2(void* dest,const void* src, size_t count){
+	char* dst8 = (char*)dest;
+	char* src8 = (char*)src;
+
+	while (count--){
+		*dst8++ = *src8++;
+	}
+	return dest;
+}
+
 void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, const unsigned& aIndex, unsigned& min, unsigned& max) {
 	//cout << "UpdateInverseIndex "<< aSignature.size() << " " << aIndex << " " << min << " " << max << endl;
 	const binKeyTy& aIndexT =(binKeyTy)aIndex;
@@ -903,9 +913,9 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 							break;
 						}
 
-						memcpy(fooNew,myValue,(i+1)*sizeof(binKeyTy));
+						memcpy2(fooNew,myValue,(i+1)*sizeof(binKeyTy));
 						fooNew[i+1] = aIndexT;
-						memcpy(&fooNew[i+2],&myValue[i+1],(myValue[0]-i)*sizeof(binKeyTy));
+						memcpy2(&fooNew[i+2],&myValue[i+1],(myValue[0]-i)*sizeof(binKeyTy));
 						fooNew[0] = newSize;
 
 /*						if (myValue[0] > 1 ){
@@ -947,6 +957,7 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 		}
 	}
 }
+
 //void HistogramIndex::ComputeHistogram(const vector<unsigned>& aSignature, std::valarray<double>& hist, unsigned& emptyBins) {
 //
 //	hist.resize(GetHistogramSize());
@@ -985,10 +996,11 @@ void HistogramIndex::ComputeHistogram(const vector<unsigned>& aSignature, std::v
 
 			indexBinTy& myValue = mInverseIndex[k][aSignature[k]];
 
+	//		if (myValue[0]<=1){
 			for (unsigned i=1;i<=myValue[0];i++){
 				t[myValue[i]-1]=1;
 			}
-
+	//		}
 			hist += t;
 
 		} else {
