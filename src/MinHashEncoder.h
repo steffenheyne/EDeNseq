@@ -282,7 +282,7 @@ public:
 
 		for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k){
 			mInverseIndex[k].max_load_factor(0.999);
-			mInverseIndex[k].set_empty_key(0);
+			//mInverseIndex[k].set_empty_key(0);
 			mMemPool_2[k] = new MemoryPool<newIndexBin_2,mMemPool_BlockSize>();
 			mMemPool_3[k] = new MemoryPool<newIndexBin_3,mMemPool_BlockSize>();
 			mMemPool_4[k] = new MemoryPool<newIndexBin_4,mMemPool_BlockSize>();
