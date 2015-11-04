@@ -303,7 +303,7 @@ void MinHashEncoder::worker_readFiles(unsigned numWorkers){
 					if ((uint)graph_queue[i].size() < fillstatus)
 						fillstatus = graph_queue[i].size();
 				}
-
+				cout << "fills "<< fillstatus << endl;
 				if (fillstatus>graph_queue.size()*5){
 					unique_lock<mutex> lk(mut1);
 					cv1.wait(lk,[&]{fillstatus = MAXUNSIGNED;for (uint i=0; i<graph_queue.size(); ++i){ if ((uint)graph_queue[i].size()<fillstatus) fillstatus = graph_queue[i].size();}; if ((done) || (fillstatus<graph_queue.size())) return true; else return false;});
