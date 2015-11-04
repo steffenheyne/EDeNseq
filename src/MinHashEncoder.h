@@ -87,7 +87,6 @@ public:
 	unsigned sub_hash_range;
 	vector<unsigned>  bounds;
 
-protected:
 
 	unsigned numKeys;
 	unsigned numFullBins;
@@ -127,7 +126,7 @@ protected:
 	void 					worker_readFiles(unsigned numWorkers);
 	void 					HashSignatureHelper();
 
-public:
+//public:
 
 	unsigned 			mHashBitMask;
 

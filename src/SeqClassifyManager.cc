@@ -229,15 +229,22 @@ void SeqClassifyManager::Classify_Signatures(SeqFilesT& myFiles){
 	mInstanceCounter = 0;
 	mResultCounter = 0;
 
+	graph_queue.resize(graphWorkers);
+
 	vector<std::thread> threads;
 
 	threads.push_back( std::thread(&SeqClassifyManager::finisher_Results,this,myFiles[0]->out_results_fh));
+
+
 	for (int i=0;i<graphWorkers;i++){
+
 		threads.push_back( std::thread(&SeqClassifyManager::worker_Classify,this,graphWorkers,i));
 	}
-	threads.push_back( std::thread(&SeqClassifyManager::worker_readFiles,this,graphWorkers));
 
+	threads.push_back( std::thread(&MinHashEncoder::worker_readFiles,this,graphWorkers));
+	cout << "here" << endl;
 	{
+
 		join_threads joiner(threads);
 
 	//	unique_lock<mutex> lk(mutm);

@@ -102,6 +102,7 @@ void MinHashEncoder::worker_readFiles(unsigned numWorkers){
 	while (!done){
 
 		SeqFileP myData;
+
 		bool succ = readFile_queue.try_pop(myData);
 
 		if (!done && succ && myData->filename != ""){
@@ -141,7 +142,7 @@ void MinHashEncoder::worker_readFiles(unsigned numWorkers){
 				myChunkP->reserve(currBuff);
 				while ( ((i<currBuff) && !fin.eof()) || (myData->signatureAction==CLASSIFY && i>=currBuff && lastSeqGr == false) ) {
 
-					//cout << "valid? " << valid_input << " name :" << currSeqName << ": pos " << pos << " end " << end <<  endl;
+//					cout << "valid? " << valid_input << " name :" << currSeqName << ": pos " << pos << " end " << end <<  endl;
 					if (!valid_input) {
 						if  ( it == annoEntries.second ) {
 							// last seq and all bed entries for it are finished, get next seq from file
@@ -303,7 +304,7 @@ void MinHashEncoder::worker_readFiles(unsigned numWorkers){
 					if ((uint)graph_queue[i].size() < fillstatus)
 						fillstatus = graph_queue[i].size();
 				}
-				cout << "fills "<< fillstatus << endl;
+				//cout << "fills "<< fillstatus << endl;
 				if (fillstatus>graph_queue.size()*5){
 					unique_lock<mutex> lk(mut1);
 					cv1.wait(lk,[&]{fillstatus = MAXUNSIGNED;for (uint i=0; i<graph_queue.size(); ++i){ if ((uint)graph_queue[i].size()<fillstatus) fillstatus = graph_queue[i].size();}; if ((done) || (fillstatus<graph_queue.size())) return true; else return false;});
@@ -458,16 +459,16 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 	graph_queue.resize(graphWorkers);
 
 	threads.push_back( std::thread(&MinHashEncoder::finisher,this));
+
 	for (int i=0;i<graphWorkers;i++){
 		threads.push_back( std::thread(&MinHashEncoder::worker_Graph2Signature,this,graphWorkers,i));
 	}
 	threads.push_back( std::thread(&MinHashEncoder::worker_readFiles,this,graphWorkers));
-
 	{
 		join_threads joiner(threads);
 
 		//unique_lock<mutex> lk(mutm);
-		cv1.notify_all();
+		//cv1.notify_all();
 		while(!done){
 			//cvm.wait(lk,[&]{if ( (files_done<myFiles.size()) || (mSignatureUpdateCounter < mInstanceCounter*mpParameters->mNumHashFunctions)) return false; else return true;});
 			//lk.unlock();
@@ -1087,15 +1088,32 @@ bool HistogramIndex::readBinaryIndex2(string filename, indexTy &index){
 		mFeature2IndexValue.insert(make_pair(feature,hist_idx));
 	}
 
-	unsigned numHashFunc = 0;
-	fin.read((char*) &numHashFunc, sizeof(unsigned));
-	if (numHashFunc <= 0)
+	//unsigned numHashFunc = 0;
+	fin.read((char*) &mpParameters->mNumHashFunctions, sizeof(unsigned));
+	if (mpParameters->mNumHashFunctions <= 0)
 		fin.setstate(std::ios::badbit);
 	if (!fin.good())
 		return false;
-	index.resize(numHashFunc);
-	cout << endl << "read "<< numHashFunc << " sub indices ..." << endl;
-	for (unsigned  hashFunc = 0; hashFunc < numHashFunc; hashFunc++){
+
+	index.resize(mpParameters->mNumHashFunctions);
+	mMemPool_2.resize(mpParameters->mNumHashFunctions);
+	mMemPool_3.resize(mpParameters->mNumHashFunctions);
+	mMemPool_4.resize(mpParameters->mNumHashFunctions);
+	mMemPool_5.resize(mpParameters->mNumHashFunctions);
+	mMemPool_6.resize(mpParameters->mNumHashFunctions);
+
+	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k){
+		index[k].max_load_factor(0.999);
+		//index[k].set_empty_key(0);
+		mMemPool_2[k] = new MemoryPool<newIndexBin_2,mMemPool_BlockSize>();
+		mMemPool_3[k] = new MemoryPool<newIndexBin_3,mMemPool_BlockSize>();
+		mMemPool_4[k] = new MemoryPool<newIndexBin_4,mMemPool_BlockSize>();
+		mMemPool_5[k] = new MemoryPool<newIndexBin_5,mMemPool_BlockSize>();
+		mMemPool_6[k] = new MemoryPool<newIndexBin_6,mMemPool_BlockSize>();
+	}
+
+	cout << endl << "read "<< mpParameters->mNumHashFunctions << " sub indices ..." << endl;
+	for (unsigned  hashFunc = 0; hashFunc < mpParameters->mNumHashFunctions; hashFunc++){
 
 		unsigned numBins = 0;
 		fin.read((char*) &numBins, sizeof(unsigned));
@@ -1118,7 +1136,7 @@ bool HistogramIndex::readBinaryIndex2(string filename, indexTy &index){
 			if (!fin.good())
 				return false;
 			//		indexBinTy tmp = indexBinTy(numBinEntries);
-			indexBinTy tmp;
+			binKeyTy* tmp;
 			switch (numBinEntries){
 			case 1:
 				tmp = reinterpret_cast<binKeyTy(*)>(mMemPool_2[hashFunc]->newElement());
@@ -1136,7 +1154,7 @@ bool HistogramIndex::readBinaryIndex2(string filename, indexTy &index){
 				tmp = reinterpret_cast<binKeyTy(*)>(mMemPool_6[hashFunc]->newElement());
 				break;
 			default:
-				tmp = new binKeyTy[numBinEntries+1];
+			tmp = new binKeyTy[numBinEntries+1];
 				break;
 			}
 			//cout << "new bin " << binId << " " << numBinEntries << " ";
