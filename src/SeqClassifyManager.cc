@@ -137,9 +137,8 @@ void SeqClassifyManager::worker_Classify(int numWorkers, unsigned id){
 
 		ChunkP myData;
 		unique_lock<mutex> lk(mut1);
-		cv2.wait(lk,[&]{if ( (done) ||  (graph_queue[id].try_pop( (myData) )) ) return true; else return false;});
+		cv1.wait(lk,[&]{if ( (done) ||  (graph_queue[id].try_pop( (myData) )) ) return true; else return false;});
 		lk.unlock();
-		//bool succ = graph_queue.try_pop(myData);
 		if (!done && myData->size()>0) {
 			//cout << "  graph2sig thread got chunk " << myData->size() << " offset " << (*myData)[0].idx << " " << mpParameters->mHashBitSize << endl;
 
@@ -147,20 +146,19 @@ void SeqClassifyManager::worker_Classify(int numWorkers, unsigned id){
 
 			for (unsigned j = 0; j < myData->size(); j++) {
 
-				//generate_feature_vector((*myData)[j].seq, (*myData)[j].svec);
+				generate_feature_vector((*myData)[j].seq, (*myData)[j].svec);
 				ComputeHashSignature((*myData)[j].svec,(*myData)[j].sig,tmpSig);
 
 			}
 			finishUpdate(myData,myResultChunk);
-			//			if (res_queue.size()>=numWorkers*25){
-			//				unique_lock<mutex> lk(mut_res);
-			//				cv_res.wait(lk,[&]{if ((done) || (res_queue.size()<=numWorkers*10)) return true; else return false;});
-			//				lk.unlock();
-			//			}
 			res_queue.push(myResultChunk);
+			if (res_queue.size()>=numWorkers*25){
+				unique_lock<mutex> lk(mut2);
+				cv2.wait(lk,[&]{if ((done) || (res_queue.size()<=numWorkers*10)) return true; else return false;});
+				lk.unlock();
+			}
+
 		}
-		//cv2.notify_all();
-		cv_res.notify_all();
 	}
 	delete tmpSig;
 }
@@ -170,8 +168,8 @@ void SeqClassifyManager::finisher_Results(ogzstream* fout_res){
 	while (!done){
 
 		ResultChunkP myResults;
-		unique_lock<mutex> lk(mut_res);
-		cv_res.wait(lk,[&]{if ( (done) || (res_queue.try_pop( (myResults) ))) return true; else return false;});
+		unique_lock<mutex> lk(mut2);
+		cv2.wait(lk,[&]{if ( (done) || (res_queue.try_pop( (myResults) ))) return true; else return false;});
 		lk.unlock();
 
 		if (!done && myResults->size()>0) {
@@ -181,16 +179,17 @@ void SeqClassifyManager::finisher_Results(ogzstream* fout_res){
 				mResultCounter += (*myResults)[i].numInstances;
 
 			}
-			cout.setf(ios::fixed); //,ios::floatfield);
-			cout << "\r" <<  std::setprecision(1) << progress_bar.getElapsed()/1000 << " sec elapsed    Finised numSeqs=" << std::setprecision(0) << setw(10);
-			cout << mNumSequences  << "("<<mNumSequences/(progress_bar.getElapsed()/1000) <<" seq/s)  signatures=" << setw(10);
-			cout << mResultCounter << "("<<(double)mResultCounter/((progress_bar.getElapsed()/1000)) <<" sig/s - "<<(double)mResultCounter/((progress_bar.getElapsed()/(1000/mpParameters->mNumThreads)))<<" per thread)  inst=";
-			cout << mInstanceCounter << " resQueue=" << res_queue.size() << " graphQueue=" << graph_queue.size() << "       ";
+			double elap = progress_bar.getElapsed()/1000;
+			cout.setf(ios::fixed);
+			cout << "\r" <<  std::setprecision(1) << elap << " sec elapsed    Finised numSeqs=" << std::setprecision(0) << setw(10);
+			cout << mNumSequences  << "("<<mNumSequences/(elap) <<" seq/s)  signatures=" << setw(10);
+			cout << mResultCounter << "("<<(double)mResultCounter/((elap)) <<" sig/s - "<<(double)mResultCounter/elap/mpParameters->mNumThreads <<" per thread)  inst=";
+			cout << mInstanceCounter << " resQueue=" << res_queue.size() << " graphQueue=";
+			for (uint i=0; i<graph_queue.size(); ++i){
+				cout << graph_queue[i].size() << " ";
+			};
+			cout << "       ";
 		}
-		cv1.notify_all();
-		cv2.notify_all();
-		cvm.notify_all();
-		//cv_res.notify_all();
 	}
 	progress_bar.PrintElapsed();
 }
@@ -241,15 +240,17 @@ void SeqClassifyManager::Classify_Signatures(SeqFilesT& myFiles){
 	{
 		join_threads joiner(threads);
 
-		unique_lock<mutex> lk(mutm);
-		cv1.notify_all();
+	//	unique_lock<mutex> lk(mutm);
+	//	cv1.notify_all();
 		while(!done){
-			cvm.wait(lk,[&]{if ( (files_done<myFiles.size()) || (mInstanceCounter > mResultCounter) ) return false; else return true;});
-			lk.unlock();
-			done=true;
-			cv3.notify_all();
-			cv2.notify_all();
+			//	cvm.wait(lk,[&]{if ( (files_done<myFiles.size()) || (mInstanceCounter > mResultCounter) ) return false; else return true;});
+			//	lk.unlock();
+			//done=true;
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+			if ( (files_done>=myFiles.size()) && (mInstanceCounter <= mResultCounter))
+				done=true;
 			cv1.notify_all();
+			cv2.notify_all();
 		}
 
 	} // by leaving this block threads get joined by destruction of joiner
@@ -265,14 +266,6 @@ void SeqClassifyManager::Classify_Signatures(SeqFilesT& myFiles){
 	cout << " CLASSIFICATION FINISHED" << endl << SEP << endl;
 }
 
-//void SeqClassifyManager::finishUpdate(ChunkP& myData) {
-//
-//	// as this is the overloaded virtual function from MinHashEncoder
-//	//we assume signatureAction==INDEX always here
-//	for (unsigned j = 0; j < myData->size(); j++) {
-//		UpdateInverseIndex((*myData)[j].sig, (*myData)[j].idx);
-//	}
-//}
 
 void SeqClassifyManager::finishUpdate(ChunkP& myData, unsigned& min, unsigned& max) {
 

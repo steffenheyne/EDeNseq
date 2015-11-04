@@ -28,18 +28,14 @@ public:
 	typedef vector<ResultT> ResultChunkT;
 	typedef std::shared_ptr<ResultChunkT> ResultChunkP;
 
-	std::atomic_uint mNumSequences;
 	histogramT metaHist;
 	histogramT metaHistNum;
-	unsigned mClassifiedInstances;
-
+	std::atomic_uint mNumSequences;
+	std::atomic_uint mClassifiedInstances;
 	std::atomic_bool done_output;
 
 	threadsafe_queue<ResultChunkP> res_queue;
-	mutable std::mutex mut_res;
-   std::condition_variable cv_res;
 	std::atomic_uint mResultCounter;
-
 
 	void 			Exec();
 //	void 			finishUpdate(ChunkP& myData);

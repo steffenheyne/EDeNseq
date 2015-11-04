@@ -298,29 +298,18 @@ void MinHashEncoder::worker_readFiles(unsigned numWorkers){
 				curr_q++;
 				if (curr_q>=numWorkers) curr_q = 0;
 
-				//log output
-				//if (mInstanceCounter%1000000 <=currBuff){
-				//	cout << endl << "seqs read " << file_seqs << " instances read " << mInstanceCounter << " " << myChunkP->size() << " buffer " << currBuff << " full..." << graph_queue.size() << " " << currSeq.size()<< " "<< currSeqName << endl;
-				//}
-
-				uint fillstatus=0;
-				for (uint i=0; i<graph_queue.size(); ++i){
-					fillstatus +=graph_queue[i].size();
+				unsigned fillstatus = MAXUNSIGNED;
+				for (unsigned i=0; i < graph_queue.size(); ++i){
+					if ((uint)graph_queue[i].size() < fillstatus)
+						fillstatus = graph_queue[i].size();
 				}
-				cv1.notify_all();
-				//cout << fillstatus << endl;
-				if (fillstatus>graph_queue.size()*30){
+
+				if (fillstatus>graph_queue.size()*5){
 					unique_lock<mutex> lk(mut1);
-					cv1.wait(lk,[&]{fillstatus = 0;for (uint i=0; i<graph_queue.size(); ++i){ fillstatus += graph_queue[i].size();}; if ((done) || (fillstatus<graph_queue.size()*10)) return true; else return false;});
+					cv1.wait(lk,[&]{fillstatus = MAXUNSIGNED;for (uint i=0; i<graph_queue.size(); ++i){ if ((uint)graph_queue[i].size()<fillstatus) fillstatus = graph_queue[i].size();}; if ((done) || (fillstatus<graph_queue.size())) return true; else return false;});
 					lk.unlock();
 				}
 
-			/*	cv2.notify_all();
-				if (graph_queue.size()>=numWorkers*10){
-					unique_lock<mutex> lk(mut2);
-					cv2.wait(lk,[&]{if ((done) || (graph_queue.size()<=numWorkers*3)) return true; else return false;});
-					lk.unlock();
-				}*/
 			} // while eof
 			fin.close();
 			files_done++;
@@ -339,25 +328,19 @@ void MinHashEncoder::worker_Graph2Signature(int numWorkers, unsigned id){
 		unique_lock<mutex> lk(mut1);
 		cv1.wait(lk,[&]{if ( (done) ||  (graph_queue[id].try_pop( (myData) )) ) return true; else return false;});
 		lk.unlock();
-	//	bool succ = graph_queue[id].try_pop( (myData));
 		if (!done && myData->size()>0) {
 			//cout << "  graph2sig thread got chunk " << myData->size() << endl;
-
 			for (unsigned j = 0; j < myData->size(); j++) {
-
 				generate_feature_vector((*myData)[j].seq, (*myData)[j].svec);
 				ComputeHashSignature((*myData)[j].svec,(*myData)[j].sig,tmpSig);
 			}
 			sig_queue.push(myData);
-			cv2.notify_all();
 			if (sig_queue.size()>=numWorkers*10){
 				unique_lock<mutex> lk(mut2);
 				cv2.wait(lk,[&]{if ((done) || (sig_queue.size()<=numWorkers*3)) return true; else return false;});
 				lk.unlock();
 			}
 		}
-		cv1.notify_all();
-		cv3.notify_all();
 	}
 	delete tmpSig;
 }
@@ -368,11 +351,11 @@ void MinHashEncoder::finisher(){
 	while (!done){
 
 		ChunkP myData;
-	//	unique_lock<mutex> lk(mut2);
-	//	cv2.wait(lk,[&]{if ( (done) || (sig_queue.try_pop( (myData) ))) return true; else return false;});
-	//	lk.unlock();
-		bool succ = sig_queue.try_pop(myData);
-		if (!done && succ && myData->size()>0) {
+		unique_lock<mutex> lk(mut2);
+		cv2.wait(lk,[&]{if ( (done) || (sig_queue.try_pop( (myData) ))) return true; else return false;});
+		lk.unlock();
+
+		if (!done  && myData->size()>0) {
 
 			for (unsigned i=0;i<index_queue.size();i++){
 				index_queue[i].push(myData);
@@ -380,31 +363,12 @@ void MinHashEncoder::finisher(){
 
 			uint fillstatus=0;
 			for (uint i=0; i<index_queue.size(); ++i){ fillstatus += index_queue[i].size();}
-			cv3.notify_all();
-			//cv4.notify_all();
 			if (fillstatus>index_queue.size()*10){
 				unique_lock<mutex> lk(mut3);
 				cv3.wait(lk,[&]{fillstatus = 0;for (uint i=0; i<index_queue.size(); ++i){ fillstatus += index_queue[i].size();} if ((done) || (fillstatus<index_queue.size()*5)) return true; else return false;});
 				lk.unlock();
 			}
-
-			// virtual function call that can be overloaded in child classes to do specific stuff
-			//finishUpdate(myData);
-			//mSignatureCounter += myData->size();
-
-			//myData.reset();
-			//
-			//			cout.setf(ios::fixed); //,ios::floatfield);
-			//			cout << "\r" <<  std::setprecision(1) << progress_bar.getElapsed()/1000 << " sec elapsed    Finised numSeqs=" << std::setprecision(0) << setw(10);
-			//			cout << mSequenceCounter  << "("<<mSequenceCounter/(progress_bar.getElapsed()/1000) <<" seq/s)  signatures=" << setw(10);
-			//			cout << mSignatureCounter << "("<<(double)mSignatureCounter/((progress_bar.getElapsed()/1000)) <<" sig/s - inst=";
-			//			cout << mInstanceCounter << " graphQueue=" << graph_queue.size() << " sigQueue=" << sig_queue.size() << " SigUpdateCounter  " << mSignatureUpdateCounter << " " << index_queue[0].size() << "     ";
 		}
-		// cv3.notify_all();
-		//		cv1.notify_all();
-		//cv4.notify_all();
-		cv2.notify_all();
-		//		cvm.notify_all();
 	}
 }
 
@@ -415,44 +379,30 @@ void MinHashEncoder::worker_IndexUpdate(unsigned id, unsigned min, unsigned max)
 		unique_lock<mutex> lk(mut3);
 		cv3.wait(lk,[&]{if ( (done) || (index_queue[id].try_pop( (myData) ))) return true; else return false;});
 		lk.unlock();
-	//	bool succ = index_queue[id].try_pop( (myData));
+
 		if (!done && myData->size()>0) {
 
 			finishUpdate(myData,min,max);
 			mSignatureUpdateCounter += myData->size()*( (max-min+1));
 			//	cout << "finishUpdate "<< myData->size() << " " << id << " " << min << " " << max << " " << index_queue[id].size() <<  " " << myData->size()*( (max-min+1)*mpParameters->mNumHashFunctions) << " " << mSignatureUpdateCounter << endl;
-			cv3.notify_all();
-			//cv4.notify_all();
-			cvm.notify_all();
+
 			if (id==0){
 				mSignatureCounter += myData->size();
-				cout.setf(ios::fixed); //,ios::floatfield);
-				cout << "\r" <<  std::setprecision(1) << progress_bar.getElapsed()/1000 << " sec elapsed    Finised numSeqs=" << std::setprecision(0) << setw(10);
-				cout << mSequenceCounter  << "("<<mSequenceCounter/(progress_bar.getElapsed()/1000) <<" seq/s)  signatures=" << setw(10);
-				cout << mSignatureCounter << "("<<(double)mSignatureCounter/((progress_bar.getElapsed()/1000)) <<" sig/s - inst=";
+				double elap = progress_bar.getElapsed()/1000;
+				cout.setf(ios::fixed);
+				cout << "\r" <<  std::setprecision(1) << elap << " sec elapsed    Finised numSeqs=" << std::setprecision(0) << setw(10);
+				cout << mSequenceCounter  << "("<<mSequenceCounter/(elap) <<" seq/s)  signatures=" << setw(10);
+				cout << mSignatureCounter << "("<<(double)mSignatureCounter/((elap)) <<" sig/s - "<< (double)(mSignatureCounter/graph_queue.size())/((elap)) << " per thread) inst=";
 				cout << mInstanceCounter << " graphQueue=" << graph_queue[0].size() << " sigQueue=" << sig_queue.size() << " SigUpdateCounter  " << mSignatureUpdateCounter << " ";
 				for (uint i=0; i<index_queue.size(); ++i){
 					cout << index_queue[i].size() << " ";
 				}
 			}
 		}
-
 	}
 }
 
-void MinHashEncoder::wakeup(){
 
-	while (!done){
-	//	std::unique_lock<std::mutex> lk(mut5);
-		std::this_thread::sleep_for(std::chrono::milliseconds(500));
-		//cv4.wait_for(lk, std::chrono::milliseconds(500), [](){return true;});
-//		cv4.notify_all();
-//		cv3.notify_all();
-//		cv2.notify_all();
-//		cv1.notify_all();
-	}
-
-}
 void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 
 	for (unsigned i=0;i<myFiles.size(); i++){
@@ -495,8 +445,6 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 
 	vector<std::thread> threads;
 
-	//threads.push_back( std::thread(&MinHashEncoder::wakeup,this));
-
 	unsigned numIndexThreads = max((unsigned)1,mpParameters->mNumIndexThreads);
 	index_queue.resize(min(numIndexThreads,mpParameters->mNumHashFunctions));
 	unsigned hf_left = mpParameters->mNumHashFunctions;
@@ -518,12 +466,16 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 	{
 		join_threads joiner(threads);
 
-		unique_lock<mutex> lk(mutm);
+		//unique_lock<mutex> lk(mutm);
 		cv1.notify_all();
 		while(!done){
-			cvm.wait(lk,[&]{if ( (files_done<myFiles.size()) || (mSignatureUpdateCounter < mInstanceCounter*mpParameters->mNumHashFunctions)) return false; else return true;});
-			lk.unlock();
-			done=true;
+			//cvm.wait(lk,[&]{if ( (files_done<myFiles.size()) || (mSignatureUpdateCounter < mInstanceCounter*mpParameters->mNumHashFunctions)) return false; else return true;});
+			//lk.unlock();
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+			if ( (files_done<myFiles.size()) || (mSignatureUpdateCounter < mInstanceCounter*mpParameters->mNumHashFunctions))
+				done=false;
+			else done=true;
+			//done=true;
 			cv3.notify_all();
 			cv2.notify_all();
 			cv1.notify_all();
@@ -905,7 +857,7 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 		if (key != MAXUNSIGNED && key != 0) { //if key is equal to markers for empty bins then skip insertion instance in data structure
 			if (mInverseIndex[k].count(key)==0) { //if this is the first time that an instance exhibits that specific value for that hash function, then store for the first time the reference to that instance
 
-				indexBinTy foo;
+				binKeyTy* foo;
 				foo = reinterpret_cast<binKeyTy(*)>(mMemPool_2[k]->newElement());
 				foo[1] = aIndexT;
 				foo[0] = 1; //index of last element is stored at idx[0]
