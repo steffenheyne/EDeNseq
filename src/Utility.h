@@ -121,7 +121,7 @@ inline int IntHash(int key, int aModulo, unsigned aSeed) {
 //unsigned RSHash(const vector<unsigned>& aV);
 //unsigned APHash(const string& str);
 //unsigned APHash(const vector<unsigned>& aV);
-//unsigned APHash(const vector<unsigned>::const_iterator& aV_begin, vector<unsigned>::const_iterator& aV_end);
+//unsign	ed>::const_iterator& aV_begin, vector<unsigned>::const_iterator& aV_end);
 //unsigned HashFunc(const string& str, unsigned aBitMask = 2147483647);
 //unsigned HashFunc(const vector<unsigned>& aList, unsigned aBitMask = 2147483647)
 
