@@ -225,7 +225,7 @@ inline void
 MemoryPool<T, BlockSize>::deleteElement(pointer p)
 {
   if (p != nullptr) {
-  //  p->~value_type();
+  	//p->~value_type();
     deallocate(p);
   }
 }

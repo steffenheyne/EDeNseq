@@ -905,7 +905,7 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 		if (key != MAXUNSIGNED && key != 0) { //if key is equal to markers for empty bins then skip insertion instance in data structure
 			if (mInverseIndex[k].count(key)==0) { //if this is the first time that an instance exhibits that specific value for that hash function, then store for the first time the reference to that instance
 
-				binKeyTy *foo;
+				indexBinTy foo;
 				foo = reinterpret_cast<binKeyTy(*)>(mMemPool_2[k]->newElement());
 				foo[1] = aIndexT;
 				foo[0] = 1; //index of last element is stored at idx[0]
