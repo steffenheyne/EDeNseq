@@ -57,7 +57,7 @@ const string SEP = "------------------------------------------------------------
 const string TAB = "    ";
 
 //------------------------------------------------------------------------------------------------------------------------
-const unsigned MAXUNSIGNED = 2 << 30;
+const unsigned MAXUNSIGNED = (2 << 31)-1 ;
 
 ///Returns a random number uniformly distributed between 0 and 1
 //inline double random01() {
@@ -95,7 +95,7 @@ OutType stream_cast(const InType & t) {
 //void MakeShuffledDataIndicesList(vector<unsigned>& oDataIdList, unsigned aSize);
 
 //Return an integer hash value for a given input integer in a given domain range
-inline int IntHashSimple(int key, int aModulo) {
+inline uint IntHashSimple(uint key, uint aModulo) {
 	key = ~key + (key << 15); // key = (key << 15) - key - 1;
 	key = key ^ (key >> 12);
 	key = key + (key << 2);
@@ -112,7 +112,7 @@ inline int IntHashSimple(int key, int aModulo) {
 //}
 
 //Return an integer hash value for a given input integer in a given domain range given an additional seed to select the random hash function
-inline int IntHash(int key, int aModulo, unsigned aSeed) {
+inline uint IntHash(uint key, uint aModulo, unsigned aSeed) {
 	const double A = sqrt(2) - 1;
 	return IntHashSimple(key * (aSeed + 1) * A, aModulo);
 }
@@ -121,7 +121,7 @@ inline int IntHash(int key, int aModulo, unsigned aSeed) {
 //unsigned RSHash(const vector<unsigned>& aV);
 //unsigned APHash(const string& str);
 //unsigned APHash(const vector<unsigned>& aV);
-//unsign	ed>::const_iterator& aV_begin, vector<unsigned>::const_iterator& aV_end);
+//unsigned APHash(const vector<unsigned>::const_iterator& aV_begin, vector<unsigned>::const_iterator& aV_end);
 //unsigned HashFunc(const string& str, unsigned aBitMask = 2147483647);
 //unsigned HashFunc(const vector<unsigned>& aList, unsigned aBitMask = 2147483647)
 
