@@ -223,18 +223,16 @@ void SeqClassifyManager::Classify_Signatures(SeqFilesT& myFiles){
 
 	cout << "Using " << graphWorkers << " worker threads and 2 helper threads..." << endl;
 
-	done = false;
-	files_done=0;
+	done 					= false;
+	files_done			= 0;
 	mSignatureCounter = 0;
-	mInstanceCounter = 0;
-	mResultCounter = 0;
-
-	graph_queue.resize(graphWorkers);
+	mInstanceCounter 	= 0;
+	mResultCounter 	= 0;
 
 	vector<std::thread> threads;
+	graph_queue.resize(graphWorkers);
 
 	threads.push_back( std::thread(&SeqClassifyManager::finisher_Results,this,myFiles[0]->out_results_fh));
-
 
 	for (int i=0;i<graphWorkers;i++){
 
@@ -242,20 +240,15 @@ void SeqClassifyManager::Classify_Signatures(SeqFilesT& myFiles){
 	}
 
 	threads.push_back( std::thread(&MinHashEncoder::worker_readFiles,this,graphWorkers));
-	cout << "here" << endl;
-	{
 
+	{
 		join_threads joiner(threads);
 
-	//	unique_lock<mutex> lk(mutm);
-	//	cv1.notify_all();
 		while(!done){
-			//	cvm.wait(lk,[&]{if ( (files_done<myFiles.size()) || (mInstanceCounter > mResultCounter) ) return false; else return true;});
-			//	lk.unlock();
-			//done=true;
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
-			if ( (files_done>=myFiles.size()) && (mInstanceCounter <= mResultCounter))
-				done=true;
+			if ( (files_done<myFiles.size()) || (mInstanceCounter > mResultCounter))
+				done = false;
+			else done = true;
 			cv1.notify_all();
 			cv2.notify_all();
 		}

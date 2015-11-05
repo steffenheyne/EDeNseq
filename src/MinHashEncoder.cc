@@ -26,8 +26,8 @@ void MinHashEncoder::Init(Parameters* apParameters, Data* apData) {
 	}*/
 
 	if (mpParameters->mMinRadius>mpParameters->mRadius  || mpParameters->mMinDistance>mpParameters->mDistance) {
-			throw range_error("Radius and Distance cannot be smaller than minRadius/minDistance!");
-		}
+		throw range_error("Radius and Distance cannot be smaller than minRadius/minDistance!");
+	}
 
 
 	if (mpParameters->mNumRepeatsHashFunction == 0 || mpParameters->mNumRepeatsHashFunction > mpParameters->mNumHashShingles * mpParameters->mNumHashFunctions){
@@ -82,14 +82,14 @@ inline void  MinHashEncoder::generate_feature_vector(const string& seq, SVector&
 
 	vector<unsigned> endpoint_list(3);
 	for (unsigned r = mMinRadius; r <= mRadius; r++) {
-	//	endpoint_list[0] = r;
+		//	endpoint_list[0] = r;
 		for (unsigned d = mMinDistance; d <= mDistance; d++) {
 			endpoint_list[0] = d;
 			for (unsigned start = 0; start < size-r-d; ++start) {
-					endpoint_list[1] = mFeatureCache[start][r];
-					endpoint_list[2] = mFeatureCache[start + d][r];
-					//cout << start << " " << start+d << "   " << endpoint_list[2] << "  " << endpoint_list[3]<< endl;
-					//  0 1 2 3 4   5 6 7 8 9   r=4 d=5
+				endpoint_list[1] = mFeatureCache[start][r];
+				endpoint_list[2] = mFeatureCache[start + d][r];
+				//cout << start << " " << start+d << "   " << endpoint_list[2] << "  " << endpoint_list[3]<< endl;
+				//  0 1 2 3 4   5 6 7 8 9   r=4 d=5
 				unsigned code = HashFunc(endpoint_list, mHashBitMask);
 				x.coeffRef(code) = 1;
 			}
@@ -132,7 +132,7 @@ void MinHashEncoder::worker_readFiles(unsigned numWorkers){
 
 			while (!fin.eof()) {
 
-				unsigned maxB = max(1000,(int)log2((double)mSignatureCounter)*100);
+				unsigned maxB = max(1000,(int)log2((double)mSignatureCounter)^2*50);
 				unsigned currBuff = rand()%(maxB*4	 - maxB + 1) + maxB; // curr chunk size
 				unsigned i = 0;			// current fragment in currBuff
 				bool lastSeqGr = false; // indicates that we have the last fragment from current seq, used to get all fragments from current seq into current chunk
@@ -142,7 +142,7 @@ void MinHashEncoder::worker_readFiles(unsigned numWorkers){
 				myChunkP->reserve(currBuff);
 				while ( ((i<currBuff) && !fin.eof()) || (myData->signatureAction==CLASSIFY && i>=currBuff && lastSeqGr == false) ) {
 
-//					cout << "valid? " << valid_input << " name :" << currSeqName << ": pos " << pos << " end " << end <<  endl;
+					//					cout << "valid? " << valid_input << " name :" << currSeqName << ": pos " << pos << " end " << end <<  endl;
 					if (!valid_input) {
 						if  ( it == annoEntries.second ) {
 							// last seq and all bed entries for it are finished, get next seq from file
@@ -296,18 +296,20 @@ void MinHashEncoder::worker_readFiles(unsigned numWorkers){
 
 				graph_queue[curr_q].push(myChunkP);
 
-				curr_q++;
-				if (curr_q>=numWorkers) curr_q = 0;
+				//curr_q++;
 
+				if (i%2*numWorkers<=1) curr_q++;
+				if (curr_q>=numWorkers) curr_q = 0;
+				//cout << i << " " << curr_q << endl;
 				unsigned fillstatus = MAXUNSIGNED;
 				for (unsigned i=0; i < graph_queue.size(); ++i){
 					if ((uint)graph_queue[i].size() < fillstatus)
 						fillstatus = graph_queue[i].size();
 				}
 				//cout << "fills "<< fillstatus << endl;
-				if (fillstatus>graph_queue.size()*5){
+				if (curr_q==numWorkers-1 && fillstatus>graph_queue.size()*3){
 					unique_lock<mutex> lk(mut1);
-					cv1.wait(lk,[&]{fillstatus = MAXUNSIGNED;for (uint i=0; i<graph_queue.size(); ++i){ if ((uint)graph_queue[i].size()<fillstatus) fillstatus = graph_queue[i].size();}; if ((done) || (fillstatus<graph_queue.size())) return true; else return false;});
+					cv1.wait(lk,[&]{fillstatus = MAXUNSIGNED;for (uint i=0; i<graph_queue.size(); ++i){ if ((uint)graph_queue[i].size()<fillstatus) { fillstatus = graph_queue[i].size();curr_q = i;}}; if ((done) || (fillstatus<graph_queue.size())) return true; else return false;});
 					lk.unlock();
 				}
 
@@ -445,7 +447,10 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 	mSignatureUpdateCounter = 0;
 
 	vector<std::thread> threads;
+	graph_queue.resize(graphWorkers);
 
+	// distribute mpParameters->mNumHashFunctions as equal as possible between the
+	// requested number of mpParameters->mNumIndexThreads
 	unsigned numIndexThreads = max((unsigned)1,mpParameters->mNumIndexThreads);
 	index_queue.resize(min(numIndexThreads,mpParameters->mNumHashFunctions));
 	unsigned hf_left = mpParameters->mNumHashFunctions;
@@ -456,7 +461,6 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 		hf_left -= range;
 	}
 
-	graph_queue.resize(graphWorkers);
 
 	threads.push_back( std::thread(&MinHashEncoder::finisher,this));
 
@@ -464,19 +468,15 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 		threads.push_back( std::thread(&MinHashEncoder::worker_Graph2Signature,this,graphWorkers,i));
 	}
 	threads.push_back( std::thread(&MinHashEncoder::worker_readFiles,this,graphWorkers));
+
 	{
 		join_threads joiner(threads);
 
-		//unique_lock<mutex> lk(mutm);
-		//cv1.notify_all();
 		while(!done){
-			//cvm.wait(lk,[&]{if ( (files_done<myFiles.size()) || (mSignatureUpdateCounter < mInstanceCounter*mpParameters->mNumHashFunctions)) return false; else return true;});
-			//lk.unlock();
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			if ( (files_done<myFiles.size()) || (mSignatureUpdateCounter < mInstanceCounter*mpParameters->mNumHashFunctions))
 				done=false;
 			else done=true;
-			//done=true;
 			cv3.notify_all();
 			cv2.notify_all();
 			cv1.notify_all();
@@ -909,12 +909,12 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 						//memcpy2(&fooNew[i+2],&myValue[i+1],(myValue[0]-i));
 						fooNew[0] = newSize;
 
-/*						if (myValue[0] > 1 ){
+						/*						if (myValue[0] > 1 ){
 							delete[] myValue;
 						} else {
 							mMemPool[k]->deleteElement(reinterpret_cast<newIndexBin(*)>(myValue));
 						}
-*/
+						 */
 						switch (myValue[0]) {
 						case 1:
 							mMemPool_2[k]->deleteElement(reinterpret_cast<newIndexBin_2(*)>(myValue));
@@ -987,11 +987,11 @@ void HistogramIndex::ComputeHistogram(const vector<unsigned>& aSignature, std::v
 
 			indexBinTy& myValue = mInverseIndex[k][aSignature[k]];
 
-	//		if (myValue[0]<=1){
+			//		if (myValue[0]<=1){
 			for (unsigned i=1;i<=myValue[0];i++){
 				t[myValue[i]-1]=1;
 			}
-	//		}
+			//		}
 			hist += t;
 
 		} else {
@@ -1104,7 +1104,7 @@ bool HistogramIndex::readBinaryIndex2(string filename, indexTy &index){
 
 	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k){
 		index[k].max_load_factor(0.999);
-		//index[k].set_empty_key(0);
+		index[k].set_empty_key(0);
 		mMemPool_2[k] = new MemoryPool<newIndexBin_2,mMemPool_BlockSize>();
 		mMemPool_3[k] = new MemoryPool<newIndexBin_3,mMemPool_BlockSize>();
 		mMemPool_4[k] = new MemoryPool<newIndexBin_4,mMemPool_BlockSize>();
@@ -1154,7 +1154,7 @@ bool HistogramIndex::readBinaryIndex2(string filename, indexTy &index){
 				tmp = reinterpret_cast<binKeyTy(*)>(mMemPool_6[hashFunc]->newElement());
 				break;
 			default:
-			tmp = new binKeyTy[numBinEntries+1];
+				tmp = new binKeyTy[numBinEntries+1];
 				break;
 			}
 			//cout << "new bin " << binId << " " << numBinEntries << " ";

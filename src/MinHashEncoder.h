@@ -154,8 +154,8 @@ private:
 	//typedef vector<binKeyTy>	indexBinTy;
 	typedef binKeyTy* indexBinTy;
 	//	typedef std::tr1::unordered_map<unsigned,indexBinTy> indexSingleTy;
-	typedef google::sparse_hash_map<unsigned, indexBinTy> indexSingleTy;
-	//typedef google::dense_hash_map<unsigned, indexBinTy> indexSingleTy;
+	//typedef google::sparse_hash_map<unsigned, indexBinTy> indexSingleTy;
+	typedef google::dense_hash_map<unsigned, indexBinTy> indexSingleTy;
 	typedef vector<indexSingleTy> indexTy;
 
 	const binKeyTy MAXBINKEY = std::numeric_limits<binKeyTy>::max();
@@ -229,8 +229,8 @@ public:
 	// we use one of these hash maps, the interface is quite similar to each other
 	// should test space an speed
 	//typedef std::tr1::unordered_map<unsigned, indexBinTy> indexSingleTy;
-	//typedef google::dense_hash_map<unsigned, indexBinTy, hashFunc,hashFunc> indexSingleTy;
-	typedef google::sparse_hash_map<unsigned, indexBinTy, hashFunc, hashFunc> indexSingleTy;
+	typedef google::dense_hash_map<unsigned, indexBinTy, hashFunc,hashFunc> indexSingleTy;
+	//typedef google::sparse_hash_map<unsigned, indexBinTy, hashFunc, hashFunc> indexSingleTy;
 	//typedef google::sparse_hash_map<unsigned, indexBinTy> indexSingleTy;
 
 	// the index
@@ -281,7 +281,7 @@ public:
 
 		for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k){
 			mInverseIndex[k].max_load_factor(0.999);
-			//mInverseIndex[k].set_empty_key(0);
+			mInverseIndex[k].set_empty_key(0);
 			mMemPool_2[k] = new MemoryPool<newIndexBin_2,mMemPool_BlockSize>();
 			mMemPool_3[k] = new MemoryPool<newIndexBin_3,mMemPool_BlockSize>();
 			mMemPool_4[k] = new MemoryPool<newIndexBin_4,mMemPool_BlockSize>();
