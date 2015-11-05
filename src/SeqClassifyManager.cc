@@ -56,7 +56,10 @@ void SeqClassifyManager::Exec() {
 
 		SeqFilesT myList;
 		myList.push_back(mIndexDataSet);
+
+		InitInverseIndex();
 		LoadData_Threaded(myList);
+
 		SetHistogramSize(mIndexDataSet->lastMetaIdx);
 		mpParameters->mSeqShift = tmp_shift;
 
@@ -76,26 +79,28 @@ void SeqClassifyManager::Exec() {
 
 	} else {
 		// read existing index file (*.bhi)
+		mIndexDataSet->filename_index = mpParameters->mIndexBedFile+".bhi";
+
 		cout << endl << " *** Read inverse index *** "<< endl << endl;
 		cout << "inverse index file : " << mpParameters->mIndexBedFile+".bhi" << endl << "read index ...";
+
 		bool indexState = readBinaryIndex2(mpParameters->mIndexBedFile+".bhi",mInverseIndex);
-		if (indexState == true){
-			cout << "finished! ";
-			cout << " Index OK! Format Version "<< INDEX_FORMAT_VERSION << endl << endl << "Read index parameters:"<< endl << endl;
-			cout << setw(30) << std::right << " hist size  " << GetHistogramSize() << endl;
-			cout << setw(30) << std::right << " bitmask  " << mHashBitMask << endl;
-			cout << setw(30) << std::right << " hash_bit_size  " << mpParameters->mHashBitSize << endl;
-			cout << setw(30) << std::right << " random_seed  " << mpParameters->mRandomSeed << endl;
-			cout << setw(30) << std::right << " num_hash_functions  " << mpParameters->mNumHashFunctions << endl;
-			cout << setw(30) << std::right << " num_repeat_hash_function  " << mpParameters->mNumRepeatsHashFunction << endl;
-			cout << setw(30) << std::right << " num_hash_shingles  " << mpParameters->mNumHashShingles << endl;
-			cout << setw(30) << std::right << " radius  " << mpParameters->mMinRadius<<".."<<mpParameters->mRadius << endl;
-			cout << setw(30) << std::right << " distance  " << mpParameters->mMinDistance<<".."<<mpParameters->mDistance << endl;
-			cout << setw(30) << std::right << " seq_window  " << mpParameters->mSeqWindow << endl;
-			cout << setw(30) << std::right << " index_seq_shift  " << mpParameters->mIndexSeqShift << " nt" << endl;
-		} else
+
+		if (indexState == false)
 			throw range_error("\nCannot read index from file " + mpParameters->mIndexBedFile+".bhi\n");
-		mIndexDataSet->filename_index = mpParameters->mIndexBedFile+".bhi";
+
+		cout << "finished! ";
+		cout << " Index OK! Format Version "<< INDEX_FORMAT_VERSION << endl << endl << "Read index parameters:"<< endl << endl;
+		cout << setw(30) << std::right << " hist size  " << GetHistogramSize() << endl;
+		cout << setw(30) << std::right << " hash_bit_size  " << mpParameters->mHashBitSize << endl;
+		cout << setw(30) << std::right << " random_seed  " << mpParameters->mRandomSeed << endl;
+		cout << setw(30) << std::right << " num_hash_functions  " << mpParameters->mNumHashFunctions << endl;
+		cout << setw(30) << std::right << " num_repeat_hash_function  " << mpParameters->mNumRepeatsHashFunction << endl;
+		cout << setw(30) << std::right << " num_hash_shingles  " << mpParameters->mNumHashShingles << endl;
+		cout << setw(30) << std::right << " radius  " << mpParameters->mMinRadius<<".."<<mpParameters->mRadius << endl;
+		cout << setw(30) << std::right << " distance  " << mpParameters->mMinDistance<<".."<<mpParameters->mDistance << endl;
+		cout << setw(30) << std::right << " seq_window  " << mpParameters->mSeqWindow << endl;
+		cout << setw(30) << std::right << " index_seq_shift  " << mpParameters->mIndexSeqShift << " nt" << endl;
 	}
 
 	// update IndexValue2Feature map from provided Index BED file
@@ -202,7 +207,8 @@ void SeqClassifyManager::Classify_Signatures(SeqFilesT& myFiles){
 		readFile_queue.push(myFiles[i]);
 	}
 
-	mHashBitMask = (2 << (mpParameters->mHashBitSize - 1)) - 1;
+	HashSignatureHelper();
+
 	cout << "hist size: " << GetHistogramSize() << endl;
 	cout << "Using " << mHashBitMask << " as bitmask"<< endl;
 	cout << "Using " << mpParameters->mHashBitSize << " bits to encode features" << endl;
@@ -214,10 +220,7 @@ void SeqClassifyManager::Classify_Signatures(SeqFilesT& myFiles){
 	cout << "Using feature radius   " << mpParameters->mMinRadius<<".."<<mpParameters->mRadius << endl;
 	cout << "Using feature distance " << mpParameters->mMinDistance<<".."<<mpParameters->mDistance << endl;
 	cout << "Using sequence window  " << mpParameters->mSeqWindow<<" shift "<<mpParameters->mSeqShift << " nt - clip " << mpParameters->mSeqClip << endl;
-
 	cout << endl << "Computing MinHash signatures on the fly while reading " << myFiles.size() << " file(s)..." << endl;
-
-	HashSignatureHelper();
 
 	int graphWorkers = std::thread::hardware_concurrency();
 	if (mpParameters->mNumThreads>0)
@@ -234,18 +237,12 @@ void SeqClassifyManager::Classify_Signatures(SeqFilesT& myFiles){
 	vector<std::thread> threads;
 	graph_queue.resize(graphWorkers);
 
-	threads.push_back( std::thread(&MinHashEncoder::worker_readFiles,this,graphWorkers,500));
-
-	std::this_thread::sleep_for(std::chrono::milliseconds(500));
-
+	// launch all threads
 	threads.push_back( std::thread(&SeqClassifyManager::finisher_Results,this,myFiles[0]->out_results_fh));
-
 	for (int i=0;i<graphWorkers;i++){
-
 		threads.push_back( std::thread(&SeqClassifyManager::worker_Classify,this,graphWorkers,i));
 	}
-
-
+	threads.push_back( std::thread(&MinHashEncoder::worker_readFiles,this,graphWorkers,500));
 
 	{
 		join_threads joiner(threads);

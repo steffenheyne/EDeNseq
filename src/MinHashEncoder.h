@@ -21,6 +21,7 @@ class MinHashEncoder {
 
 
 public:
+	const unsigned MAXUNSIGNED = (2 << 31)-1 ;
 
 	enum signatureActionE {
 		INDEX, INDEX_SIGCACHE, CLASSIFY
@@ -83,9 +84,9 @@ public:
 
 	SeqFileP 	mIndexDataSet;
 
-	unsigned numHashFunctionsFull;
-	unsigned sub_hash_range;
-	vector<unsigned>  bounds;
+	unsigned 			numHashFunctionsFull;
+	unsigned 			sub_hash_range;
+	vector<unsigned>  mBounds;
 
 
 	unsigned numKeys;
@@ -271,26 +272,9 @@ public:
 
 	// constructor
 	HistogramIndex(Parameters* apParameters, Data* apData)
-	:MinHashEncoder(apParameters,apData)
-	{
-		mInverseIndex.resize(mpParameters->mNumHashFunctions, indexSingleTy(2^22));
-		mMemPool_2.resize(mpParameters->mNumHashFunctions);
-		mMemPool_3.resize(mpParameters->mNumHashFunctions);
-		mMemPool_4.resize(mpParameters->mNumHashFunctions);
-		mMemPool_5.resize(mpParameters->mNumHashFunctions);
-		mMemPool_6.resize(mpParameters->mNumHashFunctions);
+	:MinHashEncoder(apParameters,apData) { };
 
-		for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k){
-			mInverseIndex[k].max_load_factor(0.999);
-			mInverseIndex[k].set_empty_key(0);
-			mMemPool_2[k] = new MemoryPool<newIndexBin_2,mMemPool_BlockSize>();
-			mMemPool_3[k] = new MemoryPool<newIndexBin_3,mMemPool_BlockSize>();
-			mMemPool_4[k] = new MemoryPool<newIndexBin_4,mMemPool_BlockSize>();
-			mMemPool_5[k] = new MemoryPool<newIndexBin_5,mMemPool_BlockSize>();
-			mMemPool_6[k] = new MemoryPool<newIndexBin_6,mMemPool_BlockSize>();
-		}
-	}
-
+	void		InitInverseIndex();
 	binKeyTy	GetHistogramSize();
 	void		SetHistogramSize(binKeyTy size);
 	void		UpdateInverseIndex(const vector<unsigned>& aSignature, const unsigned& aIndex);
@@ -298,7 +282,7 @@ public:
 	void		ComputeHistogram(const vector<unsigned>& aSignature, std::valarray<double>& hist, unsigned& emptyBins);
 	void		writeBinaryIndex2(ostream &out, const indexTy& index);
 	bool		readBinaryIndex2(string filename, indexTy& index);
-	void* 		memcpy2(void* dest,const void* src, size_t count);
+	void* 	memcpy2(void* dest,const void* src, size_t count);
 
 	// destructor
 	virtual ~HistogramIndex(){

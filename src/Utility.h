@@ -57,7 +57,6 @@ const string SEP = "------------------------------------------------------------
 const string TAB = "    ";
 
 //------------------------------------------------------------------------------------------------------------------------
-const unsigned MAXUNSIGNED = (2 << 31)-1 ;
 
 ///Returns a random number uniformly distributed between 0 and 1
 //inline double random01() {
