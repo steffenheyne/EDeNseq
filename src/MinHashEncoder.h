@@ -126,17 +126,18 @@ public:
 	void 					worker_readFiles(unsigned numWorkers, unsigned chunkSizeFactor);
 	void 					HashSignatureHelper();
 
-//public:
+	//public:
 
 	unsigned 			mHashBitMask;
-
+	unsigned 			mHashBitMask_feature;
+	unsigned 			mHashBitMask_shingle;
 	MinHashEncoder(Parameters* apParameters, Data* apData);
 	virtual	~MinHashEncoder();
 	void		Init(Parameters* apParameters, Data* apData);
 
 	void 					generate_feature_vector(const string& seq, SVector& x);
 	virtual void 		UpdateInverseIndex(vector<unsigned>& aSignature, unsigned& aIndex) {};
-//	virtual void 		finishUpdate(ChunkP& myData) {};
+	//	virtual void 		finishUpdate(ChunkP& myData) {};
 	virtual void 		finishUpdate(ChunkP& myData, unsigned& min, unsigned& max) {};
 	void 					LoadData_Threaded(SeqFilesT& myFiles);
 	unsigned				GetLoadedInstances();
@@ -162,14 +163,14 @@ private:
 
 public:
 	NeighborhoodIndex(Parameters* apParameters, Data* apData)
-	:MinHashEncoder(apParameters,apData)
-	 {
+:MinHashEncoder(apParameters,apData)
+{
 		mInverseIndex.clear();
 		for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k){
 			mInverseIndex.push_back(indexSingleTy());
-	//		mInverseIndex.back().set_empty_key(0);
+			//		mInverseIndex.back().set_empty_key(0);
 		}
-	 }
+}
 
 	indexTy 									mInverseIndex;
 	SigCacheP								mMinHashCache;
@@ -367,10 +368,10 @@ public:
 	MinHashIndex(){};
 	MinHashIndex(int l):mIndexSize(l){
 		mInverseIndex.clear();
-				for (unsigned i = 0; i < mIndexSize; ++i){
-					mInverseIndex.push_back(indexSingleTy());
-					mInverseIndex.back().set_empty_key(0);
-				}
+		for (unsigned i = 0; i < mIndexSize; ++i){
+			mInverseIndex.push_back(indexSingleTy());
+			mInverseIndex.back().set_empty_key(0);
+		}
 	};
 
 };
@@ -384,34 +385,34 @@ public:
 	int BlockSize ;
 
 
-		 typedef uint16_t	element_type;
+	typedef uint16_t	element_type;
 
-	    typedef element_type    value_type;
-	    typedef element_type*   pointer;
-	    typedef element_type&        reference;
-	    typedef const element_type*  const_pointer;
-	    typedef const element_type&  const_reference;
-	    typedef size_t          size_type;
-	    typedef ptrdiff_t       difference_type;
+	typedef element_type    value_type;
+	typedef element_type*   pointer;
+	typedef element_type&        reference;
+	typedef const element_type*  const_pointer;
+	typedef const element_type&  const_reference;
+	typedef size_t          size_type;
+	typedef ptrdiff_t       difference_type;
 
-		pointer arrayP;
+	pointer arrayP;
 
 private:
-  union Slot_ {
-    value_type element;
-    Slot_* next;
-  };
+	union Slot_ {
+		value_type element;
+		Slot_* next;
+	};
 
-  typedef char* data_pointer_;
-  typedef Slot_ slot_type_;
-  typedef Slot_* slot_pointer_;
+	typedef char* data_pointer_;
+	typedef Slot_ slot_type_;
+	typedef Slot_* slot_pointer_;
 
-  slot_pointer_ currentBlock_;
-  slot_pointer_ currentSlot_;
-  slot_pointer_ lastSlot_;
-  slot_pointer_ freeSlots_;
+	slot_pointer_ currentBlock_;
+	slot_pointer_ currentSlot_;
+	slot_pointer_ lastSlot_;
+	slot_pointer_ freeSlots_;
 
-/*  void test2(){
+	/*  void test2(){
 	  void* my;
   	 void* my2;
 	  my = *reinterpret_cast<value_type(*)[length]>(my2);
@@ -420,82 +421,82 @@ private:
 public:
 
 	ArrayMemoryPool(int size, unsigned blocksize): length(size),BlockSize(blocksize),arrayP(new element_type[size])
-	  {
-	  		currentBlock_ = nullptr;
-	  		    currentSlot_ = nullptr;
-	  		    lastSlot_ = nullptr;
-	  		    freeSlots_ = nullptr;
-	  	};
+{
+		currentBlock_ = nullptr;
+		currentSlot_ = nullptr;
+		lastSlot_ = nullptr;
+		freeSlots_ = nullptr;
+};
 
 
-  inline size_type padPointer(data_pointer_ p, size_type align) const
-  {
-    uintptr_t result = reinterpret_cast<uintptr_t>(p);
-    return ((align - result) % align);
-  };
+	inline size_type padPointer(data_pointer_ p, size_type align) const
+	{
+		uintptr_t result = reinterpret_cast<uintptr_t>(p);
+		return ((align - result) % align);
+	};
 
 
-  void allocateBlock()
-  {
-    // Allocate space for the new block and store a pointer to the previous one
-    data_pointer_ newBlock = reinterpret_cast<data_pointer_>(operator new(BlockSize));
-    reinterpret_cast<slot_pointer_>(newBlock)->next = currentBlock_;
-    currentBlock_ = reinterpret_cast<slot_pointer_>(newBlock);
+	void allocateBlock()
+	{
+		// Allocate space for the new block and store a pointer to the previous one
+		data_pointer_ newBlock = reinterpret_cast<data_pointer_>(operator new(BlockSize));
+		reinterpret_cast<slot_pointer_>(newBlock)->next = currentBlock_;
+		currentBlock_ = reinterpret_cast<slot_pointer_>(newBlock);
 
-    // Pad block body to staisfy the alignment requirements for elements
-    data_pointer_ body = newBlock + sizeof(slot_pointer_);
-    size_type bodyPadding = padPointer(body, alignof(slot_type_));
-    currentSlot_ = reinterpret_cast<slot_pointer_>(body + bodyPadding);
-    lastSlot_ = reinterpret_cast<slot_pointer_>
-                (newBlock + BlockSize - sizeof(slot_type_) + 1);
-  };
-
-
-  inline pointer allocate()
-  {
-    if (freeSlots_ != nullptr) {
-      pointer result = reinterpret_cast<pointer>(freeSlots_);
-      freeSlots_ = freeSlots_->next;
-      return result;
-    }
-    else {
-      if (currentSlot_ >= lastSlot_)
-        allocateBlock();
-      return reinterpret_cast<pointer>(currentSlot_++);
-    }
-  };
+		// Pad block body to staisfy the alignment requirements for elements
+		data_pointer_ body = newBlock + sizeof(slot_pointer_);
+		size_type bodyPadding = padPointer(body, alignof(slot_type_));
+		currentSlot_ = reinterpret_cast<slot_pointer_>(body + bodyPadding);
+		lastSlot_ = reinterpret_cast<slot_pointer_>
+		(newBlock + BlockSize - sizeof(slot_type_) + 1);
+	};
 
 
-
-  inline void deallocate(pointer p)
-  {
-    if (p != nullptr) {
-      reinterpret_cast<slot_pointer_>(p)->next = freeSlots_;
-      freeSlots_ = reinterpret_cast<slot_pointer_>(p);
-    }
-  };
-
-  inline void construct(value_type* p)
-  {
-    new (p) value_type();
-  };
-
-  inline pointer newElement()
-  {
-    pointer result = allocate();
-    construct(result);
-    return result;
-  };
+	inline pointer allocate()
+	{
+		if (freeSlots_ != nullptr) {
+			pointer result = reinterpret_cast<pointer>(freeSlots_);
+			freeSlots_ = freeSlots_->next;
+			return result;
+		}
+		else {
+			if (currentSlot_ >= lastSlot_)
+				allocateBlock();
+			return reinterpret_cast<pointer>(currentSlot_++);
+		}
+	};
 
 
 
-  inline void deleteElement(pointer p)
-  {
-    if (p != nullptr) {
-    	//p->~value_type();
-      deallocate(p);
-    }
-  };
+	inline void deallocate(pointer p)
+	{
+		if (p != nullptr) {
+			reinterpret_cast<slot_pointer_>(p)->next = freeSlots_;
+			freeSlots_ = reinterpret_cast<slot_pointer_>(p);
+		}
+	};
+
+	inline void construct(value_type* p)
+	{
+		new (p) value_type();
+	};
+
+	inline pointer newElement()
+	{
+		pointer result = allocate();
+		construct(result);
+		return result;
+	};
+
+
+
+	inline void deleteElement(pointer p)
+	{
+		if (p != nullptr) {
+			//p->~value_type();
+			deallocate(p);
+		}
+	};
 
 
 

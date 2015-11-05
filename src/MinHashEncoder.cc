@@ -78,7 +78,7 @@ inline void  MinHashEncoder::generate_feature_vector(const string& seq, SVector&
 
 	//create neighborhood features
 	for (unsigned start = 0; start < size; ++start)
-		mFeatureCache[start] = HashFuncNSPDK(seq, start, mMinRadius, mRadius, mHashBitMask);
+		mFeatureCache[start] = HashFuncNSPDK(seq, start, mMinRadius, mRadius, MAXUNSIGNED);
 	//cout << mFeatureCache[20][3] << endl;
 	vector<unsigned> endpoint_list(3);
 	for (unsigned r = mMinRadius; r <= mRadius; r++) {
@@ -90,7 +90,7 @@ inline void  MinHashEncoder::generate_feature_vector(const string& seq, SVector&
 				endpoint_list[2] = mFeatureCache[start + d][r];
 				//cout << start << " " << start+d << "   " << endpoint_list[2] << "  " << endpoint_list[3]<< endl;
 				//  0 1 2 3 4   5 6 7 8 9   r=4 d=5
-				unsigned code = HashFunc(endpoint_list, mHashBitMask);
+				unsigned code = HashFunc(endpoint_list, MAXUNSIGNED);
 				x.coeffRef(code) = 1;
 			}
 		}
@@ -528,11 +528,18 @@ void MinHashEncoder::HashSignatureHelper() {
 	numHashFunctionsFull = mpParameters->mNumHashFunctions * mpParameters->mNumHashShingles;
 	sub_hash_range = numHashFunctionsFull / mpParameters->mNumRepeatsHashFunction;
 
+	if (mpParameters->mNumHashShingles == 1){
+		mHashBitMask_feature = mHashBitMask;
+	} else {
+		mHashBitMask_feature = MAXUNSIGNED;
+		mHashBitMask_shingle = mHashBitMask;
+	}
+
 	bounds.resize(sub_hash_range+1);
 	for (unsigned kk = 0; kk < sub_hash_range; ++kk) { //for all k values
-		bounds[kk] = mHashBitMask / sub_hash_range * kk;
+		bounds[kk] = mHashBitMask_feature / sub_hash_range * kk;
 	}
-	bounds[sub_hash_range] = mHashBitMask;
+	bounds[sub_hash_range] = mHashBitMask_feature;
 }
 
 void MinHashEncoder::ComputeHashSignature(const SVector& aX, Signature& signature, Signature* tmpSig) {
@@ -556,7 +563,7 @@ void MinHashEncoder::ComputeHashSignature(const SVector& aX, Signature& signatur
 	for (SVector::InnerIterator it(aX); it; ++it) {
 		//for each sub_hash
 		for (unsigned l = 1; l <= mpParameters->mNumRepeatsHashFunction; ++l) {
-			unsigned key = IntHash(it.index(), mHashBitMask, l);
+			unsigned key = IntHash(it.index(), mHashBitMask_feature, l);
 			for (unsigned kk = 0; kk < sub_hash_range; ++kk) { //for all k values
 				if (key >= bounds[kk] && key < bounds[kk+1]) { //if we are in the k-th slot
 					unsigned signature_feature = kk + (l - 1) * sub_hash_range;
@@ -573,7 +580,7 @@ void MinHashEncoder::ComputeHashSignature(const SVector& aX, Signature& signatur
 	if (mpParameters->mNumHashShingles > 1 ) {
 		vector<unsigned> signatureFinal(mpParameters->mNumHashFunctions);
 		for (unsigned i=0;i<mpParameters->mNumHashFunctions;i++){
-			signatureFinal[i] = HashFunc(signatureP->begin()+(i*mpParameters->mNumHashShingles),signatureP->begin()+(i*mpParameters->mNumHashShingles+mpParameters->mNumHashShingles),mHashBitMask);
+			signatureFinal[i] = HashFunc(signatureP->begin()+(i*mpParameters->mNumHashShingles),signatureP->begin()+(i*mpParameters->mNumHashShingles+mpParameters->mNumHashShingles),mHashBitMask_shingle);
 		}
 		signature.swap(signatureFinal);
 		//	delete signatureP;
