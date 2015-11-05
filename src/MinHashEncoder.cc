@@ -46,7 +46,7 @@ void MinHashEncoder::Init(Parameters* apParameters, Data* apData) {
 
 }
 
-inline vector<unsigned> MinHashEncoder::HashFuncNSPDK(const string& aString, unsigned& aStart, unsigned& aMinRadius, unsigned& aMaxRadius, unsigned& aBitMask) {
+inline vector<unsigned> MinHashEncoder::HashFuncNSPDK(const string& aString, unsigned& aStart, unsigned& aMinRadius, unsigned& aMaxRadius, unsigned aBitMask) {
 	unsigned int hash = 0xAAAAAAAA;
 	unsigned effective_end = min((unsigned) aString.size() - 1, aStart + aMaxRadius);
 	unsigned radius = 0;
@@ -79,7 +79,7 @@ inline void  MinHashEncoder::generate_feature_vector(const string& seq, SVector&
 	//create neighborhood features
 	for (unsigned start = 0; start < size; ++start)
 		mFeatureCache[start] = HashFuncNSPDK(seq, start, mMinRadius, mRadius, mHashBitMask);
-
+	//cout << mFeatureCache[20][3] << endl;
 	vector<unsigned> endpoint_list(3);
 	for (unsigned r = mMinRadius; r <= mRadius; r++) {
 		//	endpoint_list[0] = r;
@@ -97,7 +97,7 @@ inline void  MinHashEncoder::generate_feature_vector(const string& seq, SVector&
 	}
 }
 
-void MinHashEncoder::worker_readFiles(unsigned numWorkers){
+void MinHashEncoder::worker_readFiles(unsigned numWorkers, unsigned chunkSizeFactor){
 
 	while (!done){
 
@@ -132,7 +132,7 @@ void MinHashEncoder::worker_readFiles(unsigned numWorkers){
 
 			while (!fin.eof()) {
 
-				unsigned maxB = max(1000,(int)log2((double)mSignatureCounter)^2*50);
+				unsigned maxB = max((uint)1000,(uint)log2((double)mSignatureCounter)^2*chunkSizeFactor);
 				unsigned currBuff = rand()%(maxB*4	 - maxB + 1) + maxB; // curr chunk size
 				unsigned i = 0;			// current fragment in currBuff
 				bool lastSeqGr = false; // indicates that we have the last fragment from current seq, used to get all fragments from current seq into current chunk
@@ -295,21 +295,18 @@ void MinHashEncoder::worker_readFiles(unsigned numWorkers){
 					continue;
 
 				graph_queue[curr_q].push(myChunkP);
-
-				//curr_q++;
-
-				if (i%2*numWorkers<=1) curr_q++;
-				if (curr_q>=numWorkers) curr_q = 0;
-				//cout << i << " " << curr_q << endl;
+				//cout << currBuff << endl;
 				unsigned fillstatus = MAXUNSIGNED;
 				for (unsigned i=0; i < graph_queue.size(); ++i){
-					if ((uint)graph_queue[i].size() < fillstatus)
+					if ((uint)graph_queue[i].size() < fillstatus){
 						fillstatus = graph_queue[i].size();
+						curr_q = i;
+					}
 				}
-				//cout << "fills "<< fillstatus << endl;
-				if (curr_q==numWorkers-1 && fillstatus>graph_queue.size()*3){
+
+				if (fillstatus>min((uint)20,(uint)(graph_queue.size()*2))){
 					unique_lock<mutex> lk(mut1);
-					cv1.wait(lk,[&]{fillstatus = MAXUNSIGNED;for (uint i=0; i<graph_queue.size(); ++i){ if ((uint)graph_queue[i].size()<fillstatus) { fillstatus = graph_queue[i].size();curr_q = i;}}; if ((done) || (fillstatus<graph_queue.size())) return true; else return false;});
+					cv1.wait(lk,[&]{fillstatus = MAXUNSIGNED;for (uint i=0; i<graph_queue.size(); ++i){ if ((uint)graph_queue[i].size()<fillstatus) { fillstatus = graph_queue[i].size();}}; if ((done) || (fillstatus<(uint)max((uint)10,(uint)graph_queue.size()))) return true; else return false;});
 					lk.unlock();
 				}
 
@@ -328,21 +325,29 @@ void MinHashEncoder::worker_Graph2Signature(int numWorkers, unsigned id){
 	while (!done){
 
 		ChunkP myData;
+		vector<ChunkP> myQ;
 		unique_lock<mutex> lk(mut1);
-		cv1.wait(lk,[&]{if ( (done) ||  (graph_queue[id].try_pop( (myData) )) ) return true; else return false;});
+//		cv1.wait(lk,[&]{if ( (done) ||  (graph_queue[id].try_pop( (myData) )) ) return true; else return false;});
+		while (graph_queue[id].size()>=1){
+			graph_queue[id].try_pop(myData);
+			myQ.push_back(myData);
+		}
 		lk.unlock();
-		if (!done && myData->size()>0) {
+		while (!done && myQ.size()){
+			myData = myQ.back();
+			myQ.pop_back();
+//		if (!done && myData->size()>0) {
 			//cout << "  graph2sig thread got chunk " << myData->size() << endl;
 			for (unsigned j = 0; j < myData->size(); j++) {
 				generate_feature_vector((*myData)[j].seq, (*myData)[j].svec);
 				ComputeHashSignature((*myData)[j].svec,(*myData)[j].sig,tmpSig);
 			}
+			unique_lock<mutex> lk(mut2);
 			sig_queue.push(myData);
 			if (sig_queue.size()>=numWorkers*10){
-				unique_lock<mutex> lk(mut2);
 				cv2.wait(lk,[&]{if ((done) || (sig_queue.size()<=numWorkers*3)) return true; else return false;});
-				lk.unlock();
 			}
+			lk.unlock();
 		}
 	}
 	delete tmpSig;
@@ -359,13 +364,14 @@ void MinHashEncoder::finisher(){
 		lk.unlock();
 
 		if (!done  && myData->size()>0) {
-
+			unique_lock<mutex> lk(mut3);
 			for (unsigned i=0;i<index_queue.size();i++){
 				index_queue[i].push(myData);
 			}
-
+			lk.unlock();
 			uint fillstatus=0;
 			for (uint i=0; i<index_queue.size(); ++i){ fillstatus += index_queue[i].size();}
+
 			if (fillstatus>index_queue.size()*10){
 				unique_lock<mutex> lk(mut3);
 				cv3.wait(lk,[&]{fillstatus = 0;for (uint i=0; i<index_queue.size(); ++i){ fillstatus += index_queue[i].size();} if ((done) || (fillstatus<index_queue.size()*5)) return true; else return false;});
@@ -393,13 +399,25 @@ void MinHashEncoder::worker_IndexUpdate(unsigned id, unsigned min, unsigned max)
 				mSignatureCounter += myData->size();
 				double elap = progress_bar.getElapsed()/1000;
 				cout.setf(ios::fixed);
-				cout << "\r" <<  std::setprecision(1) << elap << " sec elapsed    Finised numSeqs=" << std::setprecision(0) << setw(10);
-				cout << mSequenceCounter  << "("<<mSequenceCounter/(elap) <<" seq/s)  signatures=" << setw(10);
+				cout << "\r" <<  std::setprecision(1) << elap << " sec elapsed  numSeqs=" << std::setprecision(0) << setw(10);
+				cout << mSequenceCounter  << "("<<mSequenceCounter/(elap) <<" seq/s)  sign=" << setw(10);
 				cout << mSignatureCounter << "("<<(double)mSignatureCounter/((elap)) <<" sig/s - "<< (double)(mSignatureCounter/graph_queue.size())/((elap)) << " per thread) inst=";
-				cout << mInstanceCounter << " graphQueue=" << graph_queue[0].size() << " sigQueue=" << sig_queue.size() << " SigUpdateCounter  " << mSignatureUpdateCounter << " ";
+				cout << mInstanceCounter << " graphQueue=";
+				uint avg = 0;
+				for (uint i=0; i<graph_queue.size(); ++i){
+					//cout << graph_queue[i].size() << " ";
+					avg += graph_queue[i].size();
+				};
+				cout << avg/graph_queue.size();
+				cout << " sigQueue=" << sig_queue.size() << " indexQueue=";
+				avg = 0;
 				for (uint i=0; i<index_queue.size(); ++i){
-					cout << index_queue[i].size() << " ";
-				}
+					//cout << index_queue[i].size() << " ";
+					avg += index_queue[i].size();
+					}
+				cout << avg/index_queue.size();
+				cout << " SigUC " << mSignatureUpdateCounter << " ";
+
 			}
 		}
 	}
@@ -462,12 +480,14 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 	}
 
 
+	threads.push_back( std::thread(&MinHashEncoder::worker_readFiles,this,graphWorkers, 300));
+	std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
 	threads.push_back( std::thread(&MinHashEncoder::finisher,this));
 
 	for (int i=0;i<graphWorkers;i++){
 		threads.push_back( std::thread(&MinHashEncoder::worker_Graph2Signature,this,graphWorkers,i));
 	}
-	threads.push_back( std::thread(&MinHashEncoder::worker_readFiles,this,graphWorkers));
 
 	{
 		join_threads joiner(threads);

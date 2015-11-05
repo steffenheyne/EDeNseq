@@ -122,8 +122,8 @@ public:
 
 	void					worker_Graph2Signature(int numWorkers,unsigned id);
 	void 					finisher();
-	vector<unsigned>		HashFuncNSPDK(const string& aString, unsigned& aStart, unsigned& aMinRadius, unsigned& aMaxRadius, unsigned& aBitMask);
-	void 					worker_readFiles(unsigned numWorkers);
+	vector<unsigned>		HashFuncNSPDK(const string& aString, unsigned& aStart, unsigned& aMinRadius, unsigned& aMaxRadius, unsigned aBitMask);
+	void 					worker_readFiles(unsigned numWorkers, unsigned chunkSizeFactor);
 	void 					HashSignatureHelper();
 
 //public:
@@ -154,8 +154,8 @@ private:
 	//typedef vector<binKeyTy>	indexBinTy;
 	typedef binKeyTy* indexBinTy;
 	//	typedef std::tr1::unordered_map<unsigned,indexBinTy> indexSingleTy;
-	//typedef google::sparse_hash_map<unsigned, indexBinTy> indexSingleTy;
-	typedef google::dense_hash_map<unsigned, indexBinTy> indexSingleTy;
+	typedef google::sparse_hash_map<unsigned, indexBinTy> indexSingleTy;
+	//typedef google::dense_hash_map<unsigned, indexBinTy> indexSingleTy;
 	typedef vector<indexSingleTy> indexTy;
 
 	const binKeyTy MAXBINKEY = std::numeric_limits<binKeyTy>::max();

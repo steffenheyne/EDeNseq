@@ -181,14 +181,16 @@ void SeqClassifyManager::finisher_Results(ogzstream* fout_res){
 			}
 			double elap = progress_bar.getElapsed()/1000;
 			cout.setf(ios::fixed);
-			cout << "\r" <<  std::setprecision(1) << elap << " sec elapsed    Finised numSeqs=" << std::setprecision(0) << setw(10);
+			cout << "\r" <<  std::setprecision(1) << elap << " sec elapsed   Finished numSeqs=" << std::setprecision(0) << setw(10);
 			cout << mNumSequences  << "("<<mNumSequences/(elap) <<" seq/s)  signatures=" << setw(10);
 			cout << mResultCounter << "("<<(double)mResultCounter/((elap)) <<" sig/s - "<<(double)mResultCounter/elap/mpParameters->mNumThreads <<" per thread)  inst=";
 			cout << mInstanceCounter << " resQueue=" << res_queue.size() << " graphQueue=";
+			uint avg = 0;
 			for (uint i=0; i<graph_queue.size(); ++i){
-				cout << graph_queue[i].size() << " ";
+				//cout << graph_queue[i].size() << " ";
+				avg += graph_queue[i].size();
 			};
-			cout << "       ";
+			cout << avg/graph_queue.size() << "   ";
 		}
 	}
 	progress_bar.PrintElapsed();
@@ -232,6 +234,10 @@ void SeqClassifyManager::Classify_Signatures(SeqFilesT& myFiles){
 	vector<std::thread> threads;
 	graph_queue.resize(graphWorkers);
 
+	threads.push_back( std::thread(&MinHashEncoder::worker_readFiles,this,graphWorkers,500));
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
 	threads.push_back( std::thread(&SeqClassifyManager::finisher_Results,this,myFiles[0]->out_results_fh));
 
 	for (int i=0;i<graphWorkers;i++){
@@ -239,7 +245,7 @@ void SeqClassifyManager::Classify_Signatures(SeqFilesT& myFiles){
 		threads.push_back( std::thread(&SeqClassifyManager::worker_Classify,this,graphWorkers,i));
 	}
 
-	threads.push_back( std::thread(&MinHashEncoder::worker_readFiles,this,graphWorkers));
+
 
 	{
 		join_threads joiner(threads);
