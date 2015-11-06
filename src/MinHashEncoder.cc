@@ -813,6 +813,10 @@ void HistogramIndex::InitInverseIndex() {
 	mMemPool_4.resize(mpParameters->mNumHashFunctions);
 	mMemPool_5.resize(mpParameters->mNumHashFunctions);
 	mMemPool_6.resize(mpParameters->mNumHashFunctions);
+	mMemPool_7.resize(mpParameters->mNumHashFunctions);
+	mMemPool_8.resize(mpParameters->mNumHashFunctions);
+	mMemPool_9.resize(mpParameters->mNumHashFunctions);
+	mMemPool_10.resize(mpParameters->mNumHashFunctions);
 
 
 	//mp.resize(mpParameters->mNumHashFunctions);
@@ -825,6 +829,10 @@ void HistogramIndex::InitInverseIndex() {
 		mMemPool_4[k] = new MemoryPool<newIndexBin_4,mMemPool_BlockSize>();
 		mMemPool_5[k] = new MemoryPool<newIndexBin_5,mMemPool_BlockSize>();
 		mMemPool_6[k] = new MemoryPool<newIndexBin_6,mMemPool_BlockSize>();
+		mMemPool_7[k] = new MemoryPool<newIndexBin_7,mMemPool_BlockSize>();
+		mMemPool_8[k] = new MemoryPool<newIndexBin_8,mMemPool_BlockSize>();
+		mMemPool_9[k] = new MemoryPool<newIndexBin_9,mMemPool_BlockSize>();
+		mMemPool_10[k] = new MemoryPool<newIndexBin_10,mMemPool_BlockSize>();
 		//	mp[k] = mpool_init(2*sizeof(binKeyTy), 100*sizeof(binKeyTy));
 	}
 }
