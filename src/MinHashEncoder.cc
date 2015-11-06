@@ -814,14 +814,18 @@ void HistogramIndex::InitInverseIndex() {
 	mMemPool_5.resize(mpParameters->mNumHashFunctions);
 	mMemPool_6.resize(mpParameters->mNumHashFunctions);
 
+
+	//mp.resize(mpParameters->mNumHashFunctions);
 	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k){
 		mInverseIndex[k].max_load_factor(0.999);
-		mInverseIndex[k].set_empty_key(0);
+		mInverseIndex[k].rehash(135000000);
+		//	mInverseIndex[k].set_empty_key(0);
 		mMemPool_2[k] = new MemoryPool<newIndexBin_2,mMemPool_BlockSize>();
 		mMemPool_3[k] = new MemoryPool<newIndexBin_3,mMemPool_BlockSize>();
 		mMemPool_4[k] = new MemoryPool<newIndexBin_4,mMemPool_BlockSize>();
 		mMemPool_5[k] = new MemoryPool<newIndexBin_5,mMemPool_BlockSize>();
 		mMemPool_6[k] = new MemoryPool<newIndexBin_6,mMemPool_BlockSize>();
+		//	mp[k] = mpool_init(2*sizeof(binKeyTy), 100*sizeof(binKeyTy));
 	}
 }
 
@@ -852,6 +856,7 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 
 				binKeyTy* foo;
 				foo = reinterpret_cast<binKeyTy(*)>(mMemPool_2[k]->newElement());
+				//foo = (binKeyTy*)mpool_alloc(mp[k], 2*sizeof(binKeyTy));
 				foo[1] = aIndexT;
 				foo[0] = 1; //index of last element is stored at idx[0]
 
@@ -875,6 +880,8 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 						binKeyTy newSize = (myValue[0])+1;
 						binKeyTy * fooNew;
 						//fooNew = new binKeyTy[newSize+1];
+
+						//	fooNew = (binKeyTy*)mpool_alloc(mp[k], newSize * sizeof(binKeyTy));
 
 						switch (newSize){
 						case 2:
@@ -900,6 +907,8 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 						memcpy(&fooNew[i+2],&myValue[i+1],(myValue[0]-i)*sizeof(binKeyTy));
 						//memcpy2(&fooNew[i+2],&myValue[i+1],(myValue[0]-i));
 						fooNew[0] = newSize;
+
+						//						mpool_repool(mp[k], mInverseIndex[k][key], myValue[0]*sizeof(binKeyTy));
 
 						switch (myValue[0]) {
 						case 1:
@@ -1066,8 +1075,8 @@ bool HistogramIndex::readBinaryIndex2(string filename, indexTy &index){
 			fin.setstate(std::ios::badbit);
 		if (!fin.good())
 			return false;
-		index[hashFunc].rehash(numBins);
-		cout << "sub index "<< hashFunc+1 << " : "<< flush;
+		//index[hashFunc].rehash(numBins);
+		cout << "sub index "<< hashFunc+1 << " (keys="<< numBins << ") : "<< flush;
 		for (unsigned  bin = 0; bin < numBins; bin++){
 			if (bin%(numBins/100)==0){
 				cout << "." << flush;
@@ -1098,8 +1107,24 @@ bool HistogramIndex::readBinaryIndex2(string filename, indexTy &index){
 			case 5:
 				tmp = reinterpret_cast<binKeyTy(*)>(mMemPool_6[hashFunc]->newElement());
 				break;
+			case 6:
+				tmp = reinterpret_cast<binKeyTy(*)>(mMemPool_7[hashFunc]->newElement());
+				break;
+			case 7:
+				tmp = reinterpret_cast<binKeyTy(*)>(mMemPool_8[hashFunc]->newElement());
+				break;
+			case 8:
+				tmp = reinterpret_cast<binKeyTy(*)>(mMemPool_9[hashFunc]->newElement());
+				break;
+			case 9:
+				tmp = reinterpret_cast<binKeyTy(*)>(mMemPool_10[hashFunc]->newElement());
+				break;
 			default:
 				tmp = new binKeyTy[numBinEntries+1];
+				//		if ((numBinEntries+1)<=100){
+				//			tmp = (binKeyTy*)mpool_alloc(mp[hashFunc], (numBinEntries+1) * sizeof(binKeyTy));
+				//		} else
+				//			tmp = new binKeyTy[numBinEntries+1];
 				break;
 			}
 			//cout << "new bin " << binId << " " << numBinEntries << " ";

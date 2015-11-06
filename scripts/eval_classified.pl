@@ -77,8 +77,8 @@ my $numNotEval = 0;
   my $targetIdx = $feature2idx{$targetFeature};
  
   $num++;  
-  if ($num%2000000 == 0){
-    #last;
+  if ($num%3000000 == 0){
+    last;
   }
   
   if (!exists $counts{$targetFeature}){

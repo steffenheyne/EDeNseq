@@ -15,6 +15,8 @@
 
 #include "MemoryPool.h"
 
+#include "mpool.h"
+
 using namespace std;
 
 class MinHashEncoder {
@@ -231,8 +233,8 @@ public:
 	// we use one of these hash maps, the interface is quite similar to each other
 	// should test space an speed
 	//typedef std::tr1::unordered_map<unsigned, indexBinTy> indexSingleTy;
-	typedef google::dense_hash_map<unsigned, indexBinTy, hashFunc,hashFunc> indexSingleTy;
-	//typedef google::sparse_hash_map<unsigned, indexBinTy, hashFunc, hashFunc> indexSingleTy;
+	//typedef google::dense_hash_map<unsigned, indexBinTy, hashFunc,hashFunc> indexSingleTy;
+	typedef google::sparse_hash_map<unsigned, indexBinTy, hashFunc, hashFunc> indexSingleTy;
 	//typedef google::sparse_hash_map<unsigned, indexBinTy> indexSingleTy;
 
 	// the index
@@ -245,12 +247,17 @@ public:
 	typedef binKeyTy newIndexBin_4[4];
 	typedef binKeyTy newIndexBin_5[5];
 	typedef binKeyTy newIndexBin_6[6];
+	typedef binKeyTy newIndexBin_7[7];
+	typedef binKeyTy newIndexBin_8[8];
+	typedef binKeyTy newIndexBin_9[9];
+	typedef binKeyTy newIndexBin_10[10];
 
 	typedef valarray<double> histogramT;
 
 	//const static unsigned mMemPool_BlockSize = 720*4096; // (2*3*4*5*6*4096)
 	//const static unsigned mMemPool_BlockSize = 491520; // kgv(2*3*4*5*6)=60*4096*2
-	const static unsigned mMemPool_BlockSize = 1966080; // kgv(2*3*4*5*6)=60*4096*2
+	//const static unsigned mMemPool_BlockSize = 1966080; // kgv(2*3*4*5*6)=60*4096*2
+	const static unsigned mMemPool_BlockSize = 1512000; // kgv(2*3*4*5*6)=60*4096*2
 	//const static unsigned mMemPool_BlockSize = 443530; // (2*3*4*5*6*4096)
 	//const static unsigned mMemPool_maxEnt = 2;
 
@@ -263,6 +270,13 @@ public:
 	vector<MemoryPool<newIndexBin_4,mMemPool_BlockSize>*>  mMemPool_4;
 	vector<MemoryPool<newIndexBin_5,mMemPool_BlockSize>*>  mMemPool_5;
 	vector<MemoryPool<newIndexBin_6,mMemPool_BlockSize>*>  mMemPool_6;
+	vector<MemoryPool<newIndexBin_7,mMemPool_BlockSize>*>  mMemPool_7;
+	vector<MemoryPool<newIndexBin_8,mMemPool_BlockSize>*>  mMemPool_8;
+	vector<MemoryPool<newIndexBin_9,mMemPool_BlockSize>*>  mMemPool_9;
+	vector<MemoryPool<newIndexBin_10,mMemPool_BlockSize>*>  mMemPool_10;
+//	vector<mpool*> mp;
+
+
 	binKeyTy mHistogramSize;
 	indexTy mInverseIndex;
 
@@ -286,7 +300,8 @@ public:
 
 	// destructor
 	virtual ~HistogramIndex(){
-		uint k=0;
+
+				uint k=0;
 		for (typename indexTy::const_iterator it = mInverseIndex.begin(); it!= mInverseIndex.end(); it++){
 			for (typename indexSingleTy::const_iterator itBin = it->begin(); itBin!=it->end(); itBin++){
 				switch (itBin->second[0]){
@@ -310,6 +325,7 @@ public:
 					break;
 				}
 			}
+		//	mpool_free(mp[k]);
 			k++;
 		}
 	};
