@@ -15,7 +15,8 @@
 
 #include "MemoryPool.h"
 
-#include "mpool.h"
+//#include "mpool.h"
+#include "cpp-btree-1.0.1/btree_map.h"
 
 using namespace std;
 
@@ -236,6 +237,8 @@ public:
 	//typedef google::dense_hash_map<unsigned, indexBinTy, hashFunc,hashFunc> indexSingleTy;
 	typedef google::sparse_hash_map<unsigned, indexBinTy, hashFunc, hashFunc> indexSingleTy;
 	//typedef google::sparse_hash_map<unsigned, indexBinTy> indexSingleTy;
+	typedef btree::btree_map<uint32_t, uint16_t*> MyMap;
+	vector<MyMap*> MyMapV;
 
 	// the index
 	typedef vector<indexSingleTy> indexTy;
@@ -376,6 +379,34 @@ public:
 
 };
 
+template <typename T>
+class IndexMemoryPool {
+
+	typedef T newIndexBin_2[2];
+	typedef T newIndexBin_3[3];
+	typedef T newIndexBin_4[4];
+	typedef T newIndexBin_5[5];
+	typedef T newIndexBin_6[6];
+	typedef T newIndexBin_7[7];
+	typedef T newIndexBin_8[8];
+	typedef T newIndexBin_9[9];
+	typedef T newIndexBin_10[10];
+
+	const static unsigned mMemPool_BlockSize = 1512000;
+
+	vector<MemoryPool<newIndexBin_2,mMemPool_BlockSize>*>  mMemPool_2;
+	vector<MemoryPool<newIndexBin_3,mMemPool_BlockSize>*>  mMemPool_3;
+	vector<MemoryPool<newIndexBin_4,mMemPool_BlockSize>*>  mMemPool_4;
+	vector<MemoryPool<newIndexBin_5,mMemPool_BlockSize>*>  mMemPool_5;
+	vector<MemoryPool<newIndexBin_6,mMemPool_BlockSize>*>  mMemPool_6;
+	vector<MemoryPool<newIndexBin_7,mMemPool_BlockSize>*>  mMemPool_7;
+	vector<MemoryPool<newIndexBin_8,mMemPool_BlockSize>*>  mMemPool_8;
+	vector<MemoryPool<newIndexBin_9,mMemPool_BlockSize>*>  mMemPool_9;
+	vector<MemoryPool<newIndexBin_10,mMemPool_BlockSize>*>  mMemPool_10;
+
+
+}
+;
 
 class ArrayMemoryPool {
 

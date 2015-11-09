@@ -820,9 +820,10 @@ void HistogramIndex::InitInverseIndex() {
 
 
 	//mp.resize(mpParameters->mNumHashFunctions);
+	MyMapV.resize(mpParameters->mNumHashFunctions,new MyMap());
 	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k){
 		mInverseIndex[k].max_load_factor(0.999);
-		mInverseIndex[k].rehash(135000000);
+	//	mInverseIndex[k].rehash(135000000);
 		//	mInverseIndex[k].set_empty_key(0);
 		mMemPool_2[k] = new MemoryPool<newIndexBin_2,mMemPool_BlockSize>();
 		mMemPool_3[k] = new MemoryPool<newIndexBin_3,mMemPool_BlockSize>();
@@ -860,7 +861,8 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 	for (unsigned k = min; k <= max; ++k) { //for every hash value
 		const unsigned& key = aSignature[k];
 		if (key != MAXUNSIGNED && key != 0) { //if key is equal to markers for empty bins then skip insertion instance in data structure
-			if (mInverseIndex[k].count(key)==0) { //if this is the first time that an instance exhibits that specific value for that hash function, then store for the first time the reference to that instance
+		//	if (mInverseIndex[k].count(key)==0) { //if this is the first time that an instance exhibits that specific value for that hash function, then store for the first time the reference to that instance
+			if (MyMapV[k]->count(key)==0) { //if this is the first time that an instance exhibits that specific value for that hash function, then store for the first time the reference to that instance
 
 				binKeyTy* foo;
 				foo = reinterpret_cast<binKeyTy(*)>(mMemPool_2[k]->newElement());
@@ -868,12 +870,15 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 				foo[1] = aIndexT;
 				foo[0] = 1; //index of last element is stored at idx[0]
 
-				mInverseIndex[k][key] = foo;
+				(*MyMapV[k])[key] = foo;
+
+			//	mInverseIndex[k][key] = foo;
 				numKeys++; // just for bin statistics
 				//	} else if (mInverseIndex[k][key][mInverseIndex[k][key][0]] != aIndexT){
 			} else {
 
-				binKeyTy*& myValue = mInverseIndex[k][key];
+		//		binKeyTy*& myValue = mInverseIndex[k][key];
+				binKeyTy*& myValue = (*MyMapV[k])[key];
 
 				if (myValue[myValue[0]] != aIndexT){
 
@@ -938,8 +943,8 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 							delete[] myValue;
 							break;
 						}
-
-						mInverseIndex[k][key] = fooNew;
+						(*MyMapV[k])[key] = fooNew;
+					//	mInverseIndex[k][key] = fooNew;
 					}
 					//				cout << "bin " << key << " k " <<  k << " aIdx "<< aIndex << "\t";
 					//				for (unsigned j=0; j<=mInverseIndex[k][key][0];j++){
@@ -959,11 +964,13 @@ void HistogramIndex::ComputeHistogram(const vector<unsigned>& aSignature, std::v
 	hist *= 0;
 	emptyBins = 0;
 	for (unsigned k = 0; k < aSignature.size(); ++k) {
-		if (mInverseIndex[k].count(aSignature[k])!=0) {
+	//	if (mInverseIndex[k].count(aSignature[k])!=0) {
+		if ((*MyMapV[k]).count(aSignature[k])!=0) {
 
 			std::valarray<double> t(0.0, hist.size());
 
-			indexBinTy& myValue = mInverseIndex[k][aSignature[k]];
+			//indexBinTy& myValue = mInverseIndex[k][aSignature[k]];
+			indexBinTy& myValue = (*MyMapV[k])[aSignature[k]];
 
 			//		if (myValue[0]<=1){
 			for (unsigned i=1;i<=myValue[0];i++){
