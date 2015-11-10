@@ -16,7 +16,7 @@
 #include "MemoryPool.h"
 
 //#include "mpool.h"
-#include "cpp-btree-1.0.1/btree_map.h"
+#include "cpp-btree-1.0.1/safe_btree_map.h"
 
 using namespace std;
 
@@ -237,8 +237,8 @@ public:
 	//typedef google::dense_hash_map<unsigned, indexBinTy, hashFunc,hashFunc> indexSingleTy;
 	typedef google::sparse_hash_map<unsigned, indexBinTy, hashFunc, hashFunc> indexSingleTy;
 	//typedef google::sparse_hash_map<unsigned, indexBinTy> indexSingleTy;
-	typedef btree::btree_map<uint32_t, uint16_t*> MyMap;
-	vector<MyMap*> MyMapV;
+	typedef btree::btree_map<unsigned, indexBinTy> MyMap;
+	vector<MyMap> MyMapV;
 
 	// the index
 	typedef vector<indexSingleTy> indexTy;

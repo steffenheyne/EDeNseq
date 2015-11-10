@@ -37,7 +37,7 @@ namespace btree {
 template <typename Key, typename Value,
           typename Compare = std::less<Key>,
           typename Alloc = std::allocator<std::pair<const Key, Value> >,
-          int TargetNodeSize = 256>
+          int TargetNodeSize = 2048>
 class btree_map : public btree_map_container<
   btree<btree_map_params<Key, Value, Compare, Alloc, TargetNodeSize> > > {
 
