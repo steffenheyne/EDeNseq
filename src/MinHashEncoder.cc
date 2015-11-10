@@ -85,7 +85,7 @@ inline void  MinHashEncoder::generate_feature_vector(const string& seq, SVector&
 				//cout << start << " " << start+d << "   " << endpoint_list[2] << "  " << endpoint_list[3]<< endl;
 				//  0 1 2 3 4   5 6 7 8 9   r=4 d=5
 				unsigned code = HashFunc(endpoint_list, MAXUNSIGNED);
-				x.coeffRef(code) = 1;
+				//x.coeffRef(code) = 1;
 			}
 		}
 	}
@@ -320,7 +320,6 @@ void MinHashEncoder::worker_Graph2Signature(int numWorkers, unsigned id){
 
 		ChunkP myData;
 		vector<ChunkP> myQ;
-		vector<ChunkP> myQE;
 		unique_lock<mutex> lk(mut1);
 		//		cv1.wait(lk,[&]{if ( (done) ||  (graph_queue[id].try_pop( (myData) )) ) return true; else return false;});
 		while (graph_queue[id].size()>=1){
@@ -534,6 +533,7 @@ void MinHashEncoder::HashSignatureHelper() {
 	// set parameters for ComputeHashSignature
 	mHashBitMask = (2 << (mpParameters->mHashBitSize - 1)) - 1;
 
+	// sub_hash_range is always floor(numHashFunctionsFull / mpParameters->mNumRepeatsHashFunction)
 	numHashFunctionsFull = mpParameters->mNumHashFunctions * mpParameters->mNumHashShingles;
 	sub_hash_range = numHashFunctionsFull / mpParameters->mNumRepeatsHashFunction;
 
@@ -584,6 +584,15 @@ void MinHashEncoder::ComputeHashSignature(const SVector& aX, Signature& signatur
 			}
 		}
 	}
+
+/*	for (unsigned i = 0; i < signatureP->size(); i++){
+		//(*signatureP)[i] = (*signatureP)[i%(signatureP->size()-1)+1];
+		if ( (*signatureP)[i] >= MAXUNSIGNED  ){
+		//	(*signatureP)[i] = (*signatureP)[i%(signatureP->size()-1)+1];
+		//		cout << i << " MAXU " << i%(signatureP->size()-1)+1 << " " << (*signatureP)[i] << " " << (*signatureP)[i%(signatureP->size()-1)+1] <<endl;
+
+		}
+	}*/
 
 	// compute shingles, i.e. rehash mNumHashShingles hash values into one hash value
 	if (mpParameters->mNumHashShingles > 1 ) {
