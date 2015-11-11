@@ -341,11 +341,12 @@ void MinHashEncoder::worker_Graph2Signature(int numWorkers, unsigned id){
 
 			unique_lock<mutex> lk(mut2);
 			sig_queue.push(myData);
-		//	if (sig_queue.size()>=numWorkers*20){
+			if (sig_queue.size()>=numWorkers*20){
 				cv2.wait(lk,[&]{if ((done) || (sig_queue.size()<=numWorkers*10)) return true; else return false;});
-		//	}
-			//	sig_queue.push(myData);
+			}
 			lk.unlock();
+			//	sig_queue.push(myData);
+
 		}
 
 
@@ -378,7 +379,7 @@ void MinHashEncoder::finisher(){
 			uint fillstatus=0;
 			for (uint i=0; i<index_queue.size(); ++i){ fillstatus += index_queue[i].size();}
 
-			if (fillstatus>index_queue.size()*10){
+			if (fillstatus>index_queue.size()*30){
 				unique_lock<mutex> lk(mut3);
 				cv3.wait(lk,[&]{fillstatus = 0;for (uint i=0; i<index_queue.size(); ++i){ fillstatus += index_queue[i].size();} if ((done) || (fillstatus<index_queue.size()*5)) return true; else return false;});
 				lk.unlock();
@@ -847,8 +848,9 @@ void HistogramIndex::InitInverseIndex() {
 
 	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k){
 		mInverseIndex[k].max_load_factor(0.999);
+		mInverseIndex[k].min_load_factor(0.001);
 		mInverseIndex[k].rehash(2^24);
-		//	mInverseIndex[k].set_empty_key(0);
+		mInverseIndex[k].set_empty_key(0);
 		mMemPool_2[k] = new MemoryPool<newIndexBin_2,mMemPool_BlockSize>();
 		mMemPool_3[k] = new MemoryPool<newIndexBin_3,mMemPool_BlockSize>();
 		mMemPool_4[k] = new MemoryPool<newIndexBin_4,mMemPool_BlockSize>();
@@ -893,6 +895,8 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 
 				mInverseIndex[k][key] = foo;
 				numKeys++; // just for bin statistics
+				//	mInverseIndex[k].rehash(numKeys+1000000);
+
 				//	} else if (mInverseIndex[k][key][mInverseIndex[k][key][0]] != aIndexT){
 			} else {
 
@@ -925,18 +929,18 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 						case 5:
 							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_6[k]->newElement());
 							break;
-						case 6:
-							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_7[k]->newElement());
-							break;
-						case 7:
-							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_8[k]->newElement());
-							break;
-						case 8:
-							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_9[k]->newElement());
-							break;
-						case 9:
-							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_10[k]->newElement());
-							break;
+//						case 6:
+//							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_7[k]->newElement());
+//							break;
+//						case 7:
+//							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_8[k]->newElement());
+//							break;
+//						case 8:
+//							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_9[k]->newElement());
+//							break;
+//						case 9:
+//							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_10[k]->newElement());
+//							break;
 						default:
 							fooNew = new binKeyTy[newSize+1];
 							break;
@@ -965,18 +969,18 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 						case 5:
 							mMemPool_6[k]->deleteElement(reinterpret_cast<newIndexBin_6(*)>(myValue));
 							break;
-						case 6:
-							mMemPool_7[k]->deleteElement(reinterpret_cast<newIndexBin_7(*)>(myValue));
-							break;
-						case 7:
-							mMemPool_8[k]->deleteElement(reinterpret_cast<newIndexBin_8(*)>(myValue));
-							break;
-						case 8:
-							mMemPool_9[k]->deleteElement(reinterpret_cast<newIndexBin_9(*)>(myValue));
-							break;
-						case 9:
-							mMemPool_10[k]->deleteElement(reinterpret_cast<newIndexBin_10(*)>(myValue));
-							break;
+//						case 6:
+//							mMemPool_7[k]->deleteElement(reinterpret_cast<newIndexBin_7(*)>(myValue));
+//							break;
+//						case 7:
+//							mMemPool_8[k]->deleteElement(reinterpret_cast<newIndexBin_8(*)>(myValue));
+//							break;
+//						case 8:
+//							mMemPool_9[k]->deleteElement(reinterpret_cast<newIndexBin_9(*)>(myValue));
+//							break;
+//						case 9:
+//							mMemPool_10[k]->deleteElement(reinterpret_cast<newIndexBin_10(*)>(myValue));
+//							break;
 						default:
 							delete[] myValue;
 							break;
