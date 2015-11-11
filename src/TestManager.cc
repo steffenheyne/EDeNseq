@@ -111,10 +111,10 @@ void TestManager::finishUpdate(ChunkP& myData, unsigned& min, unsigned& max) {
 	uint k = 20;
 	for (unsigned j = k; j < myData->size(); j++) {
 
-		for (SVector::InnerIterator it((*myData)[j].svec); it; ++it) {
+/*		for (SVector::InnerIterator it((*myData)[j].svec); it; ++it) {
 			unsigned feature_id = it.index();
 				cout << "feat " << feature_id << endl;
-		}
+		}*/
 		for (unsigned b=0; b<=k; b++){
 
 			unsigned matches = 0;

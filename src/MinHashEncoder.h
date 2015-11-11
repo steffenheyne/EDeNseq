@@ -64,7 +64,9 @@ public:
 	typedef std::shared_ptr<SeqFileT> 	SeqFileP;
 	typedef vector<SeqFileP> 				SeqFilesT;
 
-	typedef Eigen::SparseVector<unsigned> SVector;
+	//typedef Eigen::SparseVector<unsigned> SVector;
+	typedef vector<unsigned> SVector;
+
 
 	struct instanceS {
 		Signature 	sig;
@@ -166,14 +168,14 @@ private:
 
 public:
 	NeighborhoodIndex(Parameters* apParameters, Data* apData)
-:MinHashEncoder(apParameters,apData)
-{
+	:MinHashEncoder(apParameters,apData)
+	{
 		mInverseIndex.clear();
 		for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k){
 			mInverseIndex.push_back(indexSingleTy());
 			//		mInverseIndex.back().set_empty_key(0);
 		}
-}
+	}
 
 	indexTy 									mInverseIndex;
 	SigCacheP								mMinHashCache;
@@ -274,7 +276,7 @@ public:
 	vector<MemoryPool<newIndexBin_8,mMemPool_BlockSize>*>  mMemPool_8;
 	vector<MemoryPool<newIndexBin_9,mMemPool_BlockSize>*>  mMemPool_9;
 	vector<MemoryPool<newIndexBin_10,mMemPool_BlockSize>*>  mMemPool_10;
-//	vector<mpool*> mp;
+	//	vector<mpool*> mp;
 
 
 	binKeyTy mHistogramSize;
@@ -301,7 +303,7 @@ public:
 	// destructor
 	virtual ~HistogramIndex(){
 
-				uint k=0;
+		uint k=0;
 		for (typename indexTy::const_iterator it = mInverseIndex.begin(); it!= mInverseIndex.end(); it++){
 			for (typename indexSingleTy::const_iterator itBin = it->begin(); itBin!=it->end(); itBin++){
 				switch (itBin->second[0]){
@@ -320,12 +322,23 @@ public:
 				case 5:
 					mMemPool_6[k]->deleteElement(reinterpret_cast<newIndexBin_6(*)>(itBin->second));
 					break;
+				case 6:
+					mMemPool_7[k]->deleteElement(reinterpret_cast<newIndexBin_7(*)>(itBin->second));
+					break;
+				case 7:
+					mMemPool_8[k]->deleteElement(reinterpret_cast<newIndexBin_8(*)>(itBin->second));
+					break;
+				case 8:
+					mMemPool_9[k]->deleteElement(reinterpret_cast<newIndexBin_9(*)>(itBin->second));
+					break;
+				case 9:
+					mMemPool_10[k]->deleteElement(reinterpret_cast<newIndexBin_10(*)>(itBin->second));
+					break;
 				default:
 					delete[] itBin->second;
 					break;
 				}
 			}
-		//	mpool_free(mp[k]);
 			k++;
 		}
 	};
@@ -449,12 +462,12 @@ private:
 public:
 
 	ArrayMemoryPool(int size, unsigned blocksize): length(size),BlockSize(blocksize),arrayP(new element_type[size])
-{
+	{
 		currentBlock_ = nullptr;
 		currentSlot_ = nullptr;
 		lastSlot_ = nullptr;
 		freeSlots_ = nullptr;
-};
+	};
 
 
 	inline size_type padPointer(data_pointer_ p, size_type align) const

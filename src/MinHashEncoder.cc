@@ -55,8 +55,8 @@ inline vector<unsigned> MinHashEncoder::HashFuncNSPDK(const string& aString, uns
 
 inline void  MinHashEncoder::generate_feature_vector(const string& seq, SVector& x) {
 
-	x.resize(pow(2, mpParameters->mHashBitSize));
-
+	//x.resize(MAXUNSIGNED);
+	//x.reserve(500);
 	//assume there is a mMinRadius and a mMinDistance
 	unsigned& mRadius = mpParameters->mRadius;
 	unsigned& mDistance = mpParameters->mDistance;
@@ -84,8 +84,10 @@ inline void  MinHashEncoder::generate_feature_vector(const string& seq, SVector&
 				endpoint_list[2] = mFeatureCache[start + d][r];
 				//cout << start << " " << start+d << "   " << endpoint_list[2] << "  " << endpoint_list[3]<< endl;
 				//  0 1 2 3 4   5 6 7 8 9   r=4 d=5
-				unsigned code = HashFunc(endpoint_list, MAXUNSIGNED);
+				//unsigned code = HashFunc(endpoint_list, MAXUNSIGNED);
 				//x.coeffRef(code) = 1;
+				x.push_back(HashFunc(endpoint_list, MAXUNSIGNED));
+				//x.insert(code);
 			}
 		}
 	}
@@ -569,10 +571,12 @@ void MinHashEncoder::ComputeHashSignature(const SVector& aX, Signature& signatur
 		(*signatureP)[k] = MAXUNSIGNED;
 	//prepare a vector containing the signature as the k min values
 	//for each element of the sparse vector
-	for (SVector::InnerIterator it(aX); it; ++it) {
+	//for (SVector::InnerIterator it(aX); it; ++it) {
+	for (SVector::const_iterator it=aX.begin(); it!=aX.end(); ++it) {
 		//for each sub_hash
 		for (unsigned l = 1; l <= mpParameters->mNumRepeatsHashFunction; ++l) {
-			unsigned key = IntHash(it.index(), mHashBitMask_feature, l);
+			//unsigned key = IntHash(it.index(), mHashBitMask_feature, l);
+			unsigned key = IntHash(*it, mHashBitMask_feature, l);
 			for (unsigned kk = 0; kk < sub_hash_range; ++kk) { //for all k values
 				if (key >= mBounds[kk] && key < mBounds[kk+1]) { //if we are in the k-th slot
 					unsigned signature_feature = kk + (l - 1) * sub_hash_range;
