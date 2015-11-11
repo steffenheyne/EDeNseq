@@ -35,6 +35,9 @@ public:
 	std::atomic_bool done_output;
 
 	threadsafe_queue<ResultChunkP> res_queue;
+
+	mutable std::mutex mut_res;
+    std::condition_variable cv_res;
 	std::atomic_uint mResultCounter;
 
 	mutable std::mutex mut_meta;
