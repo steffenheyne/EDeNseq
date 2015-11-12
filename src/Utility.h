@@ -257,13 +257,24 @@ public:
 		std::lock_guard<std::mutex> lk(other.mut);
 		data_queue=other.data_queue;
 	}
+
 	void push(T new_value)
 	{
-	//	std::lock_guard<std::mutex> lk(mut);
+		std::lock_guard<std::mutex> lk(mut);
 		data_queue.push(new_value);
 		data_cond.notify_one();
 		sizeA++;
 	}
+
+	void push_unsafe(T new_value)
+		{
+		//	std::lock_guard<std::mutex> lk(mut);
+			data_queue.push(new_value);
+			data_cond.notify_one();
+			sizeA++;
+		}
+
+
 	void wait_and_pop(T& value)
 	{
 		std::unique_lock<std::mutex> lk(mut);
@@ -284,6 +295,16 @@ public:
 
 	bool try_pop(T& value)
 	{
+		std::lock_guard<std::mutex> lk(mut);
+		if(data_queue.empty())
+			return false;
+		value=data_queue.front();
+		data_queue.pop();
+		sizeA--;
+		return true;
+	}
+	bool try_pop_unsafe(T& value)
+	{
 	//	std::lock_guard<std::mutex> lk(mut);
 		if(data_queue.empty())
 			return false;
@@ -292,6 +313,7 @@ public:
 		sizeA--;
 		return true;
 	}
+
 	std::shared_ptr<T> try_pop(){
 		std::lock_guard<std::mutex> lk(mut);
 		if(data_queue.empty())

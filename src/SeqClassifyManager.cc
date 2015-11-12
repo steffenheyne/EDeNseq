@@ -141,10 +141,21 @@ void SeqClassifyManager::worker_Classify(int numWorkers, unsigned id){
 	while (!done){
 
 		ChunkP myData;
+		vector<ChunkP> myQ;
 		unique_lock<mutex> lk(mut1);
-		cv1.wait(lk,[&]{if ( (done) ||  (graph_queue[id].try_pop( (myData) )) ) return true; else return false;});
+		//		cv1.wait(lk,[&]{if ( (done) ||  (graph_queue[id].try_pop( (myData) )) ) return true; else return false;});
+		while (graph_queue[id].size()>=1){
+			graph_queue[id].try_pop(myData);
+			myQ.push_back(myData);
+		}
 		lk.unlock();
-		if (!done && myData->size()>0) {
+		/*		unique_lock<mutex> lk(mut1);
+		cv1.wait(lk,[&]{if ( (done) ||  (graph_queue[id].try_pop( (myData) )) ) return true; else return false;});
+		lk.unlock();*/
+		while (!done && myQ.size()){
+			myData = myQ.back();
+			myQ.pop_back();
+			//	if (!done && myData->size()>0) {
 			//cout << "  graph2sig thread got chunk " << myData->size() << " offset " << (*myData)[0].idx << " " << mpParameters->mHashBitSize << endl;
 
 			ResultChunkP myResultChunk = std::make_shared<ResultChunkT>();
@@ -248,12 +259,12 @@ void SeqClassifyManager::Classify_Signatures(SeqFilesT& myFiles){
 		join_threads joiner(threads);
 
 		while(!done){
-			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+			std::this_thread::sleep_for(std::chrono::milliseconds(20));
 			if ( (files_done<myFiles.size()) || (mInstanceCounter > mResultCounter))
 				done = false;
 			else done = true;
-			cv1.notify_all();
 			cv2.notify_all();
+			cv1.notify_all();
 		}
 
 	} // by leaving this block threads get joined by destruction of joiner

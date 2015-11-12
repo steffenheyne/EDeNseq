@@ -291,7 +291,7 @@ void MinHashEncoder::worker_readFiles(unsigned numWorkers, unsigned chunkSizeFac
 					continue;
 
 				graph_queue[curr_q].push(myChunkP);
-				//cout << currBuff << endl;
+
 				unsigned fillstatus = MAXUNSIGNED;
 				for (unsigned i=0; i < graph_queue.size(); ++i){
 					if ((uint)graph_queue[i].size() < fillstatus){
@@ -332,30 +332,19 @@ void MinHashEncoder::worker_Graph2Signature(int numWorkers, unsigned id){
 		while (!done && myQ.size()){
 			myData = myQ.back();
 			myQ.pop_back();
-			//		if (!done && myData->size()>0) {
 			//cout << "  graph2sig thread got chunk " << myData->size() << endl;
 			for (unsigned j = 0; j < myData->size(); j++) {
 				generate_feature_vector((*myData)[j].seq, (*myData)[j].svec);
 				ComputeHashSignature((*myData)[j].svec,(*myData)[j].sig,tmpSig);
 			}
-
-			unique_lock<mutex> lk(mut2);
 			sig_queue.push(myData);
-			if (sig_queue.size()>=numWorkers*20){
+
+			if (sig_queue.size()>=numWorkers*10){
+				unique_lock<mutex> lk(mut2);
 				cv2.wait(lk,[&]{if ((done) || (sig_queue.size()<=numWorkers*10)) return true; else return false;});
+				lk.unlock();
 			}
-			lk.unlock();
-			//	sig_queue.push(myData);
-
 		}
-
-
-/*		sig_queue.push(myData);
-		if (sig_queue.size()>=numWorkers*10){
-			cv2.wait(lk,[&]{if ((done) || (sig_queue.size()<=numWorkers*3)) return true; else return false;});
-		}
-		lk.unlock();
-*/
 	}
 	delete tmpSig;
 }
@@ -371,15 +360,14 @@ void MinHashEncoder::finisher(){
 		lk.unlock();
 
 		if (!done  && myData->size()>0) {
-			unique_lock<mutex> lk(mut3);
 			for (unsigned i=0;i<index_queue.size();i++){
 				index_queue[i].push(myData);
 			}
-			lk.unlock();
+
 			uint fillstatus=0;
 			for (uint i=0; i<index_queue.size(); ++i){ fillstatus += index_queue[i].size();}
 
-			if (fillstatus>index_queue.size()*30){
+			if (fillstatus>index_queue.size()*40){
 				unique_lock<mutex> lk(mut3);
 				cv3.wait(lk,[&]{fillstatus = 0;for (uint i=0; i<index_queue.size(); ++i){ fillstatus += index_queue[i].size();} if ((done) || (fillstatus<index_queue.size()*5)) return true; else return false;});
 				lk.unlock();
@@ -590,7 +578,7 @@ void MinHashEncoder::ComputeHashSignature(const SVector& aX, Signature& signatur
 		}
 	}
 
-/*	for (unsigned i = 0; i < signatureP->size(); i++){
+	/*	for (unsigned i = 0; i < signatureP->size(); i++){
 		//(*signatureP)[i] = (*signatureP)[i%(signatureP->size()-1)+1];
 		if ( (*signatureP)[i] >= MAXUNSIGNED  ){
 		//	(*signatureP)[i] = (*signatureP)[i%(signatureP->size()-1)+1];
@@ -915,7 +903,7 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 						binKeyTy newSize = (myValue[0])+1;
 						binKeyTy * fooNew;
 						//fooNew = new binKeyTy[newSize+1];
-
+						mInverseIndex[k].rehash(2^24);
 						switch (newSize){
 						case 2:
 							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_3[k]->newElement());
@@ -929,18 +917,18 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 						case 5:
 							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_6[k]->newElement());
 							break;
-//						case 6:
-//							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_7[k]->newElement());
-//							break;
-//						case 7:
-//							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_8[k]->newElement());
-//							break;
-//						case 8:
-//							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_9[k]->newElement());
-//							break;
-//						case 9:
-//							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_10[k]->newElement());
-//							break;
+							//						case 6:
+							//							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_7[k]->newElement());
+							//							break;
+							//						case 7:
+							//							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_8[k]->newElement());
+							//							break;
+							//						case 8:
+							//							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_9[k]->newElement());
+							//							break;
+							//						case 9:
+							//							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_10[k]->newElement());
+							//							break;
 						default:
 							fooNew = new binKeyTy[newSize+1];
 							break;
@@ -969,18 +957,18 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 						case 5:
 							mMemPool_6[k]->deleteElement(reinterpret_cast<newIndexBin_6(*)>(myValue));
 							break;
-//						case 6:
-//							mMemPool_7[k]->deleteElement(reinterpret_cast<newIndexBin_7(*)>(myValue));
-//							break;
-//						case 7:
-//							mMemPool_8[k]->deleteElement(reinterpret_cast<newIndexBin_8(*)>(myValue));
-//							break;
-//						case 8:
-//							mMemPool_9[k]->deleteElement(reinterpret_cast<newIndexBin_9(*)>(myValue));
-//							break;
-//						case 9:
-//							mMemPool_10[k]->deleteElement(reinterpret_cast<newIndexBin_10(*)>(myValue));
-//							break;
+							//						case 6:
+							//							mMemPool_7[k]->deleteElement(reinterpret_cast<newIndexBin_7(*)>(myValue));
+							//							break;
+							//						case 7:
+							//							mMemPool_8[k]->deleteElement(reinterpret_cast<newIndexBin_8(*)>(myValue));
+							//							break;
+							//						case 8:
+							//							mMemPool_9[k]->deleteElement(reinterpret_cast<newIndexBin_9(*)>(myValue));
+							//							break;
+							//						case 9:
+							//							mMemPool_10[k]->deleteElement(reinterpret_cast<newIndexBin_10(*)>(myValue));
+							//							break;
 						default:
 							delete[] myValue;
 							break;
