@@ -284,7 +284,7 @@ public:
 
 	bool try_pop(T& value)
 	{
-		std::lock_guard<std::mutex> lk(mut);
+	//	std::lock_guard<std::mutex> lk(mut);
 		if(data_queue.empty())
 			return false;
 		value=data_queue.front();
