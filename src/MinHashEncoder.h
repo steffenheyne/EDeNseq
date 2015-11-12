@@ -233,10 +233,10 @@ public:
 	};
 
 	// we use one of these hash maps, the interface is quite similar to each other
-	// should test space an speed
+	// we should test space and speed
 	//typedef std::tr1::unordered_map<unsigned, indexBinTy> indexSingleTy;
-	typedef google::dense_hash_map<unsigned, indexBinTy, hashFunc, hashFunc, std::allocator<indexBinTy>> indexSingleTy;
-	//typedef google::sparse_hash_map<unsigned, indexBinTy, hashFunc, hashFunc,std::allocator<indexBinTy>> indexSingleTy;
+	//typedef google::dense_hash_map<unsigned, indexBinTy, hashFunc, hashFunc, std::allocator<indexBinTy>> indexSingleTy;
+	typedef google::sparse_hash_map<unsigned, indexBinTy, hashFunc, hashFunc,std::allocator<indexBinTy>> indexSingleTy;
 	//typedef google::sparse_hash_map<unsigned, indexBinTy> indexSingleTy;
 
 	// the index
