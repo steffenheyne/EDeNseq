@@ -129,7 +129,7 @@ void MinHashEncoder::worker_readFiles(unsigned numWorkers, unsigned chunkSizeFac
 			while (!fin.eof()) {
 
 				unsigned maxB = max((uint)1000,(uint)log2((double)mSignatureCounter)^2*chunkSizeFactor);
-				unsigned currBuff = rand()%(maxB*4	 - maxB + 1) + maxB; // curr chunk size
+				unsigned currBuff = maxB*3; //rand()%(maxB*4	 - maxB + 1) + maxB; // curr chunk size
 				unsigned i = 0;			// current fragment in currBuff
 				bool lastSeqGr = false; // indicates that we have the last fragment from current seq, used to get all fragments from current seq into current chunk
 				// necessary to have all fragments for one seq/feature if we want to combine signatures in finisher
@@ -360,10 +360,11 @@ void MinHashEncoder::finisher(){
 		lk.unlock();
 
 		if (!done  && myData->size()>0) {
+			unique_lock<mutex> lk(mut3);
 			for (unsigned i=0;i<index_queue.size();i++){
 				index_queue[i].push(myData);
 			}
-
+			lk.unlock();
 			uint fillstatus=0;
 			for (uint i=0; i<index_queue.size(); ++i){ fillstatus += index_queue[i].size();}
 
@@ -835,9 +836,7 @@ void HistogramIndex::InitInverseIndex() {
 	mMemPool_10.resize(mpParameters->mNumHashFunctions);
 
 	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k){
-		mInverseIndex[k].rehash(2^24);
-		mInverseIndex[k].max_load_factor(0.1);
-		mInverseIndex[k].min_load_factor(0.001);
+		mInverseIndex[k].max_load_factor(0.6);
 		mInverseIndex[k].rehash(2^24);
 		//mInverseIndex[k].set_empty_key(0);
 		mMemPool_2[k] = new MemoryPool<newIndexBin_2,mMemPool_BlockSize>();
