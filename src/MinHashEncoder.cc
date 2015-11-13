@@ -835,7 +835,9 @@ void HistogramIndex::InitInverseIndex() {
 	mMemPool_10.resize(mpParameters->mNumHashFunctions);
 
 	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k){
-		mInverseIndex[k].max_load_factor(0.9999);
+		mInverseIndex[k].rehash(2^24);
+		mInverseIndex[k].max_load_factor(0.1);
+		mInverseIndex[k].min_load_factor(0.001);
 		mInverseIndex[k].rehash(2^24);
 		//mInverseIndex[k].set_empty_key(0);
 		mMemPool_2[k] = new MemoryPool<newIndexBin_2,mMemPool_BlockSize>();
@@ -872,11 +874,12 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 	const binKeyTy& aIndexT =(binKeyTy)aIndex;
 	for (unsigned k = min; k <= max; ++k) { //for every hash value
 		const unsigned& key = aSignature[k];
+
 		if (key != MAXUNSIGNED && key != 0) { //if key is equal to markers for empty bins then skip insertion instance in data structure
-			if (mInverseIndex[k].count(key)==0) { //if this is the first time that an instance exhibits that specific value for that hash function, then store for the first time the reference to that instance
+			if (!mInverseIndex[k][key]) { //if this is the first time that an instance exhibits that specific value for that hash function, then store for the first time the reference to that instance
 
 				binKeyTy* foo;
-				foo = reinterpret_cast<binKeyTy(*)>(mMemPool_2[k]->newElement());
+				foo = reinterpret_cast<indexBinTy>(mMemPool_2[k]->newElement());
 				foo[1] = aIndexT;
 				foo[0] = 1; //index of last element is stored at idx[0]
 
