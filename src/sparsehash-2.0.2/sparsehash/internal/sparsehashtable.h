@@ -126,7 +126,7 @@ using GOOGLE_NAMESPACE::remove_const;
 // smaller) and the faster insert is, because there's less to move.
 // On the other hand, there are more groups.  Since group::size_type is
 // a short, this number should be of the form 32*x + 16 to avoid waste.
-static const u_int16_t DEFAULT_GROUP_SIZE = 48;   // fits in 1.5 words
+static const u_int16_t DEFAULT_GROUP_SIZE = 80;   // fits in 1.5 words
 
 // Hashtable class, used to implement the hashed associative containers
 // hash_set and hash_map.
@@ -1239,7 +1239,7 @@ const int sparse_hashtable<V,K,HF,ExK,SetK,EqK,A>::HT_OCCUPANCY_PCT = 80;
 // It should be less than OCCUPANCY_PCT / 2 or we thrash resizing
 template <class V, class K, class HF, class ExK, class SetK, class EqK, class A>
 const int sparse_hashtable<V,K,HF,ExK,SetK,EqK,A>::HT_EMPTY_PCT
-  = static_cast<int>(0.4 *
+  = static_cast<int>(0.3 *
                      sparse_hashtable<V,K,HF,ExK,SetK,EqK,A>::HT_OCCUPANCY_PCT);
 
 _END_GOOGLE_NAMESPACE_

@@ -354,7 +354,8 @@ void MinHashEncoder::finisher(){
 	while (!done){
 
 		ChunkP myData;
-		bool succ = sig_queue.try_pop(myData);
+		bool succ = false;
+		succ = sig_queue.try_pop(myData);
 
 		if (!done  && succ && myData->size()>0) {
 
@@ -819,7 +820,7 @@ HistogramIndex::binKeyTy HistogramIndex::GetHistogramSize(){
 
 void HistogramIndex::InitInverseIndex() {
 
-	mInverseIndex.resize(mpParameters->mNumHashFunctions);
+	mInverseIndex.resize(mpParameters->mNumHashFunctions,indexSingleTy(2^28));
 
 	mMemPool_2.resize(mpParameters->mNumHashFunctions);
 	mMemPool_3.resize(mpParameters->mNumHashFunctions);
