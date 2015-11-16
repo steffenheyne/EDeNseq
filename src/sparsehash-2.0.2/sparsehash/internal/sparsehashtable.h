@@ -1233,13 +1233,13 @@ const typename sparse_hashtable<V,K,HF,ExK,SetK,EqK,A>::size_type
 // How full we let the table get before we resize.  Knuth says .8 is
 // good -- higher causes us to probe too much, though saves memory
 template <class V, class K, class HF, class ExK, class SetK, class EqK, class A>
-const int sparse_hashtable<V,K,HF,ExK,SetK,EqK,A>::HT_OCCUPANCY_PCT = 90;
+const int sparse_hashtable<V,K,HF,ExK,SetK,EqK,A>::HT_OCCUPANCY_PCT = 80;
 
 // How empty we let the table get before we resize lower.
 // It should be less than OCCUPANCY_PCT / 2 or we thrash resizing
 template <class V, class K, class HF, class ExK, class SetK, class EqK, class A>
 const int sparse_hashtable<V,K,HF,ExK,SetK,EqK,A>::HT_EMPTY_PCT
-  = static_cast<int>(0.3 *
+  = static_cast<int>(0.4 *
                      sparse_hashtable<V,K,HF,ExK,SetK,EqK,A>::HT_OCCUPANCY_PCT);
 
 _END_GOOGLE_NAMESPACE_
