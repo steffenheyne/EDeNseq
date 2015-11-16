@@ -126,7 +126,7 @@ using GOOGLE_NAMESPACE::remove_const;
 // smaller) and the faster insert is, because there's less to move.
 // On the other hand, there are more groups.  Since group::size_type is
 // a short, this number should be of the form 32*x + 16 to avoid waste.
-static const u_int16_t DEFAULT_GROUP_SIZE = 16;   // fits in 1.5 words
+static const u_int16_t DEFAULT_GROUP_SIZE = 48;   // fits in 1.5 words
 
 // Hashtable class, used to implement the hashed associative containers
 // hash_set and hash_map.
@@ -1233,7 +1233,7 @@ const typename sparse_hashtable<V,K,HF,ExK,SetK,EqK,A>::size_type
 // How full we let the table get before we resize.  Knuth says .8 is
 // good -- higher causes us to probe too much, though saves memory
 template <class V, class K, class HF, class ExK, class SetK, class EqK, class A>
-const int sparse_hashtable<V,K,HF,ExK,SetK,EqK,A>::HT_OCCUPANCY_PCT = 80;
+const int sparse_hashtable<V,K,HF,ExK,SetK,EqK,A>::HT_OCCUPANCY_PCT = 90;
 
 // How empty we let the table get before we resize lower.
 // It should be less than OCCUPANCY_PCT / 2 or we thrash resizing
