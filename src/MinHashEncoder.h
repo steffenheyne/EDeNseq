@@ -235,9 +235,9 @@ public:
 	// we use one of these hash maps, the interface is quite similar to each other
 	// should test space an speed
 	//typedef std::tr1::unordered_map<unsigned, indexBinTy> indexSingleTy;
-	typedef google::dense_hash_map<unsigned, indexBinTy, hashFunc, hashFunc> indexSingleTy;
+	//typedef google::dense_hash_map<unsigned, indexBinTy, hashFunc, hashFunc> indexSingleTy;
 	//typedef google::sparse_hash_map<unsigned, indexBinTy, hashFunc, hashFunc,std::allocator<indexBinTy>> indexSingleTy;
-	//typedef google::sparse_hash_map<unsigned, indexBinTy,hashFunc, hashFunc> indexSingleTy;
+	typedef google::sparse_hash_map<unsigned, indexBinTy,hashFunc, hashFunc> indexSingleTy;
 
 	// the index
 	typedef vector<indexSingleTy> indexTy;
@@ -259,8 +259,8 @@ public:
 	//const static unsigned mMemPool_BlockSize = 720*4096; // (2*3*4*5*6*4096)
 	//const static unsigned mMemPool_BlockSize = 491520; // kgv(2*3*4*5*6)=60*4096*2
 	//const static unsigned mMemPool_BlockSize = 1966080; // kgv(2*3*4*5*6)=60*4096*2
-	const static unsigned mMemPool_BlockSize = 15120000; // kgv(2*3*4*5*6)=60*4096*2
-	//const static unsigned mMemPool_BlockSize = 443530; // (2*3*4*5*6*4096)
+	//const static unsigned mMemPool_BlockSize = 1290240 ; // kgv(2*3*4*5*6)=60*7*8*9*10=2520,4096=1290240
+	const static unsigned mMemPool_BlockSize = 409600; // (2*3*4*5*6*4096)
 	//const static unsigned mMemPool_maxEnt = 2;
 
 	// a vector of memory pools,

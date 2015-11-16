@@ -322,13 +322,12 @@ void MinHashEncoder::worker_Graph2Signature(int numWorkers, unsigned id){
 
 		ChunkP myData;
 		vector<ChunkP> myQ;
-		//unique_lock<mutex> lk(mut1);
-		//		cv1.wait(lk,[&]{if ( (done) ||  (graph_queue[id].try_pop( (myData) )) ) return true; else return false;});
+
 		while (graph_queue[id].size()>=1){
 			graph_queue[id].wait_and_pop(myData);
 			myQ.push_back(myData);
 		}
-		//lk.unlock();
+
 		while (!done && myQ.size()){
 			myData = myQ.back();
 			myQ.pop_back();
@@ -355,18 +354,14 @@ void MinHashEncoder::finisher(){
 	while (!done){
 
 		ChunkP myData;
-	//	unique_lock<mutex> lk(mut2);
-	//	cv2.wait(lk,[&]{if ( (done) || (sig_queue.try_pop( (myData) ))) return true; else return false;});
-	//	lk.unlock();
+		bool succ = sig_queue.try_pop(myData);
 
-		sig_queue.wait_and_pop(myData);
+		if (!done  && succ && myData->size()>0) {
 
-		if (!done  && myData->size()>0) {
-			//unique_lock<mutex> lk(mut3);
 			for (unsigned i=0;i<index_queue.size();i++){
 				index_queue[i].push(myData);
 			}
-			//lk.unlock();
+
 			uint fillstatus=0;
 			for (uint i=0; i<index_queue.size(); ++i){ fillstatus += index_queue[i].size();}
 
@@ -382,14 +377,11 @@ void MinHashEncoder::finisher(){
 void MinHashEncoder::worker_IndexUpdate(unsigned id, unsigned min, unsigned max){
 	ProgressBar progress_bar(1000);
 	while (!done){
+
 		ChunkP myData;
-		//unique_lock<mutex> lk(mut3);
-		//cv3.wait(lk,[&]{if ( (done) || (index_queue[id].try_pop( (myData) ))) return true; else return false;});
-		//lk.unlock();
+		bool succ = index_queue[id].try_pop(myData);
 
-		index_queue[id].wait_and_pop(myData);
-
-		if (!done && myData->size()>0) {
+		if (!done && succ && myData->size()>0) {
 
 			finishUpdate(myData,min,max);
 			mSignatureUpdateCounter += myData->size()*( (max-min+1));
@@ -456,13 +448,13 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 	if (mpParameters->mNumThreads>0)
 		graphWorkers = mpParameters->mNumThreads;
 
-	cout << "Using " << graphWorkers << " worker threads and 2 helper threads..." << endl;
+	cout << "Using " << graphWorkers << " worker threads and " << 2+min(max((unsigned)1,mpParameters->mNumIndexThreads),mpParameters->mNumHashFunctions) << " helper threads..." << endl;
 
-	done = false;
-	files_done=0;
-	mSignatureCounter = 0;
-	mInstanceCounter = 0;
-	mSequenceCounter = 0;
+	done 					= false;
+	files_done				= 0;
+	mSignatureCounter		= 0;
+	mInstanceCounter 		= 0;
+	mSequenceCounter 		= 0;
 	mSignatureUpdateCounter = 0;
 
 	vector<std::thread> threads;
@@ -827,7 +819,7 @@ HistogramIndex::binKeyTy HistogramIndex::GetHistogramSize(){
 
 void HistogramIndex::InitInverseIndex() {
 
-	mInverseIndex.resize(mpParameters->mNumHashFunctions, indexSingleTy(2^22));
+	mInverseIndex.resize(mpParameters->mNumHashFunctions);
 
 	mMemPool_2.resize(mpParameters->mNumHashFunctions);
 	mMemPool_3.resize(mpParameters->mNumHashFunctions);
@@ -840,9 +832,9 @@ void HistogramIndex::InitInverseIndex() {
 	mMemPool_10.resize(mpParameters->mNumHashFunctions);
 
 	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k){
-		mInverseIndex[k].max_load_factor(0.6);
-		mInverseIndex[k].rehash(2^24);
-		mInverseIndex[k].set_empty_key(0);
+		mInverseIndex[k].max_load_factor(0.4);
+		mInverseIndex[k].rehash(2^26);
+		//mInverseIndex[k].set_empty_key(0);
 		mMemPool_2[k] = new MemoryPool<newIndexBin_2,mMemPool_BlockSize>();
 		mMemPool_3[k] = new MemoryPool<newIndexBin_3,mMemPool_BlockSize>();
 		mMemPool_4[k] = new MemoryPool<newIndexBin_4,mMemPool_BlockSize>();
@@ -886,6 +878,7 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 				foo[1] = aIndexT;
 				foo[0] = 1; //index of last element is stored at idx[0]
 
+				mInverseIndex[k].rehash(2^28);
 				mInverseIndex[k][key] = foo;
 				numKeys++; // just for bin statistics
 				//	mInverseIndex[k].rehash(numKeys+1000000);
@@ -919,21 +912,21 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 						case 4:
 							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_5[k]->newElement());
 							break;
-						case 5:
-							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_6[k]->newElement());
-							break;
-							//						case 6:
-							//							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_7[k]->newElement());
-							//							break;
-							//						case 7:
-							//							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_8[k]->newElement());
-							//							break;
-							//						case 8:
-							//							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_9[k]->newElement());
-							//							break;
-							//						case 9:
-							//							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_10[k]->newElement());
-							//							break;
+//						case 5:
+//							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_6[k]->newElement());
+//							break;
+//						case 6:
+//							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_7[k]->newElement());
+//							break;
+//						case 7:
+//							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_8[k]->newElement());
+//							break;
+//						case 8:
+//							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_9[k]->newElement());
+//							break;
+//						case 9:
+//							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_10[k]->newElement());
+//							break;
 						default:
 							fooNew = new binKeyTy[newSize+1];
 							break;
@@ -959,21 +952,21 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 						case 4:
 							mMemPool_5[k]->deleteElement(reinterpret_cast<newIndexBin_5(*)>(myValue));
 							break;
-						case 5:
-							mMemPool_6[k]->deleteElement(reinterpret_cast<newIndexBin_6(*)>(myValue));
-							break;
-							//						case 6:
-							//							mMemPool_7[k]->deleteElement(reinterpret_cast<newIndexBin_7(*)>(myValue));
-							//							break;
-							//						case 7:
-							//							mMemPool_8[k]->deleteElement(reinterpret_cast<newIndexBin_8(*)>(myValue));
-							//							break;
-							//						case 8:
-							//							mMemPool_9[k]->deleteElement(reinterpret_cast<newIndexBin_9(*)>(myValue));
-							//							break;
-							//						case 9:
-							//							mMemPool_10[k]->deleteElement(reinterpret_cast<newIndexBin_10(*)>(myValue));
-							//							break;
+//						case 5:
+//							mMemPool_6[k]->deleteElement(reinterpret_cast<newIndexBin_6(*)>(myValue));
+//							break;
+//						case 6:
+//							mMemPool_7[k]->deleteElement(reinterpret_cast<newIndexBin_7(*)>(myValue));
+//							break;
+//						case 7:
+//							mMemPool_8[k]->deleteElement(reinterpret_cast<newIndexBin_8(*)>(myValue));
+//							break;
+//						case 8:
+//							mMemPool_9[k]->deleteElement(reinterpret_cast<newIndexBin_9(*)>(myValue));
+//							break;
+//						case 9:
+//							mMemPool_10[k]->deleteElement(reinterpret_cast<newIndexBin_10(*)>(myValue));
+//							break;
 						default:
 							delete[] myValue;
 							break;

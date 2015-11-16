@@ -143,19 +143,17 @@ void SeqClassifyManager::worker_Classify(int numWorkers, unsigned id){
 		ChunkP myData;
 		vector<ChunkP> myQ;
 		unique_lock<mutex> lk(mut1);
-		//		cv1.wait(lk,[&]{if ( (done) ||  (graph_queue[id].try_pop( (myData) )) ) return true; else return false;});
+
 		while (graph_queue[id].size()>=1){
 			graph_queue[id].try_pop(myData);
 			myQ.push_back(myData);
 		}
 		lk.unlock();
-		/*		unique_lock<mutex> lk(mut1);
-		cv1.wait(lk,[&]{if ( (done) ||  (graph_queue[id].try_pop( (myData) )) ) return true; else return false;});
-		lk.unlock();*/
+
 		while (!done && myQ.size()){
 			myData = myQ.back();
 			myQ.pop_back();
-			//	if (!done && myData->size()>0) {
+
 			//cout << "  graph2sig thread got chunk " << myData->size() << " offset " << (*myData)[0].idx << " " << mpParameters->mHashBitSize << endl;
 
 			ResultChunkP myResultChunk = std::make_shared<ResultChunkT>();
@@ -184,9 +182,8 @@ void SeqClassifyManager::finisher_Results(ogzstream* fout_res){
 	while (!done){
 
 		ResultChunkP myResults;
-		unique_lock<mutex> lk(mut2);
-		cv2.wait(lk,[&]{if ( (done) || (res_queue.try_pop( (myResults) ))) return true; else return false;});
-		lk.unlock();
+
+		res_queue.wait_and_pop(myResults);
 
 		if (!done && myResults->size()>0) {
 
@@ -239,11 +236,11 @@ void SeqClassifyManager::Classify_Signatures(SeqFilesT& myFiles){
 
 	cout << "Using " << graphWorkers << " worker threads and 2 helper threads..." << endl;
 
-	done 					= false;
+	done				= false;
 	files_done			= 0;
-	mSignatureCounter = 0;
+	mSignatureCounter 	= 0;
 	mInstanceCounter 	= 0;
-	mResultCounter 	= 0;
+	mResultCounter 		= 0;
 
 	vector<std::thread> threads;
 	graph_queue.resize(graphWorkers);
