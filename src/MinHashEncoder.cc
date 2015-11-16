@@ -880,7 +880,7 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 				foo[1] = aIndexT;
 				foo[0] = 1; //index of last element is stored at idx[0]
 
-				mInverseIndex[k].rehash(numKeys+100);
+				mInverseIndex[k].rehash((numKeys/mpParameters->mNumHashFunctions)+3000000);
 				mInverseIndex[k].insert(make_pair(key,foo));
 				numKeys++; // just for bin statistics
 				//	mInverseIndex[k].rehash(numKeys+1000000);
