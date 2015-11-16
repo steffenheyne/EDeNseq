@@ -322,13 +322,13 @@ void MinHashEncoder::worker_Graph2Signature(int numWorkers, unsigned id){
 
 		ChunkP myData;
 		vector<ChunkP> myQ;
-		unique_lock<mutex> lk(mut1);
+		//unique_lock<mutex> lk(mut1);
 		//		cv1.wait(lk,[&]{if ( (done) ||  (graph_queue[id].try_pop( (myData) )) ) return true; else return false;});
 		while (graph_queue[id].size()>=1){
-			graph_queue[id].try_pop(myData);
+			graph_queue[id].wait_and_pop(myData);
 			myQ.push_back(myData);
 		}
-		lk.unlock();
+		//lk.unlock();
 		while (!done && myQ.size()){
 			myData = myQ.back();
 			myQ.pop_back();
@@ -355,16 +355,18 @@ void MinHashEncoder::finisher(){
 	while (!done){
 
 		ChunkP myData;
-		unique_lock<mutex> lk(mut2);
-		cv2.wait(lk,[&]{if ( (done) || (sig_queue.try_pop( (myData) ))) return true; else return false;});
-		lk.unlock();
+	//	unique_lock<mutex> lk(mut2);
+	//	cv2.wait(lk,[&]{if ( (done) || (sig_queue.try_pop( (myData) ))) return true; else return false;});
+	//	lk.unlock();
+
+		sig_queue.wait_and_pop(myData);
 
 		if (!done  && myData->size()>0) {
-			unique_lock<mutex> lk(mut3);
+			//unique_lock<mutex> lk(mut3);
 			for (unsigned i=0;i<index_queue.size();i++){
 				index_queue[i].push(myData);
 			}
-			lk.unlock();
+			//lk.unlock();
 			uint fillstatus=0;
 			for (uint i=0; i<index_queue.size(); ++i){ fillstatus += index_queue[i].size();}
 
@@ -381,9 +383,11 @@ void MinHashEncoder::worker_IndexUpdate(unsigned id, unsigned min, unsigned max)
 	ProgressBar progress_bar(1000);
 	while (!done){
 		ChunkP myData;
-		unique_lock<mutex> lk(mut3);
-		cv3.wait(lk,[&]{if ( (done) || (index_queue[id].try_pop( (myData) ))) return true; else return false;});
-		lk.unlock();
+		//unique_lock<mutex> lk(mut3);
+		//cv3.wait(lk,[&]{if ( (done) || (index_queue[id].try_pop( (myData) ))) return true; else return false;});
+		//lk.unlock();
+
+		index_queue[id].wait_and_pop(myData);
 
 		if (!done && myData->size()>0) {
 
@@ -838,7 +842,7 @@ void HistogramIndex::InitInverseIndex() {
 	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k){
 		mInverseIndex[k].max_load_factor(0.6);
 		mInverseIndex[k].rehash(2^24);
-		//mInverseIndex[k].set_empty_key(0);
+		mInverseIndex[k].set_empty_key(0);
 		mMemPool_2[k] = new MemoryPool<newIndexBin_2,mMemPool_BlockSize>();
 		mMemPool_3[k] = new MemoryPool<newIndexBin_3,mMemPool_BlockSize>();
 		mMemPool_4[k] = new MemoryPool<newIndexBin_4,mMemPool_BlockSize>();
