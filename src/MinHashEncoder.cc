@@ -409,7 +409,7 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 	cout << "Using " << mpParameters->mHashBitSize << " \t bits to encode features" << endl;
 	cout << "Using " << mpParameters->mRandomSeed << " \t as random seed" << endl;
 	cout << "Using " << mpParameters->mNumHashFunctions << " \t final hash VALUES (param 'num_hash_functions' is used as FINAL signature size!), " << endl;
-	cout << "Using " << mpParameters->mNumHashFunctions*mpParameters->mNumHashShingles << " \t hash values internally (num_hash_functions * num_hash_shingles) from " << mpParameters->mNumRepeatsHashFunction << " independent hash functions (param 'num_repeat_hash_functions')" << endl;
+	cout << "Using " << mpParameters->mNumHashFunctions*mpParameters->mNumHashShingles << " \t hash values internally (num_hash_functions * num_hash_shingles) from " << mpParameters->mNumRepeatsHashFunction << " independent hash functions (param 'num_repeat_hash_function')" << endl;
 	cout << "Using " << mpParameters->mNumHashShingles << " \t as hash shingle factor (param 'num_hash_shingles')" << endl;
 	cout << "Using " << mpParameters->mPureApproximateSim << " \t as required approximate similarity (param 'pure_approximate_sim')" << endl;
 	cout << "Using feature radius   " << mpParameters->mMinRadius<<".."<<mpParameters->mRadius << endl;
