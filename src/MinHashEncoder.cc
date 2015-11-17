@@ -337,17 +337,19 @@ void MinHashEncoder::worker_Graph2Signature(int numWorkers, unsigned id){
 				generate_feature_vector((*myData)[j].seq, (*myData)[j].svec);
 				ComputeHashSignature((*myData)[j].svec,(*myData)[j].sig,tmpSig);
 			}
+			{
+				lock_guard<mutex> lk(mut2);
 
 			for (unsigned i=0;i<index_queue.size();i++){
 				index_queue[i].push(myData);
 			}
-
+			}
 			uint fillstatus=0;
 			for (uint i=0; i<index_queue.size(); ++i){ fillstatus += index_queue[i].size();}
 
 			if (fillstatus>index_queue.size()*40){
-				unique_lock<mutex> lk(mut3);
-				cv3.wait(lk,[&]{fillstatus = 0;for (uint i=0; i<index_queue.size(); ++i){ fillstatus += index_queue[i].size();} if ((done) || (fillstatus<index_queue.size()*5)) return true; else return false;});
+				unique_lock<mutex> lk(mut2);
+				cv2.wait(lk,[&]{fillstatus = 0;for (uint i=0; i<index_queue.size(); ++i){ fillstatus += index_queue[i].size();} if ((done) || (fillstatus<index_queue.size()*40)) return true; else return false;});
 				lk.unlock();
 			}
 		}
@@ -361,8 +363,11 @@ void MinHashEncoder::finisher_IndexUpdate(unsigned id, unsigned min, unsigned ma
 	while (!done){
 
 		ChunkP myData;
-		bool succ = index_queue[id].try_pop(myData);
-
+		bool succ;
+		{
+			lock_guard<mutex> lk(mut2);
+			succ = index_queue[id].try_pop(myData);
+		}
 		if (!done && succ && myData->size()>0) {
 
 			finishUpdate(myData,min,max);
@@ -389,7 +394,7 @@ void MinHashEncoder::finisher_IndexUpdate(unsigned id, unsigned min, unsigned ma
 					//cout << index_queue[i].size() << " ";
 					avg += index_queue[i].size();
 				}
-				cout << avg/index_queue.size();
+				cout << avg;
 				cout << " SigUC " << mSignatureUpdateCounter << " ";
 			}
 		}
@@ -472,7 +477,6 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 			if ( (files_done<myFiles.size()) || (mSignatureUpdateCounter < mInstanceCounter*mpParameters->mNumHashFunctions))
 				done=false;
 			else done=true;
-			cv3.notify_all();
 			cv2.notify_all();
 			cv1.notify_all();
 		}
@@ -805,6 +809,7 @@ void HistogramIndex::InitInverseIndex() {
 		mInverseIndex[k].max_load_factor(0.6);
 		mInverseIndex[k].set_resizing_parameters(0.0,0.6);
 		mInverseIndex[k].rehash(2^28);
+		//mInverseIndex[k].set_deleted_key(0);
 		//mInverseIndex[k].set_empty_key(0);
 		mMemPool_2[k] = new MemoryPool<newIndexBin_2,mMemPool_BlockSize>();
 		mMemPool_3[k] = new MemoryPool<newIndexBin_3,mMemPool_BlockSize>();
@@ -849,7 +854,7 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 				foo[1] = aIndexT;
 				foo[0] = 1; //index of last element is stored at idx[0]
 
-				//mInverseIndex[k].rehash((numKeys/mpParameters->mNumHashFunctions)+5000000);
+				mInverseIndex[k].rehash((numKeys/mpParameters->mNumHashFunctions)+5000000);
 				mInverseIndex[k][key] = foo;
 				numKeys++; // just for bin statistics
 				//	mInverseIndex[k].rehash(numKeys+1000000);
