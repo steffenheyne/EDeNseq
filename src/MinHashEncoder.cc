@@ -337,28 +337,6 @@ void MinHashEncoder::worker_Graph2Signature(int numWorkers, unsigned id){
 				generate_feature_vector((*myData)[j].seq, (*myData)[j].svec);
 				ComputeHashSignature((*myData)[j].svec,(*myData)[j].sig,tmpSig);
 			}
-			sig_queue.push(myData);
-
-			if (sig_queue.size()>=numWorkers*10){
-				unique_lock<mutex> lk(mut2);
-				cv2.wait(lk,[&]{if ((done) || (sig_queue.size()<=numWorkers*10)) return true; else return false;});
-				lk.unlock();
-			}
-		}
-	}
-	delete tmpSig;
-}
-
-void MinHashEncoder::finisher(){
-	ProgressBar progress_bar(1000);
-
-	while (!done){
-
-		ChunkP myData;
-		bool succ = false;
-		succ = sig_queue.try_pop(myData);
-
-		if (!done  && succ && myData->size()>0) {
 
 			for (unsigned i=0;i<index_queue.size();i++){
 				index_queue[i].push(myData);
@@ -374,9 +352,11 @@ void MinHashEncoder::finisher(){
 			}
 		}
 	}
+	delete tmpSig;
 }
 
-void MinHashEncoder::worker_IndexUpdate(unsigned id, unsigned min, unsigned max){
+
+void MinHashEncoder::finisher_IndexUpdate(unsigned id, unsigned min, unsigned max){
 	ProgressBar progress_bar(1000);
 	while (!done){
 
@@ -403,7 +383,7 @@ void MinHashEncoder::worker_IndexUpdate(unsigned id, unsigned min, unsigned max)
 					avg += graph_queue[i].size();
 				};
 				cout << avg/graph_queue.size();
-				cout << " sigQueue=" << sig_queue.size() << " indexQueue=";
+				cout << " indexQueue=";
 				avg = 0;
 				for (uint i=0; i<index_queue.size(); ++i){
 					//cout << index_queue[i].size() << " ";
@@ -440,17 +420,15 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 
 	// threaded producer-consumer model for signature creation and index update
 	// created threads:
-	//    m worker_IndexUpdate threads with range over mNumHashFunctions
-	//      to update the index in parallel
-	// 	1 finisher that distributes the work to the m index update threads,
-	// 	1 to read files and produces sequence instances
-	//		n worker threads that create the signatures
+	// 	 1 worker_readFiles thread that produces chunks of sequences/windows and put these into the n graph_queues
+	//	 n worker_Graph2Signature threads that create the signatures and put them into the m index_queues
+	//   m worker_IndexUpdate threads, each updates a range of mNumHashFunctions so that we can update the index in "parallel"
 
 	int graphWorkers = std::thread::hardware_concurrency();
 	if (mpParameters->mNumThreads>0)
 		graphWorkers = mpParameters->mNumThreads;
 
-	cout << "Using " << graphWorkers << " worker threads and " << 2+min(max((unsigned)1,mpParameters->mNumIndexThreads),mpParameters->mNumHashFunctions) << " helper threads..." << endl;
+	cout << "Using " << graphWorkers << " worker threads and " << 1+min(max((unsigned)1,mpParameters->mNumIndexThreads),mpParameters->mNumHashFunctions) << " helper threads..." << endl;
 
 	done 					= false;
 	files_done				= 0;
@@ -462,27 +440,27 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 	vector<std::thread> threads;
 	graph_queue.resize(graphWorkers);
 
+	// create m worker_IndexUpdate threads
 	// distribute mpParameters->mNumHashFunctions as equal as possible between the
-	// requested number of mpParameters->mNumIndexThreads
+	// requested number of mpParameters->mNumIndexThreads, adjust numIndexThreads to have maximal 1 thread per signature value
 	unsigned numIndexThreads = max((unsigned)1,mpParameters->mNumIndexThreads);
 	index_queue.resize(min(numIndexThreads,mpParameters->mNumHashFunctions));
 	unsigned hf_left = mpParameters->mNumHashFunctions;
-	for (unsigned t=min(numIndexThreads,mpParameters->mNumHashFunctions);t>=1;t--){
-		unsigned range = std::ceil((double)hf_left / (double)(t));
+	for (unsigned m=min(numIndexThreads,mpParameters->mNumHashFunctions);m>=1;m--){
+		unsigned range = std::ceil((double)hf_left / (double)(m));
 		// launch thread with range over mNumHashFunctions
-		threads.push_back( std::thread(&MinHashEncoder::worker_IndexUpdate,this,t-1,hf_left-range,hf_left-1));
-		cout << "index update thread " << t << " range " << hf_left-range+1 << ".." << hf_left << endl;
+		threads.push_back( std::thread(&MinHashEncoder::finisher_IndexUpdate,this,m-1,hf_left-range,hf_left-1));
+		cout << "index update thread " << m << " range " << hf_left-range+1 << ".." << hf_left << endl;
 		hf_left -= range;
 	}
 
-	// launch remaining threads
-	threads.push_back( std::thread(&MinHashEncoder::worker_readFiles,this,graphWorkers, 300));
+	// create worker_readFiles thread
+	threads.push_back( std::thread(&MinHashEncoder::worker_readFiles,this,graphWorkers, 500));
 	std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-	threads.push_back( std::thread(&MinHashEncoder::finisher,this));
-
-	for (int i=0;i<graphWorkers;i++){
-		threads.push_back( std::thread(&MinHashEncoder::worker_Graph2Signature,this,graphWorkers,i));
+	// create n worker_Graph2Signature threads
+	for (int n=0;n<graphWorkers;n++){
+		threads.push_back( std::thread(&MinHashEncoder::worker_Graph2Signature,this,graphWorkers,n));
 	}
 
 	{
@@ -544,7 +522,7 @@ void MinHashEncoder::HashSignatureHelper() {
 void MinHashEncoder::ComputeHashSignature(const SVector& aX, Signature& signature, Signature* tmpSig) {
 
 	// sub_hash_range is always floor(numHashFunctionsFull / mpParameters->mNumRepeatsHashFunction)
-	//if we use shingles we need a temp signature of length numHashFunctionsFull
+	// if we use shingles we need a temp signature of length numHashFunctionsFull
 	// otherwise we directly put values in the provided signature object
 	Signature *signatureP;
 	if (mpParameters->mNumHashShingles>1){
@@ -577,15 +555,6 @@ void MinHashEncoder::ComputeHashSignature(const SVector& aX, Signature& signatur
 		}
 	}
 
-	/*	for (unsigned i = 0; i < signatureP->size(); i++){
-		//(*signatureP)[i] = (*signatureP)[i%(signatureP->size()-1)+1];
-		if ( (*signatureP)[i] >= MAXUNSIGNED  ){
-		//	(*signatureP)[i] = (*signatureP)[i%(signatureP->size()-1)+1];
-		//		cout << i << " MAXU " << i%(signatureP->size()-1)+1 << " " << (*signatureP)[i] << " " << (*signatureP)[i%(signatureP->size()-1)+1] <<endl;
-
-		}
-	}*/
-
 	// compute shingles, i.e. rehash mNumHashShingles hash values into one hash value
 	if (mpParameters->mNumHashShingles > 1 ) {
 		vector<unsigned> signatureFinal(mpParameters->mNumHashFunctions);
@@ -593,7 +562,6 @@ void MinHashEncoder::ComputeHashSignature(const SVector& aX, Signature& signatur
 			signatureFinal[i] = HashFunc(signatureP->begin()+(i*mpParameters->mNumHashShingles),signatureP->begin()+(i*mpParameters->mNumHashShingles+mpParameters->mNumHashShingles),mHashBitMask_shingle);
 		}
 		signature.swap(signatureFinal);
-		//	delete signatureP;
 	}
 }
 
@@ -835,7 +803,7 @@ void HistogramIndex::InitInverseIndex() {
 
 	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k){
 		mInverseIndex[k].max_load_factor(0.6);
-		mInverseIndex[k].set_resizing_parameters(0.0,0.8);
+		mInverseIndex[k].set_resizing_parameters(0.0,0.6);
 		mInverseIndex[k].rehash(2^28);
 		//mInverseIndex[k].set_empty_key(0);
 		mMemPool_2[k] = new MemoryPool<newIndexBin_2,mMemPool_BlockSize>();
@@ -881,8 +849,8 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 				foo[1] = aIndexT;
 				foo[0] = 1; //index of last element is stored at idx[0]
 
-				mInverseIndex[k].rehash((numKeys/mpParameters->mNumHashFunctions)+3000000);
-				mInverseIndex[k].insert(make_pair(key,foo));
+				//mInverseIndex[k].rehash((numKeys/mpParameters->mNumHashFunctions)+5000000);
+				mInverseIndex[k][key] = foo;
 				numKeys++; // just for bin statistics
 				//	mInverseIndex[k].rehash(numKeys+1000000);
 
