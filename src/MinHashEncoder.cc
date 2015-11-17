@@ -129,7 +129,7 @@ void MinHashEncoder::worker_readFiles(unsigned numWorkers, unsigned chunkSizeFac
 			while (!fin.eof()) {
 
 				unsigned maxB = max((uint)1000,(uint)log2((double)mSignatureCounter)^2*chunkSizeFactor);
-				unsigned currBuff = maxB*3; //rand()%(maxB*4	 - maxB + 1) + maxB; // curr chunk size
+				unsigned currBuff = rand()%(maxB*4	 - maxB*2 + 1) + maxB; // curr chunk size
 				unsigned i = 0;			// current fragment in currBuff
 				bool lastSeqGr = false; // indicates that we have the last fragment from current seq, used to get all fragments from current seq into current chunk
 				// necessary to have all fragments for one seq/feature if we want to combine signatures in finisher
@@ -323,6 +323,7 @@ void MinHashEncoder::worker_Graph2Signature(int numWorkers, unsigned id){
 		ChunkP myData;
 		vector<ChunkP> myQ;
 
+		// take multiple chunks at once, gives better throughput
 		while (graph_queue[id].size()>=1){
 			graph_queue[id].wait_and_pop(myData);
 			myQ.push_back(myData);
@@ -873,7 +874,7 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 		const unsigned& key = aSignature[k];
 
 		if (key != MAXUNSIGNED && key != 0) { //if key is equal to markers for empty bins then skip insertion instance in data structure
-			if (!mInverseIndex[k][key]) { //if this is the first time that an instance exhibits that specific value for that hash function, then store for the first time the reference to that instance
+			if (mInverseIndex[k].count(key)==0) { //if this is the first time that an instance exhibits that specific value for that hash function, then store for the first time the reference to that instance
 
 				binKeyTy* foo;
 				foo = reinterpret_cast<indexBinTy>(mMemPool_2[k]->newElement());

@@ -37,6 +37,8 @@ public:
 	threadsafe_queue<ResultChunkP> res_queue;
 	std::atomic_uint mResultCounter;
 
+	mutable std::mutex mut_meta;
+
 	void 			Exec();
 //	void 			finishUpdate(ChunkP& myData);
 	void 			finishUpdate(ChunkP& myData, ResultChunkP& myResult);

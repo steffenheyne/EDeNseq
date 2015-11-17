@@ -142,14 +142,12 @@ void SeqClassifyManager::worker_Classify(int numWorkers, unsigned id){
 
 		ChunkP myData;
 		vector<ChunkP> myQ;
-		unique_lock<mutex> lk(mut1);
 
 		while (graph_queue[id].size()>=1){
-			graph_queue[id].try_pop(myData);
+			graph_queue[id].wait_and_pop(myData);
 			myQ.push_back(myData);
 		}
-		lk.unlock();
-
+		//if (myData != NULL) {
 		while (!done && myQ.size()){
 			myData = myQ.back();
 			myQ.pop_back();
@@ -182,10 +180,9 @@ void SeqClassifyManager::finisher_Results(ogzstream* fout_res){
 	while (!done){
 
 		ResultChunkP myResults;
+		bool succ = res_queue.try_pop(myResults);
 
-		res_queue.wait_and_pop(myResults);
-
-		if (!done && myResults->size()>0) {
+		if (!done && succ && myResults->size()>0) {
 
 			for (unsigned i=0; i<myResults->size(); i++){
 				*fout_res << (*myResults)[i].output_line;
@@ -200,7 +197,6 @@ void SeqClassifyManager::finisher_Results(ogzstream* fout_res){
 			cout << mInstanceCounter << " resQueue=" << res_queue.size() << " graphQueue=";
 			uint avg = 0;
 			for (uint i=0; i<graph_queue.size(); ++i){
-				//cout << graph_queue[i].size() << " ";
 				avg += graph_queue[i].size();
 			};
 			cout << avg/graph_queue.size() << "   ";
@@ -236,11 +232,11 @@ void SeqClassifyManager::Classify_Signatures(SeqFilesT& myFiles){
 
 	cout << "Using " << graphWorkers << " worker threads and 2 helper threads..." << endl;
 
-	done				= false;
+	done					= false;
 	files_done			= 0;
-	mSignatureCounter 	= 0;
+	mSignatureCounter = 0;
 	mInstanceCounter 	= 0;
-	mResultCounter 		= 0;
+	mResultCounter 	= 0;
 
 	vector<std::thread> threads;
 	graph_queue.resize(graphWorkers);
@@ -376,12 +372,16 @@ void SeqClassifyManager::finishUpdate(ChunkP& myData, ResultChunkP& myResultChun
 			hist_t /= sum;
 			hist_t = hist.apply(changeNAN);
 
-			metaHist += hist_t;
-
 			for (unsigned i = 0; i<hist.size(); i++){
 				if (hist[i] >= max  && max != 0) {hist[i] = 1;} else { hist[i]=0;};
 			}
-			metaHistNum += hist;
+
+			{
+				std::lock_guard<std::mutex> lk(mut_meta);
+				metaHist += hist_t;
+				metaHistNum += hist;
+			}
+
 			j += k;
 			break;
 		}
