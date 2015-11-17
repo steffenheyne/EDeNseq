@@ -114,7 +114,6 @@ public:
 
 	threadsafe_queue<SeqFileP> readFile_queue;
 	vector<threadsafe_queue<ChunkP>> graph_queue;
-	threadsafe_queue<ChunkP> sig_queue;
 	vector<threadsafe_queue<ChunkP>> index_queue;
 
 	std::atomic_bool done;
@@ -125,30 +124,29 @@ public:
 	std::atomic_uint mSignatureUpdateCounter;
 
 
-	void					worker_Graph2Signature(int numWorkers,unsigned id);
-	void 					finisher();
-	vector<unsigned>		HashFuncNSPDK(const string& aString, unsigned& aStart, unsigned& aMinRadius, unsigned& aMaxRadius, unsigned aBitMask);
-	void 					worker_readFiles(unsigned numWorkers, unsigned chunkSizeFactor);
-	void 					HashSignatureHelper();
-
-	//public:
-
 	unsigned 			mHashBitMask;
 	unsigned 			mHashBitMask_feature;
 	unsigned 			mHashBitMask_shingle;
-	MinHashEncoder(Parameters* apParameters, Data* apData);
-	virtual	~MinHashEncoder();
-	void		Init(Parameters* apParameters, Data* apData);
 
-	void 					generate_feature_vector(const string& seq, SVector& x);
-	virtual void 		UpdateInverseIndex(vector<unsigned>& aSignature, unsigned& aIndex) {};
-	//	virtual void 		finishUpdate(ChunkP& myData) {};
-	virtual void 		finishUpdate(ChunkP& myData, unsigned& min, unsigned& max) {};
+				MinHashEncoder(Parameters* apParameters, Data* apData);
+	virtual		~MinHashEncoder();
+
+	void					Init(Parameters* apParameters, Data* apData);
+
 	void 					LoadData_Threaded(SeqFilesT& myFiles);
-	unsigned				GetLoadedInstances();
-	void 					worker_IndexUpdate(unsigned id, unsigned min, unsigned max);
-	void 					wakeup();
+	void 					worker_readFiles(unsigned numWorkers, unsigned chunkSizeFactor);
+	void					worker_Graph2Signature(int numWorkers,unsigned id);
+	void 					finisher_IndexUpdate(unsigned id, unsigned min, unsigned max);
+	virtual void			finishUpdate(ChunkP& myData, unsigned& min, unsigned& max) {};
+
+	vector<unsigned>		HashFuncNSPDK(const string& aString, unsigned& aStart, unsigned& aMinRadius, unsigned& aMaxRadius, unsigned aBitMask);
+	void 					HashSignatureHelper();
+	void 					generate_feature_vector(const string& seq, SVector& x);
 	void					ComputeHashSignature(const SVector& aX, Signature& signaure, Signature* tmpSig);
+
+	virtual void 			UpdateInverseIndex(vector<unsigned>& aSignature, unsigned& aIndex) {};
+
+	unsigned				GetLoadedInstances();
 };
 
 class NeighborhoodIndex : public MinHashEncoder
@@ -186,17 +184,17 @@ public:
 	std::tr1::unordered_map<string, unsigned> name2idxMap;
 	vector<string>	idx2nameMap;
 
-	void 				  NeighborhoodCacheReset();
-	vector<unsigned>& ComputeHashSignature(unsigned aID);
-	void 				  UpdateInverseIndex(vector<unsigned>& aSignature, unsigned& aIndex);
-	void             ComputeApproximateNeighborhoodCore(const vector<unsigned>& aSignature, umap_uint_int& neighborhood, unsigned& collisions);
-	umap_uint_int    ComputeApproximateNeighborhoodExt(const vector<unsigned>& aSignature, unsigned& collisions, double& density);
-	vector<unsigned> ComputeApproximateNeighborhood(const vector<unsigned>& aSignature, unsigned& collisions, double& density);
+	void 			  		NeighborhoodCacheReset();
+	vector<unsigned>& 		ComputeHashSignature(unsigned aID);
+	void 			 		UpdateInverseIndex(vector<unsigned>& aSignature, unsigned& aIndex);
+	void             		ComputeApproximateNeighborhoodCore(const vector<unsigned>& aSignature, umap_uint_int& neighborhood, unsigned& collisions);
+	umap_uint_int    		ComputeApproximateNeighborhoodExt(const vector<unsigned>& aSignature, unsigned& collisions, double& density);
+	vector<unsigned> 		ComputeApproximateNeighborhood(const vector<unsigned>& aSignature, unsigned& collisions, double& density);
 
-	vector<unsigned> TrimNeighborhood(umap_uint_int& aNeighborhood, unsigned collisions, double& density);
-	vector<unsigned> ComputeNeighborhood(const unsigned aID, unsigned& collisions, double& density);
-	umap_uint_int 	  ComputeNeighborhoodExt(unsigned aID, unsigned& collisions, double& density);
-	double           ComputeApproximateSim(const unsigned& aID, const unsigned& bID);
+	vector<unsigned> 		TrimNeighborhood(umap_uint_int& aNeighborhood, unsigned collisions, double& density);
+	vector<unsigned> 		ComputeNeighborhood(const unsigned aID, unsigned& collisions, double& density);
+	umap_uint_int 	  		ComputeNeighborhoodExt(unsigned aID, unsigned& collisions, double& density);
+	double           		ComputeApproximateSim(const unsigned& aID, const unsigned& bID);
 	pair<unsigned,unsigned> ComputeApproximateSim(const unsigned& aID, const vector<unsigned>& bSignature);
 
 	virtual ~NeighborhoodIndex(){
