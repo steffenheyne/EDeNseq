@@ -133,13 +133,6 @@ public:
 
 	void					Init(Parameters* apParameters, Data* apData);
 
-	void					worker_Graph2Signature(int numWorkers,unsigned id);
-	void 					finisher();
-	vector<unsigned>		HashFuncNSPDK(const string& aString, unsigned& aStart, unsigned& aMinRadius, unsigned& aMaxRadius, unsigned aBitMask);
-	void 					worker_readFiles(unsigned numWorkers, unsigned chunkSizeFactor);
-	void 					HashSignatureHelper();
-
-
 	void 					LoadData_Threaded(SeqFilesT& myFiles);
 	void 					worker_readFiles(unsigned numWorkers, unsigned chunkSizeFactor);
 	void					worker_Graph2Signature(int numWorkers,unsigned id);
