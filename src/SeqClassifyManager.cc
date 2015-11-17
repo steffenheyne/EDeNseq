@@ -504,9 +504,24 @@ void SeqClassifyManager::ClassifySeqs(){
 			}
 		}
 
+
+		const char * indexBinSizePath;
+		if (mpParameters->mDirectoryPath != "") indexBinSizePath = (mpParameters->mDirectoryPath + "/IndexBinSize.tab").c_str();
+		else indexBinSizePath = (mpParameters->mDirectoryPath + "IndexBinSize.tab").c_str();
+
+		cout << indexBinSizePath << endl;
+		FILE * indexBinSizeFile = fopen(indexBinSizePath, "w"); 	// opening index bin sizes file
+
+
 		for (unsigned i=0; i<indexHist.size();i++){
-			cout << " index bin size " << i+1 << "\t" << indexHist[i] << "\t" << setprecision(5) << indexHist[i]/indexHist.sum() << endl;
+			string outputString = " index bin size " + to_string(i+1) + "\t" + to_string(indexHist[i]);
+			cout << outputString << "\t" << setprecision(5) << indexHist[i]/indexHist.sum() << endl; 	// writing to stdout
+			const char * outputLine = (outputString + "\n").c_str();
+			if (indexBinSizeFile != nullptr) {
+				fputs(outputLine, indexBinSizeFile); 	// writing to file (if opening was successful)
+			}
 		}
+		fclose(indexBinSizeFile); 	// closing file again
 	}
 }
 
