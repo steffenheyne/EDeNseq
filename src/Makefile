@@ -23,7 +23,7 @@
 #CHECKLIMITS activates the limit check for graph operations
 
 CXX=g++
-OPTS=-g -O3 -Wno-deprecated -Wno-unused-local-typedefs -DLOSS=1 -std=c++11 -pthread -fopenmp -DNDEBUG -DUSEMULTITHREAD -DEIGEN_DONT_PARALLELIZE # -DDEBUGON # -DCHECKLIMITS
+OPTS=-g -O3 -Wno-deprecated -Wno-unused-local-typedefs -DLOSS=1 -std=c++11 -pthread -fpermissive -fopenmp -DNDEBUG -DUSEMULTITHREAD -DEIGEN_DONT_PARALLELIZE # -DDEBUGON # -DCHECKLIMITS
 #OPTS=-g -Wno-deprecated -DLOSS=1 -static -DEIGEN_DONT_PARALLELIZE # -DDEBUGON # -DCHECKLIMITS
 #OPTS=-g -Wno-deprecated -DLOSS=1 #-DDEBUGON
 #OPTS=-g -Wno-deprecated -static -pg
@@ -58,15 +58,13 @@ EDeNseq.o: EDeNseq.cc gzstream.h MinHashEncoder.h
 
 SeqClassifyManager.o:SeqClassifyManager.cc SeqClassifyManager.h MinHashEncoder.h
 
-SeqClusterManager.o:SeqClusterManager.h MinHashEncoder.h MinHashEncoder.cc
+SeqClusterManager.o:SeqClusterManager.h MinHashEncoder.h
 
 TestManager.o:TestManager.cc TestManager.h MinHashEncoder.h
 
 MinHashEncoder.o:MinHashEncoder.h Data.h
 
-BaseManager.o:BaseManager.h
-
-Data.o:Data.h
+Data.o:Data.h	
 
 Parameters.o:Parameters.h Utility.h
 
