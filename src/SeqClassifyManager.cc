@@ -7,8 +7,6 @@
 
 #include "SeqClassifyManager.h"
 #include "MinHashEncoder.h"
-#include <stdio.h>
-#include <stdlib.h>
 
 SeqClassifyManager::SeqClassifyManager(Parameters* apParameters, Data* apData):
 HistogramIndex(apParameters,apData)
@@ -58,7 +56,10 @@ void SeqClassifyManager::Exec() {
 
 		SeqFilesT myList;
 		myList.push_back(mIndexDataSet);
+
+		InitInverseIndex();
 		LoadData_Threaded(myList);
+
 		SetHistogramSize(mIndexDataSet->lastMetaIdx);
 		mpParameters->mSeqShift = tmp_shift;
 
@@ -77,28 +78,29 @@ void SeqClassifyManager::Exec() {
 		}
 
 	} else {
-
 		// read existing index file (*.bhi)
+		mIndexDataSet->filename_index = mpParameters->mIndexBedFile+".bhi";
+
 		cout << endl << " *** Read inverse index *** "<< endl << endl;
 		cout << "inverse index file : " << mpParameters->mIndexBedFile+".bhi" << endl << "read index ...";
+
 		bool indexState = readBinaryIndex2(mpParameters->mIndexBedFile+".bhi",mInverseIndex);
-		if (indexState == true){
-			cout << "finished! ";
-			cout << " Index OK! Format Version "<< INDEX_FORMAT_VERSION << endl << endl << "Read index parameters:"<< endl << endl;
-			cout << setw(30) << std::right << " hist size  " << GetHistogramSize() << endl;
-			cout << setw(30) << std::right << " bitmask  " << mHashBitMask << endl;
-			cout << setw(30) << std::right << " hash_bit_size  " << mpParameters->mHashBitSize << endl;
-			cout << setw(30) << std::right << " random_seed  " << mpParameters->mRandomSeed << endl;
-			cout << setw(30) << std::right << " num_hash_functions  " << mpParameters->mNumHashFunctions << endl;
-			cout << setw(30) << std::right << " num_repeat_hash_function  " << mpParameters->mNumRepeatsHashFunction << endl;
-			cout << setw(30) << std::right << " num_hash_shingles  " << mpParameters->mNumHashShingles << endl;
-			cout << setw(30) << std::right << " radius  " << mpParameters->mMinRadius<<".."<<mpParameters->mRadius << endl;
-			cout << setw(30) << std::right << " distance  " << mpParameters->mMinDistance<<".."<<mpParameters->mDistance << endl;
-			cout << setw(30) << std::right << " seq_window  " << mpParameters->mSeqWindow << endl;
-			cout << setw(30) << std::right << " index_seq_shift  " << mpParameters->mIndexSeqShift << " nt" << endl;
-		} else
+
+		if (indexState == false)
 			throw range_error("\nCannot read index from file " + mpParameters->mIndexBedFile+".bhi\n");
-		mIndexDataSet->filename_index = mpParameters->mIndexBedFile+".bhi";
+
+		cout << "finished! ";
+		cout << " Index OK! Format Version "<< INDEX_FORMAT_VERSION << endl << endl << "Read index parameters:"<< endl << endl;
+		cout << setw(30) << std::right << " hist size  " << GetHistogramSize() << endl;
+		cout << setw(30) << std::right << " hash_bit_size  " << mpParameters->mHashBitSize << endl;
+		cout << setw(30) << std::right << " random_seed  " << mpParameters->mRandomSeed << endl;
+		cout << setw(30) << std::right << " num_hash_functions  " << mpParameters->mNumHashFunctions << endl;
+		cout << setw(30) << std::right << " num_repeat_hash_function  " << mpParameters->mNumRepeatsHashFunction << endl;
+		cout << setw(30) << std::right << " num_hash_shingles  " << mpParameters->mNumHashShingles << endl;
+		cout << setw(30) << std::right << " radius  " << mpParameters->mMinRadius<<".."<<mpParameters->mRadius << endl;
+		cout << setw(30) << std::right << " distance  " << mpParameters->mMinDistance<<".."<<mpParameters->mDistance << endl;
+		cout << setw(30) << std::right << " seq_window  " << mpParameters->mSeqWindow << endl;
+		cout << setw(30) << std::right << " index_seq_shift  " << mpParameters->mIndexSeqShift << " nt" << endl;
 	}
 
 	// update IndexValue2Feature map from provided Index BED file
@@ -127,20 +129,29 @@ void SeqClassifyManager::Exec() {
 		}
 	}
 
+	// do the classification
 	ClassifySeqs();
+
 	pb.PrintElapsed();
 }
 
-void SeqClassifyManager::worker_Classify(int numWorkers){
+void SeqClassifyManager::worker_Classify(int numWorkers, unsigned id){
 
+	Signature* tmpSig = new Signature(numHashFunctionsFull);
 	while (!done){
 
 		ChunkP myData;
-		unique_lock<mutex> lk(mut2);
-		cv2.wait(lk,[&]{if ( (done) ||  (graph_queue.try_pop( (myData) )) ) return true; else return false;});
-		lk.unlock();
+		vector<ChunkP> myQ;
 
-		if (!done && myData->size()>0) {
+		while (graph_queue[id].size()>=1){
+			graph_queue[id].wait_and_pop(myData);
+			myQ.push_back(myData);
+		}
+		//if (myData != NULL) {
+		while (!done && myQ.size()){
+			myData = myQ.back();
+			myQ.pop_back();
+
 			//cout << "  graph2sig thread got chunk " << myData->size() << " offset " << (*myData)[0].idx << " " << mpParameters->mHashBitSize << endl;
 
 			ResultChunkP myResultChunk = std::make_shared<ResultChunkT>();
@@ -148,20 +159,20 @@ void SeqClassifyManager::worker_Classify(int numWorkers){
 			for (unsigned j = 0; j < myData->size(); j++) {
 
 				generate_feature_vector((*myData)[j].seq, (*myData)[j].svec);
-				MinHashEncoder::ComputeHashSignature((*myData)[j].svec,(*myData)[j].sig);
+				ComputeHashSignature((*myData)[j].svec,(*myData)[j].sig,tmpSig);
 
 			}
 			finishUpdate(myData,myResultChunk);
-			//			if (res_queue.size()>=numWorkers*25){
-			//				unique_lock<mutex> lk(mut_res);
-			//				cv_res.wait(lk,[&]{if ((done) || (res_queue.size()<=numWorkers*10)) return true; else return false;});
-			//				lk.unlock();
-			//			}
 			res_queue.push(myResultChunk);
+			if (res_queue.size()>=numWorkers*25){
+				unique_lock<mutex> lk(mut2);
+				cv2.wait(lk,[&]{if ((done) || (res_queue.size()<=numWorkers*10)) return true; else return false;});
+				lk.unlock();
+			}
+
 		}
-		cv2.notify_all();
-		cv_res.notify_all();
 	}
+	delete tmpSig;
 }
 
 void SeqClassifyManager::finisher_Results(ogzstream* fout_res){
@@ -169,27 +180,27 @@ void SeqClassifyManager::finisher_Results(ogzstream* fout_res){
 	while (!done){
 
 		ResultChunkP myResults;
-		unique_lock<mutex> lk(mut_res);
-		cv_res.wait(lk,[&]{if ( (done) || (res_queue.try_pop( (myResults) ))) return true; else return false;});
-		lk.unlock();
+		bool succ = res_queue.try_pop(myResults);
 
-		if (!done && myResults->size()>0) {
+		if (!done && succ && myResults->size()>0) {
 
 			for (unsigned i=0; i<myResults->size(); i++){
 				*fout_res << (*myResults)[i].output_line;
 				mResultCounter += (*myResults)[i].numInstances;
 
 			}
-			cout.setf(ios::fixed); //,ios::floatfield);
-			cout << "\r" <<  std::setprecision(1) << progress_bar.getElapsed()/1000 << " sec elapsed    Finised numSeqs=" << std::setprecision(0) << setw(10);
-			cout << mNumSequences  << "("<<mNumSequences/(progress_bar.getElapsed()/1000) <<" seq/s)  signatures=" << setw(10);
-			cout << mResultCounter << "("<<(double)mResultCounter/((progress_bar.getElapsed()/1000)) <<" sig/s - "<<(double)mResultCounter/((progress_bar.getElapsed()/(1000/mpParameters->mNumThreads)))<<" per thread)  inst=";
-			cout << mInstanceCounter << " resQueue=" << res_queue.size() << " graphQueue=" << graph_queue.size() << "       ";
+			double elap = progress_bar.getElapsed()/1000;
+			cout.setf(ios::fixed);
+			cout << "\r" <<  std::setprecision(1) << elap << " sec elapsed   Finished numSeqs=" << std::setprecision(0) << setw(10);
+			cout << mNumSequences  << "("<<mNumSequences/(elap) <<" seq/s)  signatures=" << setw(10);
+			cout << mResultCounter << "("<<(double)mResultCounter/((elap)) <<" sig/s - "<<(double)mResultCounter/elap/mpParameters->mNumThreads <<" per thread)  inst=";
+			cout << mInstanceCounter << " resQueue=" << res_queue.size() << " graphQueue=";
+			uint avg = 0;
+			for (uint i=0; i<graph_queue.size(); ++i){
+				avg += graph_queue[i].size();
+			};
+			cout << avg/graph_queue.size() << "   ";
 		}
-		cv1.notify_all();
-		cv2.notify_all();
-		cvm.notify_all();
-		cv_res.notify_all();
 	}
 	progress_bar.PrintElapsed();
 }
@@ -200,7 +211,8 @@ void SeqClassifyManager::Classify_Signatures(SeqFilesT& myFiles){
 		readFile_queue.push(myFiles[i]);
 	}
 
-	mHashBitMask = (2 << (mpParameters->mHashBitSize - 1)) - 1;
+	HashSignatureHelper();
+
 	cout << "hist size: " << GetHistogramSize() << endl;
 	cout << "Using " << mHashBitMask << " as bitmask"<< endl;
 	cout << "Using " << mpParameters->mHashBitSize << " bits to encode features" << endl;
@@ -212,7 +224,6 @@ void SeqClassifyManager::Classify_Signatures(SeqFilesT& myFiles){
 	cout << "Using feature radius   " << mpParameters->mMinRadius<<".."<<mpParameters->mRadius << endl;
 	cout << "Using feature distance " << mpParameters->mMinDistance<<".."<<mpParameters->mDistance << endl;
 	cout << "Using sequence window  " << mpParameters->mSeqWindow<<" shift "<<mpParameters->mSeqShift << " nt - clip " << mpParameters->mSeqClip << endl;
-
 	cout << endl << "Computing MinHash signatures on the fly while reading " << myFiles.size() << " file(s)..." << endl;
 
 	int graphWorkers = std::thread::hardware_concurrency();
@@ -221,30 +232,30 @@ void SeqClassifyManager::Classify_Signatures(SeqFilesT& myFiles){
 
 	cout << "Using " << graphWorkers << " worker threads and 2 helper threads..." << endl;
 
-	done = false;
-	files_done=0;
+	done					= false;
+	files_done			= 0;
 	mSignatureCounter = 0;
-	mInstanceCounter = 0;
-	mResultCounter = 0;
+	mInstanceCounter 	= 0;
+	mResultCounter 	= 0;
 
 	vector<std::thread> threads;
+	graph_queue.resize(graphWorkers);
 
+	// launch all threads
 	threads.push_back( std::thread(&SeqClassifyManager::finisher_Results,this,myFiles[0]->out_results_fh));
 	for (int i=0;i<graphWorkers;i++){
-		threads.push_back( std::thread(&SeqClassifyManager::worker_Classify,this,graphWorkers));
+		threads.push_back( std::thread(&SeqClassifyManager::worker_Classify,this,graphWorkers,i));
 	}
-	threads.push_back( std::thread(&SeqClassifyManager::worker_readFiles,this,graphWorkers));
+	threads.push_back( std::thread(&MinHashEncoder::worker_readFiles,this,graphWorkers,500));
 
 	{
 		join_threads joiner(threads);
 
-		unique_lock<mutex> lk(mutm);
-		cv1.notify_all();
 		while(!done){
-			cvm.wait(lk,[&]{if ( (files_done<myFiles.size()) || (mInstanceCounter > mResultCounter) ) return false; else return true;});
-			lk.unlock();
-			done=true;
-			cv3.notify_all();
+			std::this_thread::sleep_for(std::chrono::milliseconds(20));
+			if ( (files_done<myFiles.size()) || (mInstanceCounter > mResultCounter))
+				done = false;
+			else done = true;
 			cv2.notify_all();
 			cv1.notify_all();
 		}
@@ -262,15 +273,16 @@ void SeqClassifyManager::Classify_Signatures(SeqFilesT& myFiles){
 	cout << " CLASSIFICATION FINISHED" << endl << SEP << endl;
 }
 
-void SeqClassifyManager::finishUpdate(ChunkP& myData) {
+
+void SeqClassifyManager::finishUpdate(ChunkP& myData, unsigned& min, unsigned& max) {
 
 	// as this is the overloaded virtual function from MinHashEncoder
 	//we assume signatureAction==INDEX always here
 	for (unsigned j = 0; j < myData->size(); j++) {
-		UpdateInverseIndex((*myData)[j].sig, (*myData)[j].idx);
+		UpdateInverseIndex((*myData)[j].sig, (*myData)[j].idx, min, max);
 	}
-	//	cout << "stat lf=" << mInverseIndex[0].load_factor() << " maxlf=" <<mInverseIndex[0].max_load_factor() << " minlf=" <<mInverseIndex[0].min_load_factor() << " bc=" << mInverseIndex[0].bucket_count() << " mbc="<< mInverseIndex[0].max_bucket_count() << endl;
 }
+
 
 inline double changeNAN(double i) {if (std::isnan(i)) return 0.0; else return i;}
 
@@ -360,12 +372,16 @@ void SeqClassifyManager::finishUpdate(ChunkP& myData, ResultChunkP& myResultChun
 			hist_t /= sum;
 			hist_t = hist.apply(changeNAN);
 
-			metaHist += hist_t;
-
 			for (unsigned i = 0; i<hist.size(); i++){
 				if (hist[i] >= max  && max != 0) {hist[i] = 1;} else { hist[i]=0;};
 			}
-			metaHistNum += hist;
+
+			{
+				std::lock_guard<std::mutex> lk(mut_meta);
+				metaHist += hist_t;
+				metaHistNum += hist;
+			}
+
 			j += k;
 			break;
 		}
@@ -504,9 +520,24 @@ void SeqClassifyManager::ClassifySeqs(){
 			}
 		}
 
+
+		const char * indexBinSizePath;
+		if (mpParameters->mDirectoryPath != "") indexBinSizePath = (mpParameters->mDirectoryPath + "/IndexBinSize.tab").c_str();
+		else indexBinSizePath = (mpParameters->mDirectoryPath + "IndexBinSize.tab").c_str();
+
+		cout << indexBinSizePath << endl;
+		FILE * indexBinSizeFile = fopen(indexBinSizePath, "w"); 	// opening index bin sizes file
+
+
 		for (unsigned i=0; i<indexHist.size();i++){
-			cout << " index bin size " << i+1 << "\t" << indexHist[i] << "\t" << setprecision(5) << indexHist[i]/indexHist.sum() << endl;
+			string outputString = " index bin size " + to_string(i+1) + "\t" + to_string(indexHist[i]);
+			cout << outputString << "\t" << setprecision(5) << indexHist[i]/indexHist.sum() << endl; 	// writing to stdout
+			const char * outputLine = (outputString + "\n").c_str();
+			if (indexBinSizeFile != nullptr) {
+				fputs(outputLine, indexBinSizeFile); 	// writing to file (if opening was successful)
+			}
 		}
+		fclose(indexBinSizeFile); 	// closing file again
 	}
 }
 

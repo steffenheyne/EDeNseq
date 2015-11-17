@@ -9,7 +9,6 @@
 #define TESTMANAGER_H_
 
 #include "MinHashEncoder.h"
-#include "BaseManager.h"
 #include "Data.h"
 #include "Parameters.h"
 
@@ -28,7 +27,8 @@ public:
 
 	std::atomic_bool done_output;
 
-	void finishUpdate(ChunkP& myData);
+//	void finishUpdate(ChunkP& myData);
+	void finishUpdate(ChunkP& myData, unsigned& min, unsigned& max);
 	void Exec();
 	void ClassifySeqs();
 	ogzstream* PrepareResultsFile();

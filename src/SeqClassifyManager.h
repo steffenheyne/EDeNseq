@@ -9,7 +9,6 @@
 #define SEQCLASSIFYMANAGER_H_
 
 #include "MinHashEncoder.h"
-#include "BaseManager.h"
 #include "Data.h"
 #include "Parameters.h"
 
@@ -29,26 +28,28 @@ public:
 	typedef vector<ResultT> ResultChunkT;
 	typedef std::shared_ptr<ResultChunkT> ResultChunkP;
 
-	std::atomic_uint mNumSequences;
 	histogramT metaHist;
 	histogramT metaHistNum;
-	unsigned mClassifiedInstances;
-
+	std::atomic_uint mNumSequences;
+	std::atomic_uint mClassifiedInstances;
 	std::atomic_bool done_output;
 
 	threadsafe_queue<ResultChunkP> res_queue;
+
 	mutable std::mutex mut_res;
-   std::condition_variable cv_res;
+    std::condition_variable cv_res;
 	std::atomic_uint mResultCounter;
 
+	mutable std::mutex mut_meta;
 
 	void 			Exec();
-	void 			finishUpdate(ChunkP& myData);
+//	void 			finishUpdate(ChunkP& myData);
 	void 			finishUpdate(ChunkP& myData, ResultChunkP& myResult);
+	void 			finishUpdate(ChunkP& myData, unsigned& min, unsigned& max);
 
 	void 			ClassifySeqs();
 	void 			Classify_Signatures(SeqFilesT& myFiles);
-	void 			worker_Classify(int numWorkers);
+	void 			worker_Classify(int numWorkers, unsigned id);
 	void 			finisher_Results(ogzstream* fout_res);
 	void 			getResultString(string& resT, histogramT hist, unsigned emptyBins, unsigned matchingSigs, unsigned numSigs, string& name, strandTypeT strand);
 	ogzstream* 	PrepareResultsFile();

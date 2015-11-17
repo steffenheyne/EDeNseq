@@ -57,7 +57,6 @@ const string SEP = "------------------------------------------------------------
 const string TAB = "    ";
 
 //------------------------------------------------------------------------------------------------------------------------
-const unsigned MAXUNSIGNED = 2 << 30;
 
 ///Returns a random number uniformly distributed between 0 and 1
 //inline double random01() {
@@ -95,7 +94,7 @@ OutType stream_cast(const InType & t) {
 //void MakeShuffledDataIndicesList(vector<unsigned>& oDataIdList, unsigned aSize);
 
 //Return an integer hash value for a given input integer in a given domain range
-inline int IntHashSimple(int key, int aModulo) {
+inline uint IntHashSimple(uint key, uint aModulo) {
 	key = ~key + (key << 15); // key = (key << 15) - key - 1;
 	key = key ^ (key >> 12);
 	key = key + (key << 2);
@@ -112,7 +111,7 @@ inline int IntHashSimple(int key, int aModulo) {
 //}
 
 //Return an integer hash value for a given input integer in a given domain range given an additional seed to select the random hash function
-inline int IntHash(int key, int aModulo, unsigned aSeed) {
+inline uint IntHash(uint key, uint aModulo, unsigned aSeed) {
 	const double A = sqrt(2) - 1;
 	return IntHashSimple(key * (aSeed + 1) * A, aModulo);
 }
@@ -249,26 +248,40 @@ private:
 	mutable std::mutex mut;
 	std::queue<T> data_queue;
 	std::condition_variable data_cond;
+	std::atomic_uint sizeA;
 public:
 	threadsafe_queue()
-	{}
+	{ sizeA=0; }
 	threadsafe_queue(threadsafe_queue const& other)
 	{
 		std::lock_guard<std::mutex> lk(other.mut);
 		data_queue=other.data_queue;
 	}
+
 	void push(T new_value)
 	{
 		std::lock_guard<std::mutex> lk(mut);
 		data_queue.push(new_value);
 		data_cond.notify_one();
+		sizeA++;
 	}
+
+	void push_unsafe(T new_value)
+		{
+		//	std::lock_guard<std::mutex> lk(mut);
+			data_queue.push(new_value);
+			data_cond.notify_one();
+			sizeA++;
+		}
+
+
 	void wait_and_pop(T& value)
 	{
 		std::unique_lock<std::mutex> lk(mut);
 		data_cond.wait(lk,[this]{return !data_queue.empty();});
 		value=data_queue.front();
 		data_queue.pop();
+		sizeA--;
 	}
 	std::shared_ptr<T> wait_and_pop()
 																																										{
@@ -276,6 +289,7 @@ public:
 		data_cond.wait(lk,[this]{return !data_queue.empty();});
 		std::shared_ptr<T> res(std::make_shared<T>(data_queue.front()));
 		data_queue.pop();
+		sizeA--;
 		return res;
 																																										}
 
@@ -286,14 +300,27 @@ public:
 			return false;
 		value=data_queue.front();
 		data_queue.pop();
+		sizeA--;
 		return true;
 	}
+	bool try_pop_unsafe(T& value)
+	{
+	//	std::lock_guard<std::mutex> lk(mut);
+		if(data_queue.empty())
+			return false;
+		value=data_queue.front();
+		data_queue.pop();
+		sizeA--;
+		return true;
+	}
+
 	std::shared_ptr<T> try_pop(){
 		std::lock_guard<std::mutex> lk(mut);
 		if(data_queue.empty())
 			return std::shared_ptr<T>();
 		std::shared_ptr<T> res(std::make_shared<T>(data_queue.front()));
 		data_queue.pop();
+		sizeA--;
 		return res;
 }
 
@@ -305,8 +332,8 @@ public:
 
 	int size() const
 	{
-		std::lock_guard<std::mutex> lk(mut);
-		return data_queue.size();
+//		std::lock_guard<std::mutex> lk(mut);
+		return sizeA;
 	}
 
 };
