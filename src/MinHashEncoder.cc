@@ -805,8 +805,8 @@ void HistogramIndex::InitInverseIndex() {
 	mMemPool_10.resize(mpParameters->mNumHashFunctions);
 
 	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k){
-		mInverseIndex[k].max_load_factor(0.5);
-		mInverseIndex[k].set_resizing_parameters(0.0,0.5);
+		mInverseIndex[k].max_load_factor(0.7);
+		mInverseIndex[k].set_resizing_parameters(0.0,0.7);
 		mInverseIndex[k].rehash(134217728);
 		//mInverseIndex[k].set_deleted_key(0);
 		//mInverseIndex[k].set_empty_key(0);
