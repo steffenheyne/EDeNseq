@@ -869,7 +869,7 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 					}
 
 					// only insert if element is not there
-					if (myValue[i]<aIndexT && myValue[0] < 10){
+					if (myValue[i]<aIndexT){
 						binKeyTy newSize = (myValue[0])+1;
 						binKeyTy * fooNew;
 
