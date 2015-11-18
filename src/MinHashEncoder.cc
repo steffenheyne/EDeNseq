@@ -394,7 +394,7 @@ void MinHashEncoder::finisher_IndexUpdate(unsigned id, unsigned min, unsigned ma
 					//cout << index_queue[i].size() << " ";
 					avg += index_queue[i].size();
 				}
-				cout << avg;
+				cout << avg << "  ";
 			}
 		}
 	}
@@ -853,14 +853,14 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 				foo[1] = aIndexT;
 				foo[0] = 1; //index of last element is stored at idx[0]
 
-				mInverseIndex[k].rehash((numKeys/mpParameters->mNumHashFunctions)+5000000);
+				//mInverseIndex[k].rehash((numKeys/mpParameters->mNumHashFunctions)+5000000);
 				mInverseIndex[k][key] = foo;
 				numKeys++; // just for bin statistics
 			} else {
 
 				binKeyTy*& myValue = mInverseIndex[k][key];
 
-				if ( myValue[myValue[0]] != aIndexT){
+				if (myValue[myValue[0]] != aIndexT){
 
 					// find pos for insert, assume sorted array
 					binKeyTy i = myValue[0];
@@ -869,7 +869,7 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 					}
 
 					// only insert if element is not there
-					if (myValue[i]<aIndexT){
+					if (myValue[i]<aIndexT && myValue[0] < 10){
 						binKeyTy newSize = (myValue[0])+1;
 						binKeyTy * fooNew;
 
