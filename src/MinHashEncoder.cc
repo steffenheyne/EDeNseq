@@ -73,7 +73,7 @@ inline void  MinHashEncoder::generate_feature_vector(const string& seq, SVector&
 	//create neighborhood features
 	for (unsigned start = 0; start < size; ++start)
 		mFeatureCache[start] = HashFuncNSPDK(seq, start, mMinRadius, mRadius, MAXUNSIGNED);
-	//cout << mFeatureCache[20][3] << endl;
+
 	vector<unsigned> endpoint_list(3);
 	for (unsigned r = mMinRadius; r <= mRadius; r++) {
 		//	endpoint_list[0] = r;
@@ -129,7 +129,7 @@ void MinHashEncoder::worker_readFiles(unsigned numWorkers, unsigned chunkSizeFac
 			while (!fin.eof()) {
 
 				unsigned maxB = max((uint)1000,(uint)log2((double)mSignatureCounter)^2*chunkSizeFactor);
-				unsigned currBuff = rand()%(maxB*4	 - maxB*2 + 1) + maxB; // curr chunk size
+				unsigned currBuff = maxB*3; //rand()%(maxB*4	 - maxB*2 + 1) + maxB; // curr chunk size
 				unsigned i = 0;			// current fragment in currBuff
 				bool lastSeqGr = false; // indicates that we have the last fragment from current seq, used to get all fragments from current seq into current chunk
 				// necessary to have all fragments for one seq/feature if we want to combine signatures in finisher
@@ -395,7 +395,6 @@ void MinHashEncoder::finisher_IndexUpdate(unsigned id, unsigned min, unsigned ma
 					avg += index_queue[i].size();
 				}
 				cout << avg;
-				cout << " SigUC " << mSignatureUpdateCounter << " ";
 			}
 		}
 	}
@@ -806,9 +805,9 @@ void HistogramIndex::InitInverseIndex() {
 	mMemPool_10.resize(mpParameters->mNumHashFunctions);
 
 	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k){
-		mInverseIndex[k].max_load_factor(0.6);
-		mInverseIndex[k].set_resizing_parameters(0.0,0.6);
-		mInverseIndex[k].rehash(2^28);
+		mInverseIndex[k].max_load_factor(0.5);
+		mInverseIndex[k].set_resizing_parameters(0.0,0.5);
+		mInverseIndex[k].rehash(134217728);
 		//mInverseIndex[k].set_deleted_key(0);
 		//mInverseIndex[k].set_empty_key(0);
 		mMemPool_2[k] = new MemoryPool<newIndexBin_2,mMemPool_BlockSize>();
@@ -857,14 +856,11 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 				mInverseIndex[k].rehash((numKeys/mpParameters->mNumHashFunctions)+5000000);
 				mInverseIndex[k][key] = foo;
 				numKeys++; // just for bin statistics
-				//	mInverseIndex[k].rehash(numKeys+1000000);
-
-				//	} else if (mInverseIndex[k][key][mInverseIndex[k][key][0]] != aIndexT){
 			} else {
 
 				binKeyTy*& myValue = mInverseIndex[k][key];
 
-				if (myValue[myValue[0]] != aIndexT){
+				if ( myValue[myValue[0]] != aIndexT){
 
 					// find pos for insert, assume sorted array
 					binKeyTy i = myValue[0];
@@ -876,8 +872,7 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 					if (myValue[i]<aIndexT){
 						binKeyTy newSize = (myValue[0])+1;
 						binKeyTy * fooNew;
-						//fooNew = new binKeyTy[newSize+1];
-						mInverseIndex[k].rehash(2^24);
+
 						switch (newSize){
 						case 2:
 							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_3[k]->newElement());
@@ -969,10 +964,11 @@ void HistogramIndex::ComputeHistogram(const vector<unsigned>& aSignature, std::v
 	emptyBins = 0;
 	for (unsigned k = 0; k < aSignature.size(); ++k) {
 		if (mInverseIndex[k].count(aSignature[k])!=0) {
-
+		//if (ahmV[k]->count(aSignature[k])!=0) {
 			std::valarray<double> t(0.0, hist.size());
 
 			indexBinTy& myValue = mInverseIndex[k][aSignature[k]];
+			//indexBinTy& myValue = ahmV[k]->find(aSignature[k])->second;
 
 			//		if (myValue[0]<=1){
 			for (unsigned i=1;i<=myValue[0];i++){
