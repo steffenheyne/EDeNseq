@@ -53,7 +53,7 @@ inline vector<unsigned> MinHashEncoder::HashFuncNSPDK(const string& aString, uns
 	return code_list;
 }
 
-inline void  MinHashEncoder::generate_feature_vector(const string& seq, SVector& x) {
+void  MinHashEncoder::generate_feature_vector(const string& seq, SVector& x) {
 
 	//x.resize(MAXUNSIGNED);
 	//x.reserve(500);
