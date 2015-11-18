@@ -829,16 +829,6 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 }
 
 
-inline void* HistogramIndex::memcpy2(void* dest,const void* src, size_t count){
-	binKeyTy* dst8 = (binKeyTy*)dest;
-	binKeyTy* src8 = (binKeyTy*)src;
-
-	while (count--){
-		*dst8++ = *src8++;
-	}
-	return dest;
-}
-
 void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, const unsigned& aIndex, unsigned& min, unsigned& max) {
 	//cout << "UpdateInverseIndex "<< aSignature.size() << " " << aIndex << " " << min << " " << max << endl;
 	const binKeyTy& aIndexT =(binKeyTy)aIndex;
@@ -869,7 +859,7 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 					}
 
 					// only insert if element is not there
-					if (myValue[i]<aIndexT){
+					if (myValue[i]<aIndexT || i==1){
 						binKeyTy newSize = (myValue[0])+1;
 						binKeyTy * fooNew;
 
@@ -883,31 +873,29 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 						case 4:
 							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_5[k]->newElement());
 							break;
-//						case 5:
-//							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_6[k]->newElement());
-//							break;
-//						case 6:
-//							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_7[k]->newElement());
-//							break;
-//						case 7:
-//							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_8[k]->newElement());
-//							break;
-//						case 8:
-//							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_9[k]->newElement());
-//							break;
-//						case 9:
-//							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_10[k]->newElement());
-//							break;
+						case 5:
+							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_6[k]->newElement());
+							break;
+						case 6:
+							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_7[k]->newElement());
+							break;
+						case 7:
+							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_8[k]->newElement());
+							break;
+						case 8:
+							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_9[k]->newElement());
+							break;
+						case 9:
+							fooNew = reinterpret_cast<binKeyTy(*)>(mMemPool_10[k]->newElement());
+							break;
 						default:
 							fooNew = new binKeyTy[newSize+1];
 							break;
 						}
 
-						memcpy(fooNew,myValue,(i+1)*sizeof(binKeyTy));
-						//memcpy2(fooNew,myValue,(i+1));
+						memcpy(&fooNew[0],&myValue[0],(i+1)*sizeof(binKeyTy));
 						fooNew[i+1] = aIndexT;
 						memcpy(&fooNew[i+2],&myValue[i+1],(myValue[0]-i)*sizeof(binKeyTy));
-						//memcpy2(&fooNew[i+2],&myValue[i+1],(myValue[0]-i));
 						fooNew[0] = newSize;
 
 						switch (myValue[0]) {
@@ -923,21 +911,21 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 						case 4:
 							mMemPool_5[k]->deleteElement(reinterpret_cast<newIndexBin_5(*)>(myValue));
 							break;
-//						case 5:
-//							mMemPool_6[k]->deleteElement(reinterpret_cast<newIndexBin_6(*)>(myValue));
-//							break;
-//						case 6:
-//							mMemPool_7[k]->deleteElement(reinterpret_cast<newIndexBin_7(*)>(myValue));
-//							break;
-//						case 7:
-//							mMemPool_8[k]->deleteElement(reinterpret_cast<newIndexBin_8(*)>(myValue));
-//							break;
-//						case 8:
-//							mMemPool_9[k]->deleteElement(reinterpret_cast<newIndexBin_9(*)>(myValue));
-//							break;
-//						case 9:
-//							mMemPool_10[k]->deleteElement(reinterpret_cast<newIndexBin_10(*)>(myValue));
-//							break;
+						case 5:
+							mMemPool_6[k]->deleteElement(reinterpret_cast<newIndexBin_6(*)>(myValue));
+							break;
+						case 6:
+							mMemPool_7[k]->deleteElement(reinterpret_cast<newIndexBin_7(*)>(myValue));
+							break;
+						case 7:
+							mMemPool_8[k]->deleteElement(reinterpret_cast<newIndexBin_8(*)>(myValue));
+							break;
+						case 8:
+							mMemPool_9[k]->deleteElement(reinterpret_cast<newIndexBin_9(*)>(myValue));
+							break;
+						case 9:
+							mMemPool_10[k]->deleteElement(reinterpret_cast<newIndexBin_10(*)>(myValue));
+							break;
 						default:
 							delete[] myValue;
 							break;
