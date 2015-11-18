@@ -472,7 +472,7 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 
 		while(!done){
 
-			std::this_thread::sleep_for(std::chrono::milliseconds(20));
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
 			if ( (files_done<myFiles.size()) || (mSignatureUpdateCounter < mInstanceCounter*mpParameters->mNumHashFunctions))
 				done=false;
 			else done=true;
