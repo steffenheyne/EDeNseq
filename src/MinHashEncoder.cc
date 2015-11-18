@@ -903,10 +903,10 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 							break;
 						}
 
-						memmove(fooNew,myValue,(i+1)*sizeof(binKeyTy));
+						memcpy(fooNew,myValue,(i+1)*sizeof(binKeyTy));
 						//memcpy2(fooNew,myValue,(i+1));
 						fooNew[i+1] = aIndexT;
-						memmove(&fooNew[i+2],&myValue[i+1],(myValue[0]-i)*sizeof(binKeyTy));
+						memcpy(&fooNew[i+2],&myValue[i+1],(myValue[0]-i)*sizeof(binKeyTy));
 						//memcpy2(&fooNew[i+2],&myValue[i+1],(myValue[0]-i));
 						fooNew[0] = newSize;
 
