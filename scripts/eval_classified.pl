@@ -82,8 +82,8 @@ my $numNotEval = 0;
         $counts{$targetFeature}->{"SEQS"}  = "-";
         $counts{$targetFeature}->{"NOCLASS"} = "-";
         $counts{$targetFeature}->{"UNIQ"} = "-";
-				$counts{$targetFeature}->{"HIT"} = "-";
-				$counts{$targetFeature}->{"NUNIQ"} = "-";
+		$counts{$targetFeature}->{"HIT"} = "-";
+		$counts{$targetFeature}->{"NUNIQ"} = "-";
         $counts{$targetFeature}->{"NOMAX"} = "-";
         $counts{$targetFeature}->{"NOMATCH"} = "-";
       }
