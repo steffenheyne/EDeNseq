@@ -91,6 +91,7 @@ my $numNotEval = 0;
   if (@tmp <=7){
     #print "Not CLASSIFIED","\n";
     $counts{$targetFeature}->{"NOCLASS"}++;
+    print $id[0]."-".$id[1]."\tNOCLASS\n";
     #next;
   } elsif (@max == 1 && $targetFeature == $idx2feature{$max[0]}) {
    #print "Unique  MATCH max $max[0]","\n";
@@ -103,9 +104,11 @@ my $numNotEval = 0;
   } elsif ((@all >= 1) && (($tmp[7] =~ /\,$targetIdx\,/) || ($tmp[7] =~ /^$targetIdx\,/)) ) {
     #print "NON MAX match\n";
     $counts{$targetFeature}->{"NOMAX"}++;
+    print $id[0]."-".$id[1]."\tNOMAX\n";
   } else {
     #print "No MATCH #max=".@max." ".$tmp[6],"\n";
     $counts{$targetFeature}->{"NOMATCH"}++;
+    print $id[0]."-".$id[1]."\tNOMATCH\n";
   }
   
 } while ( $line = <RES> );
