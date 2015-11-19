@@ -27,7 +27,7 @@ while ( $line = <RES> ) {
 		$feature2idx{ $tmp[3] } = $tmp[1];
 
 		# print "RES HIST IDX\t", $tmp[1], " -> ", $tmp[3], "\n";
-	} elsif ( $line !~ /^#/ ) {
+	} elsif ( $line =~ /#SEQ/ ) {
 		last;
 	}
 }
@@ -136,6 +136,7 @@ my $numNotEval = 0;
 close(RES);
 
 #print "keys:".join("\n",keys %counts)."\n";
+print $num."\n";
 my %sum_avg;
 foreach my $feature (sort { $feature2BED{$a}->[7] cmp $feature2BED{$b}->[7] } keys %counts )
 {
@@ -153,7 +154,7 @@ foreach my $feature (sort { $feature2BED{$a}->[7] cmp $feature2BED{$b}->[7] } ke
 	$sum_avg{"SEQS_SUM"} += $counts{$feature}->{"SEQS"};
 }
 
-print "\nRESULTS_ALL\tALL\t", sprintf( "%25.25s", "ALL" ), "\t", "SEQS", "\t", $sum_avg{"SEQS_SUM"}, "\t";
+print "\nRESULTS_ALL\tALL\t", sprintf( "%20.20s", "ALL" ), "\t", "SEQS", "\t", $sum_avg{"SEQS_SUM"}, "\t";
 foreach my $feature ( "UNIQ", "NUNIQ", "HIT", "NOMAX", "NOMATCH", "NOCLASS" ) {
 	print $feature. "\t" . $sum_avg{ $feature . "_SUM" }, "\t" . sprintf( "%.3f",$sum_avg{ $feature . "_AVG" } / ( $sum_avg{"SEQS_SUM"} ) ) ."\t";
 }
