@@ -562,7 +562,7 @@ void Parameters::SetupOptions() {
 		param.mLongSwitch = "random_seed";
 		param.mShortDescription = "";
 		param.mTypeCode = POSITIVE_INTEGER;
-		param.mValue = "1";
+		param.mValue = "0";
 		mOptionList.insert(make_pair(param.mLongSwitch, param));
 		{
 			vector<ParameterType*>& vec = mActionOptionList[CLUSTER];

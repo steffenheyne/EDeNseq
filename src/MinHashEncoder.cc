@@ -545,7 +545,7 @@ void MinHashEncoder::ComputeHashSignature(const SVector& aX, Signature& signatur
 		//for each sub_hash
 		for (unsigned l = 1; l <= mpParameters->mNumRepeatsHashFunction; ++l) {
 			//unsigned key = IntHash(it.index(), mHashBitMask_feature, l);
-			unsigned key = IntHash(*it, mHashBitMask_feature, l);
+			unsigned key = IntHash(*it, mHashBitMask_feature, mpParameters->mRandomSeed+l);
 			for (unsigned kk = 0; kk < sub_hash_range; ++kk) { //for all k values
 				if (key >= mBounds[kk] && key < mBounds[kk+1]) { //if we are in the k-th slot
 					unsigned signature_feature = kk + (l - 1) * sub_hash_range;
