@@ -78,6 +78,16 @@ my $numNotEval = 0;
 
 			my $targetIdx = $feature2idx{$targetFeature};
 
+      if (!(exists $counts{$targetFeature})){
+        $counts{$targetFeature}->{"SEQS"}  = "-";
+        $counts{$targetFeature}->{"NOCLASS"} = "-";
+        $counts{$targetFeature}->{"UNIQ"} = "-";
+				$counts{$targetFeature}->{"HIT"} = "-";
+				$counts{$targetFeature}->{"NUNIQ"} = "-";
+        $counts{$targetFeature}->{"NOMAX"} = "-";
+        $counts{$targetFeature}->{"NOMATCH"} = "-";
+      }
+
 			$num++;
 			$counts{$targetFeature}->{"SEQS"}++;
 
@@ -134,7 +144,7 @@ foreach my $feature (sort { $feature2BED{$a}->[7] cmp $feature2BED{$b}->[7] } ke
 	  $counts{$feature}->{"SEQS"}, "\t";
 	foreach my $key ( ( "UNIQ", "NUNIQ", "HIT", "NOMAX", "NOMATCH", "NOCLASS" ) ) 
 	{
-		print $key. "\t" . $counts{$feature}->{$key}, "\t" . sprintf( "%.3f",$counts{$feature}->{$key} / $counts{$feature}->{"SEQS"} ) . "\t";
+		print $key. "\t" . $counts{$feature}->{$key}, "\t" . sprintf( "%.3f",abs($counts{$feature}->{$key} / $counts{$feature}->{"SEQS"} )) . "\t";
 		$sum_avg{ $key . "_SUM" } += $counts{$feature}->{$key};
 		$sum_avg{ $key . "_AVG" } += $counts{$feature}->{$key};
 	}
@@ -143,7 +153,7 @@ foreach my $feature (sort { $feature2BED{$a}->[7] cmp $feature2BED{$b}->[7] } ke
 	$sum_avg{"SEQS_SUM"} += $counts{$feature}->{"SEQS"};
 }
 
-print "\nRESULTS_ALL\t", sprintf( "%25.25s", "ALL" ), "\t", "SEQS", "\t", $sum_avg{"SEQS_SUM"}, "\t";
+print "\nRESULTS_ALL\tALL\t", sprintf( "%25.25s", "ALL" ), "\t", "SEQS", "\t", $sum_avg{"SEQS_SUM"}, "\t";
 foreach my $feature ( "UNIQ", "NUNIQ", "HIT", "NOMAX", "NOMATCH", "NOCLASS" ) {
 	print $feature. "\t" . $sum_avg{ $feature . "_SUM" }, "\t" . sprintf( "%.3f",$sum_avg{ $feature . "_AVG" } / ( $sum_avg{"SEQS_SUM"} ) ) ."\t";
 }
