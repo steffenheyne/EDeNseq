@@ -21,6 +21,12 @@ enum InputFileType {
 	STRINGSEQ, FASTA
 };
 
+enum OutputType {
+	ALL, MAX
+};
+
+
+
 //------------------------------------------------------------------------------------------------------------------------
 enum OptionsType {
 	FLAG, LIST, REAL, INTEGER, POSITIVE_INTEGER, STRING
@@ -97,6 +103,8 @@ public:
 	unsigned mMinDistance;
 	string mDenseCenterNamesFile;
 	bool mWriteApproxNeighbors;
+	string mOutputType;
+	OutputType mOutputTypeCode;
 
 public:
 	Parameters();
