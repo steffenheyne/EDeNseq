@@ -28,12 +28,10 @@ Data::BEDdataP Data::LoadBEDfile(string filename){
 		BEDentryP myEnt = std::make_shared<BEDentryT>();
 
 		if (iss2 >> myEnt->SEQ >> myEnt->START >> myEnt->END >> myEnt->NAME){
-			//cout << "BED " << myEnt->SEQ << "\t" <<  myEnt->START << "\t" <<  myEnt->END << "\t" <<  myEnt->NAME << "\t" <<  myEnt->SCORE << "\t" <<  myEnt->STRAND << endl;
 
 			string col;
 			double sc;
 			string str;
-
 
 			if (iss2 >> sc ){
 				myEnt->SCORE = sc;
@@ -45,7 +43,7 @@ Data::BEDdataP Data::LoadBEDfile(string filename){
 				myEnt->SCORE = 0.0;
 
 			if (iss2 >> str && (str=="." || str=="-" || str =="+") ){
-				myEnt->STRAND = str[0];
+				myEnt->STRAND = str;
 			} else if (!iss2.eof()) {
 				string tmp(line2);
 				cout << "BED file line:\n" << tmp << endl;
@@ -57,7 +55,9 @@ Data::BEDdataP Data::LoadBEDfile(string filename){
 			while (iss2 >> col) {
 				myEnt->COLS.push_back(col);
 			}
+
 			myBED->insert(make_pair(myEnt->SEQ,myEnt));
+
 		} else if (tmp.size()>0 && tmp[0]!='#') {
 			cout << endl << "Wrong BED line found! Expect at least 4 columns: <STRING> <INT> <INT> <STRING>! Comment lines start with '#'! Line found:" << endl;
 			cout << tmp << endl;
