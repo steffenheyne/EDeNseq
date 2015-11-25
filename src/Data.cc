@@ -43,7 +43,7 @@ Data::BEDdataP Data::LoadBEDfile(string filename){
 				myEnt->SCORE = 0.0;
 
 			if (iss2 >> str && (str=="." || str=="-" || str =="+") ){
-				myEnt->STRAND = str;
+				myEnt->STRAND = str[0];
 			} else if (!iss2.eof()) {
 				string tmp(line2);
 				cout << "BED file line:\n" << tmp << endl;

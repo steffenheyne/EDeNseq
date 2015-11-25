@@ -955,7 +955,7 @@ void HistogramIndex::ComputeHistogram(const vector<unsigned>& aSignature, std::v
 			std::valarray<double> t(0.0, hist.size());
 
 			indexBinTy& myValue = mInverseIndex[k][aSignature[k]];
-			/	/		if (myValue[0]<=1){
+			//		if (myValue[0]<=1){
 			for (unsigned i=1;i<=myValue[0];i++){
 				t[myValue[i]-1]=1;
 			}
