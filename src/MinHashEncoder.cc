@@ -952,13 +952,10 @@ void HistogramIndex::ComputeHistogram(const vector<unsigned>& aSignature, std::v
 	emptyBins = 0;
 	for (unsigned k = 0; k < aSignature.size(); ++k) {
 		if (mInverseIndex[k].count(aSignature[k])!=0) {
-		//if (ahmV[k]->count(aSignature[k])!=0) {
 			std::valarray<double> t(0.0, hist.size());
 
 			indexBinTy& myValue = mInverseIndex[k][aSignature[k]];
-			//indexBinTy& myValue = ahmV[k]->find(aSignature[k])->second;
-
-			//		if (myValue[0]<=1){
+			/	/		if (myValue[0]<=1){
 			for (unsigned i=1;i<=myValue[0];i++){
 				t[myValue[i]-1]=1;
 			}
