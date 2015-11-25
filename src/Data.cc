@@ -11,7 +11,6 @@ void Data::Init(Parameters* apParameters){
 Data::BEDdataP Data::LoadBEDfile(string filename){
 
 	Data::BEDdataP myBED = std::make_shared<BEDdataT>();
-	bool valid_input = true;
 	igzstream fin;
 	string line;
 
@@ -19,18 +18,50 @@ Data::BEDdataP Data::LoadBEDfile(string filename){
 	if (!fin)
 		throw range_error("ERROR LoadData: Cannot open index data file: " + filename);
 
-	while (!fin.eof() && valid_input) {
+	while (!fin.eof()) {
+
+		char line2[2048];
+		fin.getline(line2,2048);
+		string tmp(line2);
+		istringstream iss2(line2,istringstream::in);
+
 		BEDentryP myEnt = std::make_shared<BEDentryT>();
-		if (fin >> myEnt->SEQ >> myEnt->START >> myEnt->END >> myEnt->NAME >> myEnt->SCORE >> myEnt->STRAND){
+
+		if (iss2 >> myEnt->SEQ >> myEnt->START >> myEnt->END >> myEnt->NAME){
 			//cout << "BED " << myEnt->SEQ << "\t" <<  myEnt->START << "\t" <<  myEnt->END << "\t" <<  myEnt->NAME << "\t" <<  myEnt->SCORE << "\t" <<  myEnt->STRAND << endl;
 
-			getline(fin, line);
-			istringstream iss(line,istringstream::in);
 			string col;
-			while (iss >> col) {
+			double sc;
+			string str;
+
+
+			if (iss2 >> sc ){
+				myEnt->SCORE = sc;
+			} else if (!iss2.eof()) {
+				string tmp(line2);
+				cout << "BED file line:\n" << tmp << endl;
+				throw range_error("ERROR BEDfile format col 5 error. Expected numerical value");
+			} else
+				myEnt->SCORE = 0.0;
+
+			if (iss2 >> str && (str=="." || str=="-" || str =="+") ){
+				myEnt->STRAND = str[0];
+			} else if (!iss2.eof()) {
+				string tmp(line2);
+				cout << "BED file line:\n" << tmp << endl;
+				throw range_error("ERROR BEDfile format col 6 error. Expected strand symbol: + - . ");
+			} else {
+				myEnt->STRAND = '.';
+			}
+
+			while (iss2 >> col) {
 				myEnt->COLS.push_back(col);
 			}
 			myBED->insert(make_pair(myEnt->SEQ,myEnt));
+		} else if (tmp.size()>0 && tmp[0]!='#') {
+			cout << endl << "BED line ignored! Expect at least 4 columns: <STRING> <INT> <INT> <STRING>! Comment lines start with '#'! Line found:" << endl;
+			cout << tmp << endl;
+			throw range_error("ERROR: BEDfile format error.\n");
 		}
 	}
 	fin.close();
