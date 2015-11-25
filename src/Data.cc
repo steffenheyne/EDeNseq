@@ -59,7 +59,7 @@ Data::BEDdataP Data::LoadBEDfile(string filename){
 			}
 			myBED->insert(make_pair(myEnt->SEQ,myEnt));
 		} else if (tmp.size()>0 && tmp[0]!='#') {
-			cout << endl << "BED line ignored! Expect at least 4 columns: <STRING> <INT> <INT> <STRING>! Comment lines start with '#'! Line found:" << endl;
+			cout << endl << "Wrong BED line found! Expect at least 4 columns: <STRING> <INT> <INT> <STRING>! Comment lines start with '#'! Line found:" << endl;
 			cout << tmp << endl;
 			throw range_error("ERROR: BEDfile format error.\n");
 		}
