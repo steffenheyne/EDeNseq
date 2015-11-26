@@ -15,8 +15,6 @@
 
 #include "MemoryPool.h"
 
-//#include "cpp-btree-1.0.1/btree_map.h"
-
 using namespace std;
 
 class MinHashEncoder {
@@ -219,7 +217,6 @@ public:
 	typedef binKeyTy* indexBinTy;
 	const binKeyTy MAXBINKEY = std::numeric_limits<binKeyTy>::max();
 
-
 	struct hashFunc {
 		size_t operator()(unsigned a) const {
 			return static_cast<size_t>(a);
@@ -239,9 +236,8 @@ public:
 
 	// the index
 	typedef vector<indexSingleTy> indexTy;
-	// used for memory pool
-	//typedef binKeyTy newIndexBin[2];
 
+	// used for memory pool
 	typedef binKeyTy newIndexBin_2[2];
 	typedef binKeyTy newIndexBin_3[3];
 	typedef binKeyTy newIndexBin_4[4];
@@ -274,8 +270,6 @@ public:
 	vector<MemoryPool<newIndexBin_8,mMemPool_BlockSize>*>  mMemPool_8;
 	vector<MemoryPool<newIndexBin_9,mMemPool_BlockSize>*>  mMemPool_9;
 	vector<MemoryPool<newIndexBin_10,mMemPool_BlockSize>*>  mMemPool_10;
-	//	vector<mpool*> mp;
-
 
 	binKeyTy mHistogramSize;
 	indexTy mInverseIndex;
@@ -296,7 +290,6 @@ public:
 	void		ComputeHistogram(const vector<unsigned>& aSignature, std::valarray<double>& hist, unsigned& emptyBins);
 	void		writeBinaryIndex2(ostream &out, const indexTy& index);
 	bool		readBinaryIndex2(string filename, indexTy& index);
-	void* 	memcpy2(void* dest,const void* src, size_t count);
 
 	// destructor
 	virtual ~HistogramIndex(){

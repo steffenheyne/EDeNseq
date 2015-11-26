@@ -286,7 +286,6 @@ void Parameters::SetupOptions() {
 			vec.push_back(&p);
 		}
 	}
-
 	{
 		ParameterType param;
 		param.mShortSwitch = "k";
@@ -301,11 +300,6 @@ void Parameters::SetupOptions() {
 		mOptionList.insert(make_pair(param.mLongSwitch, param));
 		{
 			vector<ParameterType*>& vec = mActionOptionList[CLUSTER];
-			ParameterType& p = mOptionList[param.mLongSwitch];
-			vec.push_back(&p);
-		}
-		{
-			vector<ParameterType*>& vec = mActionOptionList[CLASSIFY];
 			ParameterType& p = mOptionList[param.mLongSwitch];
 			vec.push_back(&p);
 		}
@@ -329,11 +323,6 @@ void Parameters::SetupOptions() {
 			vec.push_back(&p);
 		}
 		{
-			vector<ParameterType*>& vec = mActionOptionList[CLASSIFY];
-			ParameterType& p = mOptionList[param.mLongSwitch];
-			vec.push_back(&p);
-		}
-		{
 			vector<ParameterType*>& vec = mActionOptionList[TEST];
 			ParameterType& p = mOptionList[param.mLongSwitch];
 			vec.push_back(&p);
@@ -343,7 +332,7 @@ void Parameters::SetupOptions() {
 		ParameterType param;
 		param.mShortSwitch = "b";
 		param.mLongSwitch = "hash_bit_size";
-		param.mShortDescription = "Kernel parameter.";
+		param.mShortDescription = "Kernel parameter. Allowed feature space used for the final hash function. Max=32";
 		param.mTypeCode = POSITIVE_INTEGER;
 		param.mValue = "30";
 		mOptionList.insert(make_pair(param.mLongSwitch, param));
@@ -562,7 +551,7 @@ void Parameters::SetupOptions() {
 		param.mLongSwitch = "random_seed";
 		param.mShortDescription = "";
 		param.mTypeCode = POSITIVE_INTEGER;
-		param.mValue = "1";
+		param.mValue = "0";
 		mOptionList.insert(make_pair(param.mLongSwitch, param));
 		{
 			vector<ParameterType*>& vec = mActionOptionList[CLUSTER];
@@ -584,7 +573,7 @@ void Parameters::SetupOptions() {
 		ParameterType param;
 		param.mShortSwitch = "";
 		param.mLongSwitch = "numThreads";
-		param.mShortDescription = "Used number of threads (OpenMP/std::thread) - 0 is max. hardware concurrency";
+		param.mShortDescription = "Used number of threads (OpenMP/std::thread) - 0 is max. hardware concurrency. For action CLASSIFY this will set the number of worker threads that produce signatures.";
 		param.mTypeCode = POSITIVE_INTEGER;
 		param.mValue = "0";
 		mOptionList.insert(make_pair(param.mLongSwitch, param));
@@ -605,29 +594,29 @@ void Parameters::SetupOptions() {
 		}
 	}
 	{
-			ParameterType param;
-			param.mShortSwitch = "";
-			param.mLongSwitch = "numIndexThreads";
-			param.mShortDescription = "Used number of threads (std::thread) for index updates; each thread updates then only a partition of num_hash_functions";
-			param.mTypeCode = POSITIVE_INTEGER;
-			param.mValue = "1";
-			mOptionList.insert(make_pair(param.mLongSwitch, param));
-			{
-				vector<ParameterType*>& vec = mActionOptionList[CLUSTER];
-				ParameterType& p = mOptionList[param.mLongSwitch];
-				vec.push_back(&p);
-			}
-			{
-				vector<ParameterType*>& vec = mActionOptionList[CLASSIFY];
-				ParameterType& p = mOptionList[param.mLongSwitch];
-				vec.push_back(&p);
-			}
-			{
-				vector<ParameterType*>& vec = mActionOptionList[TEST];
-				ParameterType& p = mOptionList[param.mLongSwitch];
-				vec.push_back(&p);
-			}
+		ParameterType param;
+		param.mShortSwitch = "";
+		param.mLongSwitch = "numIndexThreads";
+		param.mShortDescription = "Used number of threads (std::thread) for index updates; The 'num_hash_functions' are distributed equally between the threads. These threads are in addition to the worker threads provided with --num_threads!";
+		param.mTypeCode = POSITIVE_INTEGER;
+		param.mValue = "1";
+		mOptionList.insert(make_pair(param.mLongSwitch, param));
+		{
+			vector<ParameterType*>& vec = mActionOptionList[CLUSTER];
+			ParameterType& p = mOptionList[param.mLongSwitch];
+			vec.push_back(&p);
 		}
+		{
+			vector<ParameterType*>& vec = mActionOptionList[CLASSIFY];
+			ParameterType& p = mOptionList[param.mLongSwitch];
+			vec.push_back(&p);
+		}
+		{
+			vector<ParameterType*>& vec = mActionOptionList[TEST];
+			ParameterType& p = mOptionList[param.mLongSwitch];
+			vec.push_back(&p);
+		}
+	}
 	{
 		ParameterType param;
 		param.mShortSwitch = "";
@@ -838,6 +827,27 @@ void Parameters::SetupOptions() {
 			vec.push_back(&p);
 		}
 	}
+	{
+		ParameterType param;
+		param.mShortSwitch = "";
+		param.mLongSwitch = "output_type";
+		param.mShortDescription = "ALL: output all histogram hits; MAX: output only the histogram bins with the maximum score";
+		param.mTypeCode = LIST;
+		param.mValue = "ALL";
+		param.mCloseValuesList.push_back("ALL");
+		param.mCloseValuesList.push_back("MAX");
+		mOptionList.insert(make_pair(param.mLongSwitch, param));
+		{
+			vector<ParameterType*>& vec = mActionOptionList[CLASSIFY];
+			ParameterType& p = mOptionList[param.mLongSwitch];
+			vec.push_back(&p);
+		}
+		{
+			vector<ParameterType*>& vec = mActionOptionList[TEST];
+			ParameterType& p = mOptionList[param.mLongSwitch];
+			vec.push_back(&p);
+		}
+	}
 }
 
 void Parameters::Usage(string aCommandName, string aCompactOrExtended) {
@@ -959,6 +969,8 @@ void Parameters::Init(int argc, const char** argv) {
 			mPureApproximateSim = stream_cast<double>(param.mValue);
 		if (param.mLongSwitch == "dense_center_names_file")
 			mDenseCenterNamesFile = param.mValue;
+		if (param.mLongSwitch == "output_type")
+			mOutputType = param.mValue;
 	}
 
 	//convert action string to action code
@@ -980,6 +992,14 @@ void Parameters::Init(int argc, const char** argv) {
 		mFileTypeCode = FASTA;
 	else
 		throw range_error("ERROR Parameters::Init: Unrecognized file type: <" + mFileType + ">");
+
+	//convert output type string to code
+	if (mOutputType == "ALL")
+		mOutputTypeCode = ALL;
+	else if (mOutputType == "MAX")
+		mOutputTypeCode = MAX;
+	else
+		throw range_error("ERROR Parameters::Init: Unrecognized output type: <" + mOutputType + ">");
 
 	//check for help request
 	for (unsigned i = 0; i < options.size(); ++i) {

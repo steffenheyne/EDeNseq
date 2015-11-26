@@ -29,8 +29,8 @@ void SeqClassifyManager::Exec() {
 	mySet.groupGraphsBy		  	= SEQ_FEATURE;
 	Data::BEDdataP indexBED   	= mpData->LoadBEDfile(mpParameters->mIndexBedFile.c_str());
 	mySet.dataBED             	= indexBED;
-	mySet.lastMetaIdx				= 0;
-	mySet.strandType				= FWD;
+	mySet.lastMetaIdx			= 0;
+	mySet.strandType			= FWD;
 
 	mIndexDataSet = std::make_shared<SeqFileT>(mySet);
 
@@ -44,7 +44,7 @@ void SeqClassifyManager::Exec() {
 		throw range_error("\nERROR! 'seq_shift' cannot be 0 for a specific window size!");
 
 	// create/load new inverse MinHash index against that we can classify other sequences
-	if (!std::ifstream(mpParameters->mIndexBedFile+".bhi").good()){
+	if (mpParameters->mNoIndexCacheFile || !std::ifstream(mpParameters->mIndexBedFile+".bhi").good()){
 		cout << endl << " *** Creating inverse index *** "<< endl << endl;
 
 		// use desired shift value for index, "LoadData_Threaded" only uses variable mpParameters->mSeqShift
@@ -67,7 +67,7 @@ void SeqClassifyManager::Exec() {
 		if (!mpParameters->mNoIndexCacheFile){
 			cout << "inverse index file : " << mpParameters->mIndexBedFile+".bhi" << endl;
 			cout << " write index file ... ";
-			OutputManager om((indexName+".bhi").c_str(), mpParameters->mDirectoryPath);
+			OutputManager om((indexName + ".bhi").c_str(), mpParameters->mDirectoryPath);
 			writeBinaryIndex2(om.mOut,mInverseIndex);
 			om.mOut.close();
 			mIndexDataSet->filename_index = mpParameters->mDirectoryPath+"/"+indexName+".bhi";
@@ -425,21 +425,38 @@ void SeqClassifyManager::getResultString(string& resT,histogramT hist,unsigned e
 	string maxIndices;
 	string indices;
 	string values;
-	for (unsigned i=0; i<hist.size();i++){
-		if (hist[i]>0.0) {
-			char buf[30];
-			sprintf( buf,"%.0f",hist[i] );
-			values += std::string(buf) +",";
-			//values += std::to_string((int)hist[i])+",";
-			//sprintf( buf,"%i",i+1 );
-			indices += std::to_string(i+1)+ ",";
-			//indices += std::string(buf) +",";
-			if (hist[i]==max && max!=0){
-				//maxIndices += std::string(buf) +",";
-				maxIndices+=std::to_string(i+1)+ ","; // << i+1 << ",";
-			}
 
+	switch (mpParameters->mOutputTypeCode){
+	case ALL:
+		for (unsigned i=0; i<hist.size();i++){
+			if (hist[i]>0.0) {
+				char buf[30];
+				sprintf( buf,"%.0f",hist[i] );
+				values += std::string(buf) +",";
+				//values += std::to_string((int)hist[i])+",";
+				//sprintf( buf,"%i",i+1 );
+				indices += std::to_string(i+1)+ ",";
+				//indices += std::string(buf) +",";
+				if (hist[i]==max && max!=0){
+					//maxIndices += std::string(buf) +",";
+					maxIndices+=std::to_string(i+1)+ ","; // << i+1 << ",";
+				}
+			}
 		}
+		break;
+	case MAX:
+		for (unsigned i=0; i<hist.size();i++){
+			if (hist[i]==max && max!=0){
+				char buf[30];
+				sprintf( buf,"%.0f",hist[i] );
+				values += std::string(buf) +",";
+				indices += std::to_string(i+1)+ ",";
+				maxIndices+=std::to_string(i+1)+ ",";
+			}
+		}
+		break;
+	default:
+		break;
 	}
 
 	if (max!=0) {
@@ -458,12 +475,12 @@ void SeqClassifyManager::ClassifySeqs(){
 
 	// prepare sequence set for classification
 	SeqFileP mySet = std::make_shared<SeqFileT>();
-	mySet->filename = mpParameters->mInputDataFileName;
-	mySet->filetype = mpParameters->mFileTypeCode;
-	mySet->groupGraphsBy=SEQ_WINDOW; // actually we check by InstanceT.name field for graphs from one seq
+	mySet->filename            = mpParameters->mInputDataFileName;
+	mySet->filetype            = mpParameters->mFileTypeCode;
+	mySet->groupGraphsBy       = SEQ_WINDOW; // actually we check by InstanceT.name field for graphs from one seq
 	mySet->checkUniqueSeqNames = true;
-	mySet->signatureAction	= CLASSIFY;
-	mySet->strandType			= FR;
+	mySet->signatureAction	   = CLASSIFY;
+	mySet->strandType          = FR;
 
 	// write results file header and get results file handle
 	mySet->out_results_fh = PrepareResultsFile();

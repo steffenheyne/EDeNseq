@@ -118,7 +118,7 @@ using GOOGLE_NAMESPACE::remove_const;
 
 // The probing method
 // Linear probing
-// #define JUMP_(key, num_probes)    ( 1 )
+//#define JUMP_(key, num_probes)    ( 1 )
 // Quadratic probing
 #define JUMP_(key, num_probes)    ( num_probes )
 
