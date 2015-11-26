@@ -304,11 +304,6 @@ void Parameters::SetupOptions() {
 			vec.push_back(&p);
 		}
 		{
-			vector<ParameterType*>& vec = mActionOptionList[CLASSIFY];
-			ParameterType& p = mOptionList[param.mLongSwitch];
-			vec.push_back(&p);
-		}
-		{
 			vector<ParameterType*>& vec = mActionOptionList[TEST];
 			ParameterType& p = mOptionList[param.mLongSwitch];
 			vec.push_back(&p);
@@ -328,11 +323,6 @@ void Parameters::SetupOptions() {
 			vec.push_back(&p);
 		}
 		{
-			vector<ParameterType*>& vec = mActionOptionList[CLASSIFY];
-			ParameterType& p = mOptionList[param.mLongSwitch];
-			vec.push_back(&p);
-		}
-		{
 			vector<ParameterType*>& vec = mActionOptionList[TEST];
 			ParameterType& p = mOptionList[param.mLongSwitch];
 			vec.push_back(&p);
@@ -342,7 +332,7 @@ void Parameters::SetupOptions() {
 		ParameterType param;
 		param.mShortSwitch = "b";
 		param.mLongSwitch = "hash_bit_size";
-		param.mShortDescription = "Kernel parameter.";
+		param.mShortDescription = "Kernel parameter. Allowed feature space used for the final hash function. Max=32";
 		param.mTypeCode = POSITIVE_INTEGER;
 		param.mValue = "30";
 		mOptionList.insert(make_pair(param.mLongSwitch, param));
@@ -583,7 +573,7 @@ void Parameters::SetupOptions() {
 		ParameterType param;
 		param.mShortSwitch = "";
 		param.mLongSwitch = "numThreads";
-		param.mShortDescription = "Used number of threads (OpenMP/std::thread) - 0 is max. hardware concurrency";
+		param.mShortDescription = "Used number of threads (OpenMP/std::thread) - 0 is max. hardware concurrency. For action CLASSIFY this will set the number of worker threads that produce signatures.";
 		param.mTypeCode = POSITIVE_INTEGER;
 		param.mValue = "0";
 		mOptionList.insert(make_pair(param.mLongSwitch, param));
@@ -607,7 +597,7 @@ void Parameters::SetupOptions() {
 		ParameterType param;
 		param.mShortSwitch = "";
 		param.mLongSwitch = "numIndexThreads";
-		param.mShortDescription = "Used number of threads (std::thread) for index updates; each thread updates then only a partition of num_hash_functions";
+		param.mShortDescription = "Used number of threads (std::thread) for index updates; The 'num_hash_functions' are distributed equally between the threads. These threads are in addition to the worker threads provided with --num_threads!";
 		param.mTypeCode = POSITIVE_INTEGER;
 		param.mValue = "1";
 		mOptionList.insert(make_pair(param.mLongSwitch, param));
@@ -841,7 +831,7 @@ void Parameters::SetupOptions() {
 		ParameterType param;
 		param.mShortSwitch = "";
 		param.mLongSwitch = "output_type";
-		param.mShortDescription = "";
+		param.mShortDescription = "ALL: output all histogram hits; MAX: output only the histogram bins with the maximum score";
 		param.mTypeCode = LIST;
 		param.mValue = "ALL";
 		param.mCloseValuesList.push_back("ALL");

@@ -44,7 +44,7 @@ void SeqClassifyManager::Exec() {
 		throw range_error("\nERROR! 'seq_shift' cannot be 0 for a specific window size!");
 
 	// create/load new inverse MinHash index against that we can classify other sequences
-	if (!std::ifstream(mpParameters->mIndexBedFile+".bhi").good()){
+	if (mpParameters->mNoIndexCacheFile || !std::ifstream(mpParameters->mIndexBedFile+".bhi").good()){
 		cout << endl << " *** Creating inverse index *** "<< endl << endl;
 
 		// use desired shift value for index, "LoadData_Threaded" only uses variable mpParameters->mSeqShift
@@ -67,7 +67,7 @@ void SeqClassifyManager::Exec() {
 		if (!mpParameters->mNoIndexCacheFile){
 			cout << "inverse index file : " << mpParameters->mIndexBedFile+".bhi" << endl;
 			cout << " write index file ... ";
-			OutputManager om((indexName+".bhi").c_str(), mpParameters->mDirectoryPath);
+			OutputManager om((indexName + ".bhi").c_str(), mpParameters->mDirectoryPath);
 			writeBinaryIndex2(om.mOut,mInverseIndex);
 			om.mOut.close();
 			mIndexDataSet->filename_index = mpParameters->mDirectoryPath+"/"+indexName+".bhi";
