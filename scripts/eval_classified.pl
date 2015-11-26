@@ -82,8 +82,8 @@ my $numNotEval = 0;
         $counts{$targetFeature}->{"SEQS"}  = "-";
         $counts{$targetFeature}->{"NOCLASS"} = "-";
         $counts{$targetFeature}->{"UNIQ"} = "-";
-		$counts{$targetFeature}->{"HIT"} = "-";
-		$counts{$targetFeature}->{"NUNIQ"} = "-";
+		    $counts{$targetFeature}->{"HIT"} = "-";
+		    $counts{$targetFeature}->{"NUNIQ"} = "-";
         $counts{$targetFeature}->{"NOMAX"} = "-";
         $counts{$targetFeature}->{"NOMATCH"} = "-";
       }
@@ -103,9 +103,7 @@ my $numNotEval = 0;
 				#print "Unique  MATCH max $max[0]","\n";
 				$counts{$targetFeature}->{"UNIQ"}++;
 				$counts{$targetFeature}->{"HIT"}++;
-			}
-			elsif (	( @max > 1 ) && ( ( $tmp[9] =~ /\,$targetIdx\,/ ) || ( $tmp[9] =~ /^$targetIdx\,/ ) ) )
-			{
+			} 	elsif (	( @max > 1 ) && ( ( $tmp[9] =~ /\,$targetIdx\,/ ) || ( $tmp[9] =~ /^$targetIdx\,/ ) ) ) {
 
 				#print "NON Unique match #max=".@max." ".join(":",@max)."\n";
 				$counts{$targetFeature}->{"NUNIQ"}++;
@@ -127,7 +125,6 @@ my $numNotEval = 0;
 			}
 
 			if ( $num % 7000000 == 0 ) {
-
 				#	 last;
 			}
 		}

@@ -52,7 +52,7 @@ public:
 	void 			worker_Classify(int numWorkers, unsigned id);
 	void 			finisher_Results(ogzstream* fout_res);
 	void 			getResultString(string& resT, histogramT hist, unsigned emptyBins, unsigned matchingSigs, unsigned numSigs, string& name, strandTypeT strand);
-	ogzstream* 	PrepareResultsFile();
+	ogzstream* 	PrepareResultsFile(string filename);
 
 	//inline double minSim(double i) { if (i<mpParameters->mPureApproximateSim) return 0; else return i; };
 };
