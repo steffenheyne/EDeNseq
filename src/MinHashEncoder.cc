@@ -434,11 +434,11 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 
 	cout << "Using " << graphWorkers << " worker threads and " << 1+min(max((unsigned)1,mpParameters->mNumIndexThreads),mpParameters->mNumHashFunctions) << " helper threads..." << endl;
 
-	done 					= false;
-	files_done				= 0;
-	mSignatureCounter		= 0;
-	mInstanceCounter 		= 0;
-	mSequenceCounter 		= 0;
+	done                    = false;
+	files_done              = 0;
+	mSignatureCounter       = 0;
+	mInstanceCounter        = 0;
+	mSequenceCounter        = 0;
 	mSignatureUpdateCounter = 0;
 
 	vector<std::thread> threads;

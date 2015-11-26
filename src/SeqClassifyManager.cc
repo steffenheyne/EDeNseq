@@ -236,6 +236,7 @@ void SeqClassifyManager::Classify_Signatures(SeqFilesT& myFiles){
 	files_done			= 0;
 	mSignatureCounter = 0;
 	mInstanceCounter 	= 0;
+	mSequenceCounter  = 0;
 	mResultCounter 	= 0;
 
 	vector<std::thread> threads;
@@ -356,33 +357,34 @@ void SeqClassifyManager::finishUpdate(ChunkP& myData, ResultChunkP& myResultChun
 				break;
 			}
 
+			++mNumSequences;
+			j += k;
+
 			// meta analysis, only for screen output summary
+
 			hist += histRC;
 			unsigned sum = hist.sum();
 			unsigned max = hist.max();
 
-			++mNumSequences;
-
 			if (sum>0)
 				mClassifiedInstances++;
+			if (mpParameters->mVerbose){
+				valarray<double> hist_t = hist;
+				hist_t /= (k*mpParameters->mNumHashFunctions);
 
-			valarray<double> hist_t = hist;
-			hist_t /= (k*mpParameters->mNumHashFunctions);
+				hist_t /= sum;
+				hist_t = hist.apply(changeNAN);
 
-			hist_t /= sum;
-			hist_t = hist.apply(changeNAN);
+				for (unsigned i = 0; i<hist.size(); i++){
+					if (hist[i] >= max  && max != 0) {hist[i] = 1;} else { hist[i]=0;};
+				}
 
-			for (unsigned i = 0; i<hist.size(); i++){
-				if (hist[i] >= max  && max != 0) {hist[i] = 1;} else { hist[i]=0;};
+				{
+					std::lock_guard<std::mutex> lk(mut_meta);
+					metaHist += hist_t;
+					metaHistNum += hist;
+				}
 			}
-
-			{
-				std::lock_guard<std::mutex> lk(mut_meta);
-				metaHist += hist_t;
-				metaHistNum += hist;
-			}
-
-			j += k;
 			break;
 		}
 		default:
@@ -483,7 +485,12 @@ void SeqClassifyManager::ClassifySeqs(){
 	mySet->strandType          = FR;
 
 	// write results file header and get results file handle
-	mySet->out_results_fh = PrepareResultsFile();
+	string resultsName = mpParameters->mInputDataFileName;
+	const unsigned pos = mpParameters->mInputDataFileName.find_last_of("/");
+	if (std::string::npos != pos)
+		resultsName = mpParameters->mInputDataFileName.substr(pos+1);
+
+	mySet->out_results_fh = PrepareResultsFile(mpParameters->mDirectoryPath+resultsName+".classified.tab.gz");
 
 	metaHist.resize(GetHistogramSize());
 	metaHist *= 0;
@@ -493,7 +500,6 @@ void SeqClassifyManager::ClassifySeqs(){
 
 	mClassifiedInstances = 0;
 	mNumSequences = 0;
-	mSequenceCounter = 0;
 
 	SeqFilesT myList;
 	myList.push_back(mySet);
@@ -508,25 +514,27 @@ void SeqClassifyManager::ClassifySeqs(){
 	/////////////////////////////////////////////////////////////////////////////
 
 	// metahistogram
-	cout << endl << endl << "META histogram - classified seqs: " << setprecision(3) << (double)mClassifiedInstances/((double)mNumSequences) << " (" << mClassifiedInstances << ") - TOP 20" << endl;
-	metaHist = metaHist/metaHist.sum();
-	vector<pair<double,uint> > sortedHist;
-	for (unsigned j=0; j<metaHist.size();j++){
-		sortedHist.push_back(make_pair(-metaHistNum[j],j));
-	}
-	sort(sortedHist.begin(), sortedHist.end());
-	for (unsigned j=0; j<std::min((unsigned)20,(unsigned)sortedHist.size());j++){
-		multimap<uint, Data::BEDentryP>::iterator it = mIndexValue2Feature.find(sortedHist[j].second+1);
-		uint num = mIndexValue2Feature.count(sortedHist[j].second+1);
-		cout << setprecision(2) << j+1 << "\t" << metaHist[sortedHist[j].second] << "\t" << (uint)metaHistNum[sortedHist[j].second] << "\t" << sortedHist[j].second+1 << "\t";
-		if (it != mIndexValue2Feature.end()) cout << "feature\t"<< it->second->NAME << "\t#features=" << num;
-		if (it != mIndexValue2Feature.end() && it->second->COLS.size()>=2) cout << "\t" << it->second->COLS[1];
-		cout << endl;
-	}
-	cout << "SUM\t"<< metaHist.sum() << endl << endl;
 
-	// bin size statistics
+	cout << endl << endl << "META histogram - classified seqs: " << setprecision(3) << (double)mClassifiedInstances/((double)mNumSequences) << " (" << mClassifiedInstances << ") - TOP 20" << endl;
 	if (mpParameters->mVerbose){
+		metaHist = metaHist/metaHist.sum();
+		vector<pair<double,uint> > sortedHist;
+		for (unsigned j=0; j<metaHist.size();j++){
+			sortedHist.push_back(make_pair(-metaHistNum[j],j));
+		}
+		sort(sortedHist.begin(), sortedHist.end());
+		for (unsigned j=0; j<std::min((unsigned)20,(unsigned)sortedHist.size());j++){
+			multimap<uint, Data::BEDentryP>::iterator it = mIndexValue2Feature.find(sortedHist[j].second+1);
+			uint num = mIndexValue2Feature.count(sortedHist[j].second+1);
+			cout << setprecision(2) << j+1 << "\t" << metaHist[sortedHist[j].second] << "\t" << (uint)metaHistNum[sortedHist[j].second] << "\t" << sortedHist[j].second+1 << "\t";
+			if (it != mIndexValue2Feature.end()) cout << "feature\t"<< it->second->NAME << "\t#features=" << num;
+			if (it != mIndexValue2Feature.end() && it->second->COLS.size()>=2) cout << "\t" << it->second->COLS[1];
+			cout << endl;
+		}
+		cout << "SUM\t"<< metaHist.sum() << endl << endl;
+
+		// bin size statistics
+
 		valarray<double> indexHist;
 		indexHist.resize(GetHistogramSize());
 		indexHist *= 0;
@@ -558,14 +566,9 @@ void SeqClassifyManager::ClassifySeqs(){
 	}
 }
 
-ogzstream* SeqClassifyManager::PrepareResultsFile(){
+ogzstream* SeqClassifyManager::PrepareResultsFile(string filename){
 
-	string resultsName = mpParameters->mInputDataFileName;
-	const unsigned pos = mpParameters->mInputDataFileName.find_last_of("/");
-	if (std::string::npos != pos)
-		resultsName = mpParameters->mInputDataFileName.substr(pos+1);
-
-	ogzstream* fout = new ogzstream((mpParameters->mDirectoryPath+resultsName+".classified.tab.gz").c_str(),std::ios::out);
+	ogzstream* fout = new ogzstream(filename.c_str(),std::ios::out);
 	// write header to output results file
 	// parameters
 	*fout << "##INDEX PARAMETERS" << endl;
