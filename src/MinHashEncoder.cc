@@ -657,7 +657,6 @@ void NeighborhoodIndex::ComputeApproximateNeighborhoodCore(const vector<unsigned
 	}
 }
 
-
 vector<unsigned> NeighborhoodIndex::ComputeApproximateNeighborhood(const vector<unsigned>& aSignature, unsigned& collisions, double& density) {
 
 	umap_uint_int neighborhood;
@@ -788,7 +787,6 @@ void HistogramIndex::SetHistogramSize(binKeyTy size){
 HistogramIndex::binKeyTy HistogramIndex::GetHistogramSize(){
 	return mHistogramSize;
 }
-
 
 void HistogramIndex::InitInverseIndex() {
 

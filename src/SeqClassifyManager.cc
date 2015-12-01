@@ -292,13 +292,15 @@ inline double indicator(double i) {if (i>0) return 1; else return 0;}
 void SeqClassifyManager::finishUpdate(ChunkP& myData, ResultChunkP& myResultChunk) {
 
 	unsigned j = 0;
+	unsigned hist_size = GetHistogramSize();
+
 	while (j < (*myData).size()) {
 
 		switch ((*myData)[j].seqFile->signatureAction){
 		case CLASSIFY: {
 
-			valarray<double> hist(0.0,GetHistogramSize());
-			valarray<double> histRC(0.0,GetHistogramSize());
+			valarray<double> hist(0.0,hist_size);
+			valarray<double> histRC(0.0,hist_size);
 
 			unsigned emptyBins = 0;
 			unsigned emptyBinsRC = 0;
@@ -308,19 +310,19 @@ void SeqClassifyManager::finishUpdate(ChunkP& myData, ResultChunkP& myResultChun
 			unsigned matchingSigsRC = 0;
 
 			do {
-				valarray<double> hist_tmp; //(0.0,GetHistogramSize());
+				valarray<double> hist_tmp;
 				unsigned emptyBins_tmp;
 				ComputeHistogram((*myData)[j+k].sig,hist_tmp,emptyBins_tmp);
 
 				switch ((*myData)[j+k].rc){
 				case true:
 					histRC += hist_tmp;
-					if ( hist_tmp.sum() != 0 ) matchingSigsRC++;
+					if ( emptyBins_tmp < hist_size ) matchingSigsRC++;
 					emptyBinsRC += emptyBins_tmp;
 					break;
 				case false:
 					hist += hist_tmp;
-					if ( hist_tmp.sum() != 0 ) matchingSigs++;
+					if ( emptyBins_tmp < hist_size ) matchingSigs++;
 					emptyBins += emptyBins_tmp;
 					break;
 				}
@@ -357,25 +359,26 @@ void SeqClassifyManager::finishUpdate(ChunkP& myData, ResultChunkP& myResultChun
 				break;
 			}
 
-			++mNumSequences;
 			j += k;
+			++mNumSequences;
 
 			// meta analysis, only for screen output summary
-
-			hist += histRC;
-			unsigned sum = hist.sum();
-			unsigned max = hist.max();
-
-			if (sum>0)
-				mClassifiedInstances++;
 			if (mpParameters->mVerbose){
+
+				hist += histRC;
+				unsigned sum = hist.sum();
+				unsigned max = hist.max();
+
+				if (sum>0)
+					mClassifiedInstances++;
+
 				valarray<double> hist_t = hist;
 				hist_t /= (k*mpParameters->mNumHashFunctions);
 
 				hist_t /= sum;
 				hist_t = hist.apply(changeNAN);
 
-				for (unsigned i = 0; i<hist.size(); i++){
+				for (unsigned i = 0; i<hist_size; i++){
 					if (hist[i] >= max  && max != 0) {hist[i] = 1;} else { hist[i]=0;};
 				}
 
@@ -401,10 +404,12 @@ void SeqClassifyManager::getResultString(string& resT,histogramT hist,unsigned e
 	uint sum = hist.sum();
 	uint max = hist.max();
 
-	for (uint i = 0; i<hist.size(); i++){
-		if (hist[i] / (numSigs*mpParameters->mNumHashFunctions) < mpParameters->mPureApproximateSim ) {
-			hist[i] = 0.0;
-		};
+	if (mpParameters->mPureApproximateSim != 0) {
+		for (uint i = 0; i<hist.size(); i++){
+			if (hist[i] / (numSigs*mpParameters->mNumHashFunctions) < mpParameters->mPureApproximateSim ) {
+				hist[i] = 0.0;
+			};
+		}
 	}
 
 	string str;
@@ -515,8 +520,10 @@ void SeqClassifyManager::ClassifySeqs(){
 
 	// metahistogram
 
-	cout << endl << endl << "META histogram - classified seqs: " << setprecision(3) << (double)mClassifiedInstances/((double)mNumSequences) << " (" << mClassifiedInstances << ") - TOP 20" << endl;
 	if (mpParameters->mVerbose){
+
+		cout << endl << endl << "META histogram - classified seqs: " << setprecision(3) << (double)mClassifiedInstances/((double)mNumSequences) << " (" << mClassifiedInstances << ") - TOP 20" << endl;
+
 		metaHist = metaHist/metaHist.sum();
 		vector<pair<double,uint> > sortedHist;
 		for (unsigned j=0; j<metaHist.size();j++){
