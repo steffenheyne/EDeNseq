@@ -156,12 +156,18 @@ void SeqClassifyManager::worker_Classify(int numWorkers, unsigned id){
 
 			ResultChunkP myResultChunk = std::make_shared<ResultChunkT>();
 
-			for (unsigned j = 0; j < myData->size(); j++) {
+//			for (unsigned j = 0; j < myData->size(); j++) {
+//
+//				generate_feature_vector((*myData)[j].seq, (*myData)[j].svec);
+//				ComputeHashSignature((*myData)[j].svec,(*myData)[j].sig,tmpSig);
+//
+//			}
 
-				generate_feature_vector((*myData)[j].seq, (*myData)[j].svec);
-				ComputeHashSignature((*myData)[j].svec,(*myData)[j].sig,tmpSig);
-
+			for (ChunkT::iterator j=myData->begin(); j!=myData->end();j++){
+				sliding_window_minhash(j->minHashes,j->seq,mpParameters->mMinRadius,mpParameters->mRadius, mpParameters->mMinDistance, mpParameters->mDistance, mpParameters->mSeqWindow, mpParameters->mSeqShift);
+				//cout << "final " << j->name << " len=" << j->seq.size() << "idx=" << j->idx << " minH_hf " << j->minHashes.size() <<  " minh_len "<< j->minHashes[0].size() << " win=" << mpParameters->mSeqWindow << " step=" << mpParameters->mSeqShift << endl;
 			}
+
 			finishUpdate(myData,myResultChunk);
 			res_queue.push(myResultChunk);
 			if (res_queue.size()>=numWorkers*25){
@@ -177,6 +183,8 @@ void SeqClassifyManager::worker_Classify(int numWorkers, unsigned id){
 
 void SeqClassifyManager::finisher_Results(ogzstream* fout_res){
 	ProgressBar progress_bar(1000);
+	unsigned sigCounter = 0;
+
 	while (!done){
 
 		ResultChunkP myResults;
@@ -186,14 +194,15 @@ void SeqClassifyManager::finisher_Results(ogzstream* fout_res){
 
 			for (unsigned i=0; i<myResults->size(); i++){
 				*fout_res << (*myResults)[i].output_line;
-				mResultCounter += (*myResults)[i].numInstances;
-
+				//mResultCounter += (*myResults)[i].numInstances;
+				sigCounter += (*myResults)[i].numInstances;
 			}
+			mResultCounter += myResults->size()*2;
 			double elap = progress_bar.getElapsed()/1000;
 			cout.setf(ios::fixed);
 			cout << "\r" <<  std::setprecision(1) << elap << " sec elapsed   Finished numSeqs=" << std::setprecision(0) << setw(10);
 			cout << mNumSequences  << "("<<mNumSequences/(elap) <<" seq/s)  signatures=" << setw(10);
-			cout << mResultCounter << "("<<(double)mResultCounter/((elap)) <<" sig/s - "<<(double)mResultCounter/elap/mpParameters->mNumThreads <<" per thread)  inst=";
+			cout << sigCounter << "("<<(double)sigCounter/((elap)) <<" sig/s - "<<(double)sigCounter/elap/mpParameters->mNumThreads <<" per thread)  inst=";
 			cout << mInstanceCounter << " resQueue=" << res_queue.size() << " graphQueue=";
 			uint avg = 0;
 			for (uint i=0; i<graph_queue.size(); ++i){
@@ -254,9 +263,9 @@ void SeqClassifyManager::Classify_Signatures(SeqFilesT& myFiles){
 
 		while(!done){
 			std::this_thread::sleep_for(std::chrono::milliseconds(20));
-			if ( (files_done<myFiles.size()) || (mInstanceCounter > mResultCounter))
-				done = false;
-			else done = true;
+			if ( (files_done>=myFiles.size()) && (mResultCounter >= mInstanceCounter))
+				done = true;
+			else done = false;
 			cv2.notify_all();
 			cv1.notify_all();
 		}
@@ -277,19 +286,137 @@ void SeqClassifyManager::Classify_Signatures(SeqFilesT& myFiles){
 
 void SeqClassifyManager::finishUpdate(ChunkP& myData, unsigned& min, unsigned& max) {
 
-	// as this is the overloaded virtual function from MinHashEncoder
-	//we assume signatureAction==INDEX always here
+	// this is the overloaded virtual function from MinHashEncoder
+	// we assume signatureAction==INDEX always here
 	for (unsigned j = 0; j < myData->size(); j++) {
-		UpdateInverseIndex((*myData)[j].sig, (*myData)[j].idx, min, max);
+		for (uint hf=min;hf<=max;hf++){
+			unsigned last = MAXUNSIGNED;
+			for (auto i : (*myData)[j].minHashes[hf] ){
+				//cout << hf << " "<< i << endl;
+				if (last != i)
+					UpdateInverseIndex(i, (*myData)[j].idx, hf);
+				last = i;
+				if (hf==0) mSignatureCounter++;
+			}
+
+		}
+		//UpdateInverseIndex((*myData)[j].sig, (*myData)[j].idx, min, max);
 	}
 }
-
 
 inline double changeNAN(double i) {if (std::isnan(i)) return 0.0; else return i;}
 
 inline double indicator(double i) {if (i>0) return 1; else return 0;}
 
+
 void SeqClassifyManager::finishUpdate(ChunkP& myData, ResultChunkP& myResultChunk) {
+
+	ChunkT::iterator j = myData->begin();
+	unsigned hist_size = GetHistogramSize();
+
+	while (j != myData->end()) {
+		valarray<double> hist(0.0,hist_size);
+		valarray<double> histRC(0.0,hist_size);
+
+		unsigned emptyBins = 0;
+		unsigned emptyBinsRC = 0;
+
+		ChunkT::iterator k=j;
+		unsigned matchingSigs 	= 0;
+		unsigned matchingSigsRC = 0;
+		unsigned numSigs = 0;
+		unsigned numSigsRC = 0;
+		do {
+			valarray<double> hist_tmp;
+			vector<unsigned> emptyBins_tmp;
+			ComputeHistogram(k->minHashes,hist_tmp,emptyBins_tmp);
+
+			switch (k->rc){
+			case true:
+				histRC += hist_tmp;
+				for (uint i = 0; i < emptyBins_tmp.size(); ++i){
+					if ( emptyBins_tmp[i] < mpParameters->mNumHashFunctions) matchingSigsRC++;
+					emptyBinsRC += emptyBins_tmp[i];
+				}
+				numSigsRC += emptyBins_tmp.size();
+				break;
+			case false:
+				hist += hist_tmp;
+				for (uint i = 0; i< emptyBins_tmp.size(); ++i){
+					if ( emptyBins_tmp[i] < mpParameters->mNumHashFunctions) matchingSigs++;
+					emptyBins += emptyBins_tmp[i];
+				}
+				numSigs += emptyBins_tmp.size();
+				break;
+			}
+			k++;
+		} while (k != myData->end() && k->idx == j->idx);
+
+		ResultT myResult;
+
+		switch (j->seqFile->strandType){
+		case FWD:
+			myResult.numInstances = numSigs;
+			getResultString(myResult.output_line,hist,emptyBins,matchingSigs,numSigs,j->name,FWD);
+			myResultChunk->push_back(myResult);
+			break;
+		case REV:
+			myResult.numInstances = numSigsRC;
+			getResultString(myResult.output_line,histRC,emptyBinsRC,matchingSigsRC,numSigsRC,j->name,REV);
+			myResultChunk->push_back(myResult);
+			break;
+		case FR:
+			myResult.numInstances = numSigs+numSigsRC;
+			getResultString(myResult.output_line,hist+histRC,emptyBins+emptyBinsRC,matchingSigs+matchingSigsRC,numSigs+numSigsRC,j->name,FR);
+			myResultChunk->push_back(myResult);
+			break;
+		case FR_sep:
+			myResult.numInstances = numSigs;
+			getResultString(myResult.output_line,hist,emptyBins,matchingSigs,numSigs,j->name,FWD);
+			myResultChunk->push_back(myResult);
+			myResult.numInstances = numSigsRC;
+			getResultString(myResult.output_line,histRC,emptyBinsRC,matchingSigsRC,numSigsRC,j->name,REV);
+			myResultChunk->push_back(myResult);
+			break;
+		default:
+			break;
+		}
+
+		j = k;
+		++mNumSequences;
+
+		// meta analysis, only for screen output summary
+		if (mpParameters->mVerbose){
+
+			hist += histRC;
+			unsigned sum = hist.sum();
+			unsigned max = hist.max();
+
+			if (sum>0)
+				mClassifiedInstances++;
+
+			valarray<double> hist_t = hist;
+			hist_t /= ( (numSigs+numSigsRC)*mpParameters->mNumHashFunctions);
+
+			hist_t /= sum;
+			hist_t = hist.apply(changeNAN);
+
+			for (unsigned i = 0; i<hist_size; i++){
+				if (hist[i] >= max  && max != 0) {hist[i] = 1;} else { hist[i]=0;};
+			}
+
+			{
+				std::lock_guard<std::mutex> lk(mut_meta);
+				metaHist += hist_t;
+				metaHistNum += hist;
+			}
+		}
+	}
+
+}
+
+
+/*void SeqClassifyManager::finishUpdate(ChunkP& myData, ResultChunkP& myResultChunk) {
 
 	unsigned j = 0;
 	unsigned hist_size = GetHistogramSize();
@@ -394,7 +521,7 @@ void SeqClassifyManager::finishUpdate(ChunkP& myData, ResultChunkP& myResultChun
 			break;
 		}
 	} // while
-}
+}*/
 
 
 void SeqClassifyManager::getResultString(string& resT,histogramT hist,unsigned emptyBins, unsigned matchingSigs, unsigned numSigs, string& name, strandTypeT strand){
@@ -484,8 +611,8 @@ void SeqClassifyManager::ClassifySeqs(){
 	SeqFileP mySet = std::make_shared<SeqFileT>();
 	mySet->filename            = mpParameters->mInputDataFileName;
 	mySet->filetype            = mpParameters->mFileTypeCode;
-	mySet->groupGraphsBy       = SEQ_WINDOW; // actually we check by InstanceT.name field for graphs from one seq
-	mySet->checkUniqueSeqNames = true;
+	mySet->groupGraphsBy       = SEQ_NUM; // actually we check by InstanceT.name field for graphs from one seq
+	mySet->checkUniqueSeqNames = false;
 	mySet->signatureAction	   = CLASSIFY;
 	mySet->strandType          = FR;
 

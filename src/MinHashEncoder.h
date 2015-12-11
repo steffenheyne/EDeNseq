@@ -28,7 +28,7 @@ public:
 	};
 
 	enum groupGraphsByE {
-		SEQ_WINDOW, SEQ_NAME, SEQ_FEATURE, NONE
+		SEQ_WINDOW, SEQ_NAME, SEQ_FEATURE, SEQ_NUM, NONE
 	};
 
 	enum strandTypeE {
@@ -73,6 +73,7 @@ public:
 		unsigned 	pos;
 		string 		seq;
 		SVector 		svec;
+		vector<vector<unsigned> > minHashes;
 		bool			rc;
 		SeqFileP 	seqFile;
 	};
@@ -141,6 +142,11 @@ public:
 	void 					HashSignatureHelper();
 	void 					generate_feature_vector(const string& seq, SVector& x);
 	void					ComputeHashSignature(const SVector& aX, Signature& signaure, Signature* tmpSig);
+
+	vector<unsigned> 				iterated_hash(string& kmer, unsigned minRadius);
+	void								running_hash(vector<vector<unsigned>>& paired_kmer_hashes_array, string& seq, unsigned& minRadius, unsigned& maxRadius, unsigned& minDist, unsigned& maxDist);
+	void								sliding_window_minimum(vector<vector<unsigned>>& array, unsigned winsize);
+	void								sliding_window_minhash(vector<vector<unsigned>>& res, string& seq, unsigned& minRadius, unsigned maxRadius, unsigned minDistance, unsigned maxDistance, unsigned winsize, unsigned step);
 
 	virtual void 			UpdateInverseIndex(vector<unsigned>& aSignature, unsigned& aIndex) {};
 
@@ -287,7 +293,9 @@ public:
 	void		SetHistogramSize(binKeyTy size);
 	void		UpdateInverseIndex(const vector<unsigned>& aSignature, const unsigned& aIndex);
 	void		UpdateInverseIndex(const vector<unsigned>& aSignature, const unsigned& aIndex, unsigned& min, unsigned& max);
-	void		ComputeHistogram(const vector<unsigned>& aSignature, std::valarray<double>& hist, unsigned& emptyBins);
+	void 		UpdateInverseIndex(const unsigned& key, const unsigned& aIndex, unsigned& k);
+	//void		ComputeHistogram(const vector<unsigned>& aSignature, std::valarray<double>& hist, unsigned& emptyBins);
+	void 		ComputeHistogram(const vector<vector<unsigned>>& aSigArray, std::valarray<double>& hist, vector<unsigned>& emptyBins);
 	void		writeBinaryIndex2(ostream &out, const indexTy& index);
 	bool		readBinaryIndex2(string filename, indexTy& index);
 
