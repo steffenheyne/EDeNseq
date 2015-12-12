@@ -180,6 +180,16 @@ inline unsigned HashFunc4(const unsigned& v1, const unsigned& v2, const unsigned
 	return hash & aBitMask;
 }
 
+inline unsigned HashFunc6(const unsigned& v1, const unsigned& v2, const unsigned& v3, const unsigned& v4,const unsigned& v5, const unsigned& v6, unsigned aBitMask) {
+	unsigned int hash = 0xAAAAAAAA;
+	hash ^=  ((hash << 7) ^ v1 * (hash >> 3));
+	hash ^=  (~(((hash << 11) + v2) ^ (hash >> 5)));
+	hash ^= ((hash << 7) ^ v3 * (hash >> 3));
+	hash ^=  (~(((hash << 11) + v4) ^ (hash >> 5)));
+	hash ^= ((hash << 7) ^ v5 * (hash >> 3));
+	hash ^=  (~(((hash << 11) + v6) ^ (hash >> 5)));
+	return hash & aBitMask;
+}
 
 inline unsigned HashFunc(const vector<unsigned>& aList, unsigned aBitMask) {
 	return APHash(aList) & aBitMask;

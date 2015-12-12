@@ -102,52 +102,32 @@ vector<unsigned> MinHashEncoder::iterated_hash(string& kmer, unsigned minRadius)
 		hash ^= ((radius & 1) == 0) ? ((hash << 7) ^ kmer[radius] * (hash >> 3)) : (~(((hash << 11) + kmer[radius]) ^ (hash >> 5)));
 		if (radius>=minRadius) {
 			feature_list[radius-minRadius] = hash;
-			//cout << "iterated_hash " << kmer << " " << radius <<  " " << minRadius << " " << kmer.size() << " fhash: "<< hash <<  endl;
 		}
 	}
 	return feature_list;
 }
 
-// ###...###
-// ###..###.
-// ##...##..
-// ##..##...
-// .###..###
-// .##...##.
-// .##..##..
-// ..##...##
-// ..##..##.
-// ...##..##
-
-// .###...###
-// .###..###.
-// .##...##..
-// .##..##...
-
-
 
 void MinHashEncoder::running_hash(vector<vector<unsigned>>&  paired_kmer_hashes_array, string& seq, unsigned& minRadius, unsigned& maxRadius, unsigned& minDist, unsigned& maxDist){
 
 	vector<vector<unsigned> > kmer_hashes_array;
-	unsigned effective_end = seq.size()-minRadius-1;
 
-	for (unsigned start=0;start<=effective_end;start++){
+	for (unsigned start=0;start<=seq.size()-minRadius-1;start++){
 		unsigned end = start+min(maxRadius+1,(unsigned)seq.size()-start);
 		string kmer = seq.substr(start,end-start);
-		//cout << "running_hash " << kmer << " start=" << start << " end="<< end << " len=" << end-start << " eff_end=" << effective_end << endl;
-
 		kmer_hashes_array.push_back( iterated_hash(kmer, minRadius) );
 	}
 
+	// we assume paired_kmer_hashes_array initialized with:
 	//	vector<vector<unsigned>> paired_kmer_hashes_array(numHashFunctionsFull,vector<unsigned>(seq.size(),MAXUNSIGNED));
 
 	for (unsigned r = minRadius; r <= maxRadius; r++) {
 		for (unsigned d = minDist; d <= maxDist; d++) {
 			for (unsigned start = 0; start < seq.size()-r-d; ++start) {
 
-				vector<unsigned> tmp = {r,r,kmer_hashes_array[start][r-minRadius],kmer_hashes_array[start+d][r-minRadius],d,d};
-				unsigned hash = HashFunc(tmp,MAXUNSIGNED);
-			   //unsigned hash = HashFunc4(kmer_hashes_array[start][r-minRadius],r,kmer_hashes_array[start+d][r-minRadius],r,d,d,MAXUNSIGNED);
+				//vector<unsigned> tmp = {d,kmer_hashes_array[start][r-minRadius],kmer_hashes_array[start+d][r-minRadius]};
+				//unsigned hash = HashFunc(tmp,MAXUNSIGNED);
+			   unsigned hash = HashFunc6(r,r,kmer_hashes_array[start][r-minRadius],kmer_hashes_array[start+d][r-minRadius],d,d,MAXUNSIGNED);
 
 				for (unsigned l = 1; l <= mpParameters->mNumRepeatsHashFunction; ++l) {
 					//unsigned key = IntHash(hash, mHashBitMask_feature, mpParameters->mRandomSeed+l);
