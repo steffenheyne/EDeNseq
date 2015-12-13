@@ -291,6 +291,7 @@ void SeqClassifyManager::finishUpdate(ChunkP& myData, unsigned& min, unsigned& m
 	for (unsigned j = 0; j < myData->size(); j++) {
 		for (uint hf=min;hf<=max;hf++){
 			unsigned last = MAXUNSIGNED;
+			//std::sort((*myData)[j].minHashes[hf].begin(),(*myData)[j].minHashes[hf].end());
 			for (auto i : (*myData)[j].minHashes[hf] ){
 				//cout << hf << " "<< i << endl;
 				if (last != i)

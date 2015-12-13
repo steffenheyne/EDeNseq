@@ -125,15 +125,15 @@ void MinHashEncoder::running_hash(vector<vector<unsigned>>&  paired_kmer_hashes_
 		for (unsigned d = minDist; d <= maxDist; d++) {
 			for (unsigned start = 0; start < seq.size()-r-d; ++start) {
 
-				//vector<unsigned> tmp = {d,kmer_hashes_array[start][r-minRadius],kmer_hashes_array[start+d][r-minRadius]};
-				//unsigned hash = HashFunc(tmp,MAXUNSIGNED);
-			   unsigned hash = HashFunc6(r,r,kmer_hashes_array[start][r-minRadius],kmer_hashes_array[start+d][r-minRadius],d,d,MAXUNSIGNED);
+				vector<unsigned> tmp = {d,kmer_hashes_array[start][r-minRadius],kmer_hashes_array[start+d][r-minRadius]};
+				unsigned hash = HashFunc(tmp,MAXUNSIGNED);
+			   //unsigned hash = HashFunc6(r,r,kmer_hashes_array[start][r-minRadius],kmer_hashes_array[start+d][r-minRadius],d,d,MAXUNSIGNED);
 
 				for (unsigned l = 1; l <= mpParameters->mNumRepeatsHashFunction; ++l) {
-					//unsigned key = IntHash(hash, mHashBitMask_feature, mpParameters->mRandomSeed+l);
+					unsigned key = IntHash(hash, mHashBitMask_feature, mpParameters->mRandomSeed+l);
 					//vector<unsigned> tmp = {mpParameters->mRandomSeed+l,hash};
 					//unsigned key = HashFunc(tmp,mHashBitMask_feature);
-					unsigned key = APHashSpec(hash, mHashBitMask_feature, mpParameters->mRandomSeed+l);
+					//unsigned key = APHashSpec(hash, mHashBitMask_feature, mpParameters->mRandomSeed+l);
 					for (unsigned kk = 0; kk < sub_hash_range; ++kk) { //for all k values
 						if (key >= mBounds[kk] && key < mBounds[kk+1]) { //if we are in the k-th slot
 							unsigned signature_feature = kk + (l - 1) * sub_hash_range;
@@ -1296,7 +1296,7 @@ bool HistogramIndex::readBinaryIndex2(string filename, indexTy &index){
 				//			tmp = new binKeyTy[numBinEntries+1];
 				break;
 			}
-			//cout << "new bin " << binId << " " << numBinEntries << " ";
+			//cout << "new bin " << binId << " " << numBinEntries << endl;
 			for (unsigned entry = 1; entry <= numBinEntries; entry++ ){
 
 				binKeyTy s;
