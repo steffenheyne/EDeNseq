@@ -156,12 +156,12 @@ void SeqClassifyManager::worker_Classify(int numWorkers, unsigned id){
 
 			ResultChunkP myResultChunk = std::make_shared<ResultChunkT>();
 
-//			for (unsigned j = 0; j < myData->size(); j++) {
-//
-//				generate_feature_vector((*myData)[j].seq, (*myData)[j].svec);
-//				ComputeHashSignature((*myData)[j].svec,(*myData)[j].sig,tmpSig);
-//
-//			}
+			//			for (unsigned j = 0; j < myData->size(); j++) {
+			//
+			//				generate_feature_vector((*myData)[j].seq, (*myData)[j].svec);
+			//				ComputeHashSignature((*myData)[j].svec,(*myData)[j].sig,tmpSig);
+			//
+			//			}
 
 			for (ChunkT::iterator j=myData->begin(); j!=myData->end();j++){
 				sliding_window_minhash(j->minHashes,j->seq,mpParameters->mMinRadius,mpParameters->mRadius, mpParameters->mMinDistance, mpParameters->mDistance, mpParameters->mSeqWindow, mpParameters->mSeqShift);
@@ -289,20 +289,65 @@ void SeqClassifyManager::finishUpdate(ChunkP& myData, unsigned& min, unsigned& m
 	// this is the overloaded virtual function from MinHashEncoder
 	// we assume signatureAction==INDEX always here
 	for (unsigned j = 0; j < myData->size(); j++) {
+		//sliding_window_minhash((*myData)[j].minHashes,(*myData)[j].seq,mpParameters->mMinRadius,mpParameters->mRadius, mpParameters->mMinDistance, mpParameters->mDistance, mpParameters->mSeqWindow, mpParameters->mSeqShift);
 		for (uint hf=min;hf<=max;hf++){
 			unsigned last = MAXUNSIGNED;
-			//std::sort((*myData)[j].minHashes[hf].begin(),(*myData)[j].minHashes[hf].end());
 			for (auto i : (*myData)[j].minHashes[hf] ){
-				//cout << hf << " "<< i << endl;
-				if (last != i)
+				if (i != last)
 					UpdateInverseIndex(i, (*myData)[j].idx, hf);
 				last = i;
 				if (hf==0) mSignatureCounter++;
 			}
 
 		}
-		//UpdateInverseIndex((*myData)[j].sig, (*myData)[j].idx, min, max);
 	}
+//	cout <<"\nnext chunk"<< endl;
+//	for (unsigned j = 0; j < myData->size(); j++) {
+//		for (unsigned i=0; i<(*myData)[j].minHashes[0].size();i++ ){
+//			cout << "chunk "<< j << " sig "<< i << " " << (*myData)[j].name << " " << (*myData)[j].pos << " hf ";
+//			for (uint hf=min;hf<=max;hf++){
+//				cout << (*myData)[j].minHashes[hf][i] << "\t";
+//				UpdateInverseIndex((*myData)[j].minHashes[hf][i], (*myData)[j].idx, hf);
+//				if (hf==0) mSignatureCounter++;
+//			}
+//			cout << endl;
+//		}
+//	}
+
+//	cout << endl;
+//	Signature* tmpSig = new Signature(numHashFunctionsFull);
+//	bool lastSeqGr = false;
+//	unsigned pos = 0;
+//	for (unsigned j = 0; j < myData->size(); j++) {
+//
+//		while (lastSeqGr == false){
+//			InstanceT	myInstance;
+//			myInstance.seqFile = (*myData)[j].seqFile;
+//			myInstance.name = (*myData)[j].name;
+//			myInstance.idx = (*myData)[j].idx;
+//			myInstance.pos = (*myData)[j].pos;
+//			myInstance.rc = (*myData)[j].rc;
+//
+//			mpData->GetNextWinFromSeq((*myData)[j].seq, pos, lastSeqGr, myInstance.seq);
+//
+//			generate_feature_vector(myInstance.seq, myInstance.svec);
+//			ComputeHashSignature(myInstance.svec, myInstance.sig,tmpSig);
+//			//UpdateInverseIndex(myInstance.sig, myInstance.idx, min, max);
+//			cout << "chunk2 "<< 0 << " sig "<< j << " " << (*myData)[j].name << " " << pos << " hf ";
+//			for (uint hf=min;hf<=max;hf++){
+//				cout << myInstance.sig[hf] << "\t";
+//				//UpdateInverseIndex((*myData)[j].minHashes[hf][i], (*myData)[j].idx, hf);
+//				//if (hf==0) mSignatureCounter++;
+//			}
+//			cout << endl;
+//			//mSignatureCounter++;
+//			//cout << mSignatureCounter << " idx="<< myInstance.idx << endl;
+//		}
+//		//cout << "sigCounter=" << mSignatureCounter << endl;
+//	}
+//
+//	delete tmpSig;
+
 }
 
 inline double changeNAN(double i) {if (std::isnan(i)) return 0.0; else return i;}

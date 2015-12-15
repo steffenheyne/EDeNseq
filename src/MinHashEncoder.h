@@ -145,7 +145,7 @@ public:
 
 	vector<unsigned> 				iterated_hash(string& kmer, unsigned minRadius);
 	void								running_hash(vector<vector<unsigned>>& paired_kmer_hashes_array, string& seq, unsigned& minRadius, unsigned& maxRadius, unsigned& minDist, unsigned& maxDist);
-	void								sliding_window_minimum(vector<vector<unsigned>>& array, unsigned winsize);
+	void								sliding_window_minimum(vector<vector<unsigned>>& array, unsigned winsize, unsigned& maxFeatLen);
 	void								sliding_window_minhash(vector<vector<unsigned>>& res, string& seq, unsigned& minRadius, unsigned maxRadius, unsigned minDistance, unsigned maxDistance, unsigned winsize, unsigned step);
 
 	virtual void 			UpdateInverseIndex(vector<unsigned>& aSignature, unsigned& aIndex) {};

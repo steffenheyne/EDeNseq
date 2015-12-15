@@ -98,10 +98,10 @@ vector<unsigned> MinHashEncoder::iterated_hash(string& kmer, unsigned minRadius)
 
 	unsigned int hash = 0xAAAAAAAA;
 	vector<unsigned> feature_list(kmer.size()-minRadius, 0);
-	for (std::size_t radius = 0; radius <= kmer.size()-1; radius++) {
+	for (std::size_t radius = 0; radius < kmer.size(); radius++) {
 		hash ^= ((radius & 1) == 0) ? ((hash << 7) ^ kmer[radius] * (hash >> 3)) : (~(((hash << 11) + kmer[radius]) ^ (hash >> 5)));
 		if (radius>=minRadius) {
-			feature_list[radius-minRadius] = hash;
+			feature_list[radius-minRadius] = hash & MAXUNSIGNED;
 		}
 	}
 	return feature_list;
@@ -138,11 +138,12 @@ void MinHashEncoder::running_hash(vector<vector<unsigned>>&  paired_kmer_hashes_
 						if (key >= mBounds[kk] && key < mBounds[kk+1]) { //if we are in the k-th slot
 							unsigned signature_feature = kk + (l - 1) * sub_hash_range;
 
-							for (unsigned add = start+r+d; add <=min((uint)seq.size()-1,start+maxRadius+maxDist);add++){
+							for (unsigned add = start+r+d-1; add <=min((uint)seq.size()-1,start+maxRadius+maxDist-1);add++){
+								unsigned prev = paired_kmer_hashes_array[signature_feature][add];
 								if (key < paired_kmer_hashes_array[signature_feature][add]){
 									paired_kmer_hashes_array[signature_feature][add] = key;
 								}
-								//cout << "hf " << signature_feature << " " <<  " start " << start << " end " << start+d << " r " << r << " d " << d << " kmer " << r+1 << " add "<< start << " "  << paired_kmer_hashes_array[signature_feature][start] << " hash " << key << endl;
+								//cout << "hf " << signature_feature << " start " << start << " end " << start+d << " r " << r << " d " << d << " kmer " << r+1 << " add "<< add << " "  << prev << " hash " << key << endl;
 							}
 						}
 					}
@@ -152,21 +153,29 @@ void MinHashEncoder::running_hash(vector<vector<unsigned>>&  paired_kmer_hashes_
 	}
 }
 
+// #####.#####
+// ....#####.#####
 
-void MinHashEncoder::sliding_window_minimum(vector<vector<unsigned>>& array, unsigned winsize){
+void MinHashEncoder::sliding_window_minimum(vector<vector<unsigned>>& array, unsigned winsize, unsigned& maxFeatLen){
+
+	// maxFeatlen is the offset in array that
 
 	for (unsigned hf=0; hf < array.size();hf++){
 		deque<pair<unsigned,int> > window; // we need int as i-winsize below can be negative, we can avoid some casts at least
-		for (int i=0;i<(int)array[hf].size();i++) {
+		for (int i=maxFeatLen;i<(int)array[hf].size();i++) {
 			while (!window.empty() && window.back().first >= array[hf][i]){
+				//cout << "pop_back "<< window.back().first << " "<< window.back().second << endl;
 				window.pop_back();
 			}
-			window.push_back(make_pair(array[hf][i],i));
+			window.push_back(make_pair(array[hf][i],i-maxFeatLen));
+			//cout << "push_back "<< window.back().first << " "<< window.back().second << endl;
 			while (window.front().second <= i-(int)winsize){
+				//cout << "pop_front "<< window.front().first << " "<< window.front().second << endl;
 				window.pop_front();
 			}
 			// we can create result "in place" of the old array
 			array[hf][i] = window.front().first;
+			//cout << "new min "<< i << " " << window.front().first << " "<< window.front().second << endl << endl;
 		}
 	}
 }
@@ -175,9 +184,9 @@ void MinHashEncoder::sliding_window_minimum(vector<vector<unsigned>>& array, uns
 void MinHashEncoder::sliding_window_minhash(vector<vector<unsigned>>& res, string & seq, unsigned& minRadius, unsigned maxRadius, unsigned minDistance, unsigned maxDistance, unsigned winsize, unsigned step){
 
 	vector<vector<unsigned>> min_hashes(numHashFunctionsFull,vector<unsigned>(seq.size(),MAXUNSIGNED));
-
+	unsigned maxFeatureLength = maxRadius + maxDistance -1 ;
 	running_hash(min_hashes, seq, minRadius, maxRadius, minDistance, maxDistance);
-	sliding_window_minimum(min_hashes, winsize);
+	sliding_window_minimum(min_hashes, winsize, maxFeatureLength);
 
 	res.resize(mpParameters->mNumHashFunctions);
 
@@ -515,9 +524,9 @@ void MinHashEncoder::finisher_IndexUpdate(unsigned id, unsigned min, unsigned ma
 
 			finishUpdate(myData,min,max);
 			mSignatureUpdateCounter += myData->size()* (max-min+1);
-			//	cout << "finishUpdate "<< myData->size() << " " << id << " " << min << " " << max << " " << index_queue[id].size() <<  " " << myData->size()*( (max-min+1)*mpParameters->mNumHashFunctions) << " " << mSignatureUpdateCounter << endl;
+				cout << "finishUpdate "<< myData->size() << " " << id << " " << min << " " << max << " " << index_queue[id].size() <<  " " << myData->size()*( (max-min+1)*mpParameters->mNumHashFunctions) << " " << mSignatureUpdateCounter << endl;
 
-			if (id==0){
+		//	if (id==0){
 				//mSignatureCounter += myData->size();
 				double elap = progress_bar.getElapsed()/1000;
 				cout.setf(ios::fixed);
@@ -538,7 +547,7 @@ void MinHashEncoder::finisher_IndexUpdate(unsigned id, unsigned min, unsigned ma
 					avg += index_queue[i].size();
 				}
 				cout << avg << "  ";
-			}
+		//	}
 		}
 	}
 }
