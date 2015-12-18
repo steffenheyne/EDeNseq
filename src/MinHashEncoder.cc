@@ -83,7 +83,8 @@ void  MinHashEncoder::generate_feature_vector(const string& seq, SVector& x) {
 				endpoint_list[1] = mFeatureCache[start][r];
 				endpoint_list[2] = mFeatureCache[start + d][r];
 				//cout << start << " " << start+d << "   " << endpoint_list[2] << "  " << endpoint_list[3]<< endl;
-				//  0 1 2 3 4   5 6 7 8 9   r=4 d=5
+				//  0 1 2 3 4
+				//          5 6 7 8 9   r=4 d=4
 				//unsigned code = HashFunc(endpoint_list, MAXUNSIGNED);
 				//x.coeffRef(code) = 1;
 				x.push_back(HashFunc(endpoint_list, MAXUNSIGNED));
@@ -125,25 +126,27 @@ void MinHashEncoder::running_hash(vector<vector<unsigned>>&  paired_kmer_hashes_
 		for (unsigned d = minDist; d <= maxDist; d++) {
 			for (unsigned start = 0; start < seq.size()-r-d; ++start) {
 
-				vector<unsigned> tmp = {d,kmer_hashes_array[start][r-minRadius],kmer_hashes_array[start+d][r-minRadius]};
-				unsigned hash = HashFunc(tmp,MAXUNSIGNED);
-			   //unsigned hash = HashFunc6(r,r,kmer_hashes_array[start][r-minRadius],kmer_hashes_array[start+d][r-minRadius],d,d,MAXUNSIGNED);
+				//vector<unsigned> tmp = {d,kmer_hashes_array[start][r-minRadius],kmer_hashes_array[start+d][r-minRadius]};
+				//unsigned hash = HashFunc(tmp,MAXUNSIGNED);
+				//unsigned hash = HashFunc6(r,r,kmer_hashes_array[start][r-minRadius],kmer_hashes_array[start+d][r-minRadius],d,d,MAXUNSIGNED);
+				//unsigned hash = HashFunc4(kmer_hashes_array[start][r-minRadius],kmer_hashes_array[start+d][r-minRadius],d,d,MAXUNSIGNED);
+				unsigned hash = HashFunc3(kmer_hashes_array[start][r-minRadius],kmer_hashes_array[start+d][r-minRadius],d,MAXUNSIGNED);
 
 				for (unsigned l = 1; l <= mpParameters->mNumRepeatsHashFunction; ++l) {
-					unsigned key = IntHash(hash, mHashBitMask_feature, mpParameters->mRandomSeed+l);
+					//unsigned key = IntHash(hash, mHashBitMask_feature, mpParameters->mRandomSeed+l);
 					//vector<unsigned> tmp = {mpParameters->mRandomSeed+l,hash};
 					//unsigned key = HashFunc(tmp,mHashBitMask_feature);
-					//unsigned key = APHashSpec(hash, mHashBitMask_feature, mpParameters->mRandomSeed+l);
+					unsigned key = APHashSpec(hash, mHashBitMask_feature, mpParameters->mRandomSeed+l);
 					for (unsigned kk = 0; kk < sub_hash_range; ++kk) { //for all k values
 						if (key >= mBounds[kk] && key < mBounds[kk+1]) { //if we are in the k-th slot
 							unsigned signature_feature = kk + (l - 1) * sub_hash_range;
 
-							for (unsigned add = start+r+d-1; add <=min((uint)seq.size()-1,start+maxRadius+maxDist-1);add++){
-								unsigned prev = paired_kmer_hashes_array[signature_feature][add];
+							for (unsigned add = start+r+d; add <=min((uint)seq.size()-1,start+maxRadius+maxDist);add++){
+								//unsigned prev = paired_kmer_hashes_array[signature_feature][add];
 								if (key < paired_kmer_hashes_array[signature_feature][add]){
 									paired_kmer_hashes_array[signature_feature][add] = key;
 								}
-								//cout << "hf " << signature_feature << " start " << start << " end " << start+d << " r " << r << " d " << d << " kmer " << r+1 << " add "<< add << " "  << prev << " hash " << key << endl;
+								//cout << "hf " << signature_feature << " start " << start << " end " << start+d << " r " << r << " d " << d << " kmer " << r+1 << " add "<< add << " "  << paired_kmer_hashes_array[signature_feature][add] << " hash " << key << endl;
 							}
 						}
 					}
@@ -153,29 +156,25 @@ void MinHashEncoder::running_hash(vector<vector<unsigned>>&  paired_kmer_hashes_
 	}
 }
 
-// #####.#####
+// #####..#####
 // ....#####.#####
 
 void MinHashEncoder::sliding_window_minimum(vector<vector<unsigned>>& array, unsigned winsize, unsigned& maxFeatLen){
 
-	// maxFeatlen is the offset in array that
+	// maxFeatlen is the offset in array, defines the span of features for that a minimum is stored in array
 
 	for (unsigned hf=0; hf < array.size();hf++){
 		deque<pair<unsigned,int> > window; // we need int as i-winsize below can be negative, we can avoid some casts at least
 		for (int i=maxFeatLen;i<(int)array[hf].size();i++) {
 			while (!window.empty() && window.back().first >= array[hf][i]){
-				//cout << "pop_back "<< window.back().first << " "<< window.back().second << endl;
 				window.pop_back();
 			}
 			window.push_back(make_pair(array[hf][i],i-maxFeatLen));
-			//cout << "push_back "<< window.back().first << " "<< window.back().second << endl;
 			while (window.front().second <= i-(int)winsize){
-				//cout << "pop_front "<< window.front().first << " "<< window.front().second << endl;
 				window.pop_front();
 			}
-			// we can create result "in place" of the old array
+			// we can create result "in place" of the old array as we never touch [hf,j] again
 			array[hf][i] = window.front().first;
-			//cout << "new min "<< i << " " << window.front().first << " "<< window.front().second << endl << endl;
 		}
 	}
 }
@@ -184,7 +183,7 @@ void MinHashEncoder::sliding_window_minimum(vector<vector<unsigned>>& array, uns
 void MinHashEncoder::sliding_window_minhash(vector<vector<unsigned>>& res, string & seq, unsigned& minRadius, unsigned maxRadius, unsigned minDistance, unsigned maxDistance, unsigned winsize, unsigned step){
 
 	vector<vector<unsigned>> min_hashes(numHashFunctionsFull,vector<unsigned>(seq.size(),MAXUNSIGNED));
-	unsigned maxFeatureLength = maxRadius + maxDistance -1 ;
+	unsigned maxFeatureLength = maxRadius + maxDistance ;
 	running_hash(min_hashes, seq, minRadius, maxRadius, minDistance, maxDistance);
 	sliding_window_minimum(min_hashes, winsize, maxFeatureLength);
 
@@ -210,8 +209,6 @@ void MinHashEncoder::sliding_window_minhash(vector<vector<unsigned>>& res, strin
 			}
 		}
 	}
-
-	//return res;
 }
 
 
@@ -433,7 +430,7 @@ void MinHashEncoder::worker_readFiles(unsigned numWorkers, unsigned chunkSizeFac
 				//cout << "Gr: " << myChunkP->size() << " "<< i << " " << currBuff<< " "<< pos << " " << currSeqName<<  " " << currSeq.size() << " " << lastSeqGr << endl;
 				if (i==0)
 					continue;
-				//cout << "buffer full " << currBases << endl;
+
 				graph_queue[curr_q].push(myChunkP);
 
 				unsigned fillstatus = MAXUNSIGNED;
@@ -458,10 +455,7 @@ void MinHashEncoder::worker_readFiles(unsigned numWorkers, unsigned chunkSizeFac
 	}
 }
 
-void MinHashEncoder::worker_Graph2Signature(int numWorkers, unsigned id){
-
-	Signature* tmpSig = new Signature(numHashFunctionsFull);
-
+void MinHashEncoder::worker_Seq2Signature_SlidingWin(int numWorkers, unsigned id){
 	while (!done){
 
 		ChunkP myData;
@@ -476,18 +470,12 @@ void MinHashEncoder::worker_Graph2Signature(int numWorkers, unsigned id){
 		while (!done && myQ.size()){
 			myData = myQ.front();
 			myQ.pop();
-			//cout << "  graph2sig thread got chunk " << myData->size() << endl;
-			/*		for (unsigned j = 0; j < myData->size(); j++) {
-				generate_feature_vector((*myData)[j].seq, (*myData)[j].svec);
-				ComputeHashSignature((*myData)[j].svec,(*myData)[j].sig,tmpSig);
-			}
-			 */
 
-			for (ChunkT::iterator j=myData->begin(); j!=myData->end();j++){
+			for (ChunkT::iterator j=myData->begin(); j!= myData->end();j++) {
 				sliding_window_minhash(j->minHashes,j->seq,mpParameters->mMinRadius,mpParameters->mRadius, mpParameters->mMinDistance, mpParameters->mDistance, mpParameters->mSeqWindow, mpParameters->mSeqShift);
-				//cout << "final " << j->name << " len=" << j->seq.size() << "idx=" << j->idx << " minH_hf " << j->minHashes.size() <<  " minh_len "<< j->minHashes[0].size() << " win=" << mpParameters->mSeqWindow << " step=" << mpParameters->mSeqShift << endl;
+				mSignatureCounter += j->minHashes[0].size();
+				mInstanceProcCounter++;
 			}
-
 
 			{
 				lock_guard<mutex> lk(mut2);
@@ -506,28 +494,92 @@ void MinHashEncoder::worker_Graph2Signature(int numWorkers, unsigned id){
 			}
 		}
 	}
+}
+
+
+void MinHashEncoder::worker_Seq2Signature_SingleWin(int numWorkers, unsigned id){
+
+	Signature* tmpSig = new Signature(numHashFunctionsFull);
+
+	while (!done){
+
+		ChunkP myData;
+		queue<ChunkP> myQ;
+
+		// take multiple chunks at once, gives better throughput
+		while (graph_queue[id].size()>=1){
+			graph_queue[id].wait_and_pop(myData);
+			myQ.push(myData);
+		}
+
+		while (!done && myQ.size()){
+			myData = myQ.front();
+			myQ.pop();
+
+			ChunkP 		myNewData = std::make_shared<ChunkT>();
+
+			for (ChunkT::iterator j = myData->begin(); j != myData->end(); j++) {
+
+				bool 			lastSeqGr = false;
+				unsigned 	pos = 0;
+
+				while (lastSeqGr == false){
+					InstanceT	myInstance;
+					myInstance.pos = pos;
+
+					mpData->GetNextWinFromSeq(j->seq, pos, lastSeqGr, myInstance.seq);
+
+					myInstance.seqFile = j->seqFile;
+					myInstance.name = j->name;
+					myInstance.idx = j->idx;
+					myInstance.rc = j->rc;
+
+					generate_feature_vector(myInstance.seq, myInstance.svec);
+					ComputeHashSignature(myInstance.svec, myInstance.sig,tmpSig);
+
+					myNewData->push_back(myInstance);
+					mSignatureCounter++;
+				}
+				mInstanceProcCounter++;
+			}
+			{
+				lock_guard<mutex> lk(mut2);
+
+				for (unsigned i=0;i<index_queue.size();i++){
+					index_queue[i].push(myNewData);
+				}
+			}
+			uint fillstatus=0;
+			for (uint i=0; i<index_queue.size(); ++i){ fillstatus += index_queue[i].size();}
+
+			if (fillstatus>index_queue.size()*40){
+				unique_lock<mutex> lk(mut2);
+				cv2.wait(lk,[&]{fillstatus = 0;for (uint i=0; i<index_queue.size(); ++i){ fillstatus += index_queue[i].size();} if ((done) || (fillstatus<index_queue.size()*40)) return true; else return false;});
+				lk.unlock();
+			}
+		}
+	}
 	delete tmpSig;
 }
 
 
 void MinHashEncoder::finisher_IndexUpdate(unsigned id, unsigned min, unsigned max){
 	ProgressBar progress_bar(1000);
+
 	while (!done){
 
 		ChunkP myData;
-		bool succ;
+		bool succ=false;
 		{
 			lock_guard<mutex> lk(mut2);
 			succ = index_queue[id].try_pop(myData);
 		}
+
 		if (!done && succ && myData->size()>0) {
 
 			finishUpdate(myData,min,max);
-			mSignatureUpdateCounter += myData->size()* (max-min+1);
-				cout << "finishUpdate "<< myData->size() << " " << id << " " << min << " " << max << " " << index_queue[id].size() <<  " " << myData->size()*( (max-min+1)*mpParameters->mNumHashFunctions) << " " << mSignatureUpdateCounter << endl;
 
-		//	if (id==0){
-				//mSignatureCounter += myData->size();
+		if (id==0){
 				double elap = progress_bar.getElapsed()/1000;
 				cout.setf(ios::fixed);
 				cout << "\r" <<  std::setprecision(1) << elap << " sec elapsed  numSeqs=" << std::setprecision(0) << setw(10);
@@ -547,7 +599,7 @@ void MinHashEncoder::finisher_IndexUpdate(unsigned id, unsigned min, unsigned ma
 					avg += index_queue[i].size();
 				}
 				cout << avg << "  ";
-		//	}
+			}
 		}
 	}
 }
@@ -590,8 +642,10 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 	files_done              = 0;
 	mSignatureCounter       = 0;
 	mInstanceCounter        = 0;
+	mInstanceProcCounter    = 0;
 	mSequenceCounter        = 0;
 	mSignatureUpdateCounter = 0;
+	mUseSlidingWindowMinHash = true;
 
 	vector<std::thread> threads;
 	graph_queue.resize(graphWorkers);
@@ -616,7 +670,11 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 
 	// create n worker_Graph2Signature threads
 	for (int n=0;n<graphWorkers;n++){
-		threads.push_back( std::thread(&MinHashEncoder::worker_Graph2Signature,this,graphWorkers,n));
+		if (mUseSlidingWindowMinHash){
+			threads.push_back( std::thread(&MinHashEncoder::worker_Seq2Signature_SlidingWin,this,graphWorkers,n));
+		} else {
+			threads.push_back( std::thread(&MinHashEncoder::worker_Seq2Signature_SingleWin,this,graphWorkers,n));
+		}
 	}
 
 	{
@@ -625,7 +683,7 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 		while(!done){
 
 			std::this_thread::sleep_for(std::chrono::milliseconds(10));
-			if ( (files_done<myFiles.size()) || (mSignatureUpdateCounter < mInstanceCounter*mpParameters->mNumHashFunctions))
+			if ( (files_done<myFiles.size()) || (mSignatureUpdateCounter < mSignatureCounter) || (mInstanceProcCounter<mInstanceCounter) )
 				done=false;
 			else done=true;
 			cv2.notify_all();
@@ -1123,7 +1181,7 @@ void HistogramIndex::UpdateInverseIndex(const unsigned& key, const unsigned& aIn
 		}
 	}
 }
-*/
+ */
 
 void HistogramIndex::ComputeHistogram(const vector<vector<unsigned>>& aSigArray, std::valarray<double>& hist, vector<unsigned>& emptyBins) {
 

@@ -94,6 +94,7 @@ public:
 
 	unsigned numKeys;
 	unsigned numFullBins;
+	bool		mUseSlidingWindowMinHash;
 
 	multimap<uint, Data::BEDentryP> mIndexValue2Feature;
 	map<string, uint> mFeature2IndexValue;
@@ -119,9 +120,9 @@ public:
 	std::atomic_uint files_done;
 	std::atomic_uint mSequenceCounter;
 	std::atomic_uint mInstanceCounter;
+	std::atomic_uint mInstanceProcCounter;
 	std::atomic_uint mSignatureCounter;
 	std::atomic_uint mSignatureUpdateCounter;
-
 
 	unsigned 			mHashBitMask;
 	unsigned 			mHashBitMask_feature;
@@ -134,7 +135,8 @@ public:
 
 	void 					LoadData_Threaded(SeqFilesT& myFiles);
 	void 					worker_readFiles(unsigned numWorkers, unsigned chunkSizeFactor);
-	void					worker_Graph2Signature(int numWorkers,unsigned id);
+	void					worker_Seq2Signature_SlidingWin(int numWorkers,unsigned id);
+	void              worker_Seq2Signature_SingleWin(int numWorkers, unsigned id);
 	void 					finisher_IndexUpdate(unsigned id, unsigned min, unsigned max);
 	virtual void			finishUpdate(ChunkP& myData, unsigned& min, unsigned& max) {};
 
