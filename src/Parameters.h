@@ -22,7 +22,7 @@ enum InputFileType {
 };
 
 enum OutputType {
-	ALL, MAX
+	ALL, ALL_STRAND, MAX, MAX_STRAND
 };
 
 

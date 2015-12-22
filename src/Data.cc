@@ -109,14 +109,23 @@ void Data::GetNextLargeWinFromSeq(string& currSeq, unsigned& pos, bool& last, st
 	// pos is 0 based
 
 	// estimate number of shifts that fit into win_size_large
-	unsigned num_shifts = std::ceil( (double)( win_size_large - win_size_small) / (double)shift);
+	unsigned num_shifts;
+	if (win_size_large != 0 && win_size_small <= win_size_large){
+		num_shifts = std::ceil( (double)( win_size_large - win_size_small) / (double)shift);
+	} else
+		throw range_error("ERROR GetNextLargeWinFromSeq :  Large window is 0 or small window size > large window (buffer)!");
 
-	// minimal shifts that should fit is the fragment fter the current one
+	// minimal shifts that should fit in the fragment after the current one
+	// if not, we take the full seq till the end
 	unsigned min_shifts_left = 50;
 
 	// we either return a large window that hold exactly num_shift small windows
 	// or the rest of the sequence
-	if (currSeq.size()-pos <= (shift * (num_shifts+min_shifts_left) + win_size_small) ){
+	if (win_size_small == 0){
+		seq = currSeq;
+		pos = currSeq.size();
+		last = true;
+	}else	if (currSeq.size()-pos <= (shift * (num_shifts+min_shifts_left) + win_size_small) ){
 		seq = currSeq.substr(pos,currSeq.size()-pos);
 		pos = currSeq.size();
 		last = true;

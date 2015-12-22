@@ -9,21 +9,30 @@ MinHashEncoder::~MinHashEncoder(){
 
 MinHashEncoder::MinHashEncoder(Parameters* apParameters, Data* apData)
 {
-	Init(apParameters, apData);
+	mpParameters = apParameters;
+	mpData       = apData;
+	numKeys      = 0;
+	numFullBins  = 0;
 }
 
 
-void MinHashEncoder::Init(Parameters* apParameters, Data* apData) {
-	mpParameters = apParameters;
-	mpData = apData;
-	numKeys = 0;
-	numFullBins = 0;
+void MinHashEncoder::CheckParameters() {
 
 	cout << "MAXUNSIGNED "<< MAXUNSIGNED << endl;
+
+	// error if the shift is 0 and we have a specific window size
+	if (mpParameters->mSeqWindow != 0 && mpParameters->mSeqShift==0)
+		throw range_error("\nERROR! 'seq_shift' cannot be 0 for a specific window size!");
 
 	if (mpParameters->mMinRadius>mpParameters->mRadius  || mpParameters->mMinDistance>mpParameters->mDistance) {
 		throw range_error("Radius and Distance cannot be smaller than minRadius/minDistance!");
 	}
+
+	if (mpParameters->mSeqWindow != 0  && mpParameters->mSeqWindow < mpParameters->mRadius + mpParameters->mDistance + 1 ) {
+		throw range_error("Sequence window (--seq_window) must not be smaller than max. feature span (maxRadius+maxDistance+1)!");
+	}
+
+	cout << "Required minimal sequence/window length from feature parameters: " << mpParameters->mRadius +mpParameters->mDistance +1 << endl;
 
 	if (mpParameters->mNumRepeatsHashFunction == 0 || mpParameters->mNumRepeatsHashFunction > mpParameters->mNumHashShingles * mpParameters->mNumHashFunctions){
 		mpParameters->mNumRepeatsHashFunction = mpParameters->mNumHashShingles * mpParameters->mNumHashFunctions;
@@ -82,9 +91,6 @@ void  MinHashEncoder::generate_feature_vector(const string& seq, SVector& x) {
 			for (unsigned start = 0; start < size-r-d; ++start) {
 				endpoint_list[1] = mFeatureCache[start][r];
 				endpoint_list[2] = mFeatureCache[start + d][r];
-				//cout << start << " " << start+d << "   " << endpoint_list[2] << "  " << endpoint_list[3]<< endl;
-				//  0 1 2 3 4
-				//          5 6 7 8 9   r=4 d=4
 				//unsigned code = HashFunc(endpoint_list, MAXUNSIGNED);
 				//x.coeffRef(code) = 1;
 				x.push_back(HashFunc(endpoint_list, MAXUNSIGNED));
@@ -142,34 +148,35 @@ void MinHashEncoder::running_hash(vector<vector<unsigned>>&  paired_kmer_hashes_
 							unsigned signature_feature = kk + (l - 1) * sub_hash_range;
 
 							for (unsigned add = start+r+d; add <=min((uint)seq.size()-1,start+maxRadius+maxDist);add++){
-								//unsigned prev = paired_kmer_hashes_array[signature_feature][add];
 								if (key < paired_kmer_hashes_array[signature_feature][add]){
 									paired_kmer_hashes_array[signature_feature][add] = key;
 								}
-								//cout << "hf " << signature_feature << " start " << start << " end " << start+d << " r " << r << " d " << d << " kmer " << r+1 << " add "<< add << " "  << paired_kmer_hashes_array[signature_feature][add] << " hash " << key << endl;
 							}
 						}
-					}
-				}
-			}
-		}
-	}
+					} // sub hashes
+				} // repeat hash func
+			} // pos
+		} // dist
+	} // radius
 }
 
-// #####..#####
-// ....#####.#####
 
-void MinHashEncoder::sliding_window_minimum(vector<vector<unsigned>>& array, unsigned winsize, unsigned& maxFeatLen){
+void MinHashEncoder::sliding_window_minimum(vector<vector<unsigned>>& array, unsigned winsize, unsigned& array_offset){
 
-	// maxFeatlen is the offset in array, defines the span of features for that a minimum is stored in array
+	// array_offset is the idx/offset in array that defines the span of features
+	// for that a minimum is stored in array, first such pos is array[array_offset]
+	// lower position are initialized with MAXUNSIGNED
+	//
+	// if array is smaller than winsize than the result still holds the
+	// correct minimum up to each sub-window position
 
 	for (unsigned hf=0; hf < array.size();hf++){
 		deque<pair<unsigned,int> > window; // we need int as i-winsize below can be negative, we can avoid some casts at least
-		for (int i=maxFeatLen;i<(int)array[hf].size();i++) {
+		for (int i=array_offset;i<(int)array[hf].size();i++) {
 			while (!window.empty() && window.back().first >= array[hf][i]){
 				window.pop_back();
 			}
-			window.push_back(make_pair(array[hf][i],i-maxFeatLen));
+			window.push_back(make_pair(array[hf][i],i-array_offset));
 			while (window.front().second <= i-(int)winsize){
 				window.pop_front();
 			}
@@ -183,18 +190,24 @@ void MinHashEncoder::sliding_window_minimum(vector<vector<unsigned>>& array, uns
 void MinHashEncoder::sliding_window_minhash(vector<vector<unsigned>>& res, string & seq, unsigned& minRadius, unsigned maxRadius, unsigned minDistance, unsigned maxDistance, unsigned winsize, unsigned step){
 
 	vector<vector<unsigned>> min_hashes(numHashFunctionsFull,vector<unsigned>(seq.size(),MAXUNSIGNED));
-	unsigned maxFeatureLength = maxRadius + maxDistance ;
+
+	// we expect that winsize is at least maxRadius+maxDistance+1 (max feat span),
+	// check is currently in MinHashEncoder::worker_read_files
+	// array offset (0-based) is first position with minHash from max feature window (maxRadius+maxDistance+1)
+	unsigned min_hash_array_offset = maxRadius + maxDistance;
+
 	running_hash(min_hashes, seq, minRadius, maxRadius, minDistance, maxDistance);
-	sliding_window_minimum(min_hashes, winsize, maxFeatureLength);
+	sliding_window_minimum(min_hashes, winsize, min_hash_array_offset);
 
 	res.resize(mpParameters->mNumHashFunctions);
 
 	// create final array with desired step size
 	if (mpParameters->mNumHashShingles == 1 ) {
 
-		for (unsigned win_right_end=winsize-1; win_right_end < seq.size();win_right_end+=step){
-
-			for (unsigned hf=0;hf < numHashFunctionsFull;hf++){
+		// for each hash func
+		// now slide the window over single-pos min_hashes and take value for every step
+		for (unsigned hf=0;hf < numHashFunctionsFull;hf++){
+			for (unsigned win_right_end = winsize-1; win_right_end < seq.size();win_right_end += step){
 				res[hf].push_back(min_hashes[hf][win_right_end]);
 			}
 		}
@@ -231,9 +244,8 @@ void MinHashEncoder::worker_readFiles(unsigned numWorkers, unsigned chunkSizeFac
 
 			std::tr1::unordered_map<string, uint8_t> seq_names_seen;
 
-			unsigned pos = 0; // tracks the current seq start pos (window/shift)
-			unsigned end = 0; // tracks the current seq end pos, set from BED entry or to full seq end
-			unsigned idx = 0; // holds the instance id for the inverse index
+			unsigned pos = 0; // tracks the start pos of the next large window of currSeq
+			unsigned idx = 0; // set according to groupGraphsBy, grouping id for the inverse index of current seq window
 
 			bool valid_input = false; // set to false so that we get new seq in while further down directly
 			string currSeq;
@@ -241,7 +253,7 @@ void MinHashEncoder::worker_readFiles(unsigned numWorkers, unsigned chunkSizeFac
 			string currSeqName;
 
 			std::pair<Data::BEDdataIt,Data::BEDdataIt> annoEntries;
-			Data::BEDdataIt it; // iteratore over all bed entries of current seq
+			Data::BEDdataIt it; // iterator over all bed entries of current seq
 
 			uint curr_q = 0;
 
@@ -249,18 +261,17 @@ void MinHashEncoder::worker_readFiles(unsigned numWorkers, unsigned chunkSizeFac
 
 				//	unsigned maxB = max((uint)1000,(uint)log2((double)mSignatureCounter)^2*chunkSizeFactor);
 				//	unsigned currBuff = maxB*3; //rand()%(maxB*4	 - maxB*2 + 1) + maxB; // curr chunk size
-				unsigned largeBuff = 100000;
-				unsigned i = 0;			// current fragment in currBuff
+				unsigned largeBuff = 100000 * chunkSizeFactor;
 				unsigned currBases = 0;
-				bool lastSeqGr = false; // indicates that we have the last fragment from current seq, used to get all fragments from current seq into current chunk
-				// necessary to have all fragments for one seq/feature if we want to combine signatures in finisher
+
+				// indicates that we have the last fragment from current seq,
+				// used to get all fragments from current seq into the same chunk
+				// to combine signatures in finisher
+				bool lastSeqGr = false;
 
 				ChunkP 		myChunkP = std::make_shared<ChunkT>();
-				//		myChunkP->reserve(currBuff);
-				//while ( ((i<currBuff) && !fin.eof()) || (myData->signatureAction==CLASSIFY && i>=currBuff && lastSeqGr == false) ) {
 				while ( ((currBases<largeBuff) && !fin.eof()) || (myData->signatureAction==CLASSIFY && currBases>=largeBuff && lastSeqGr == false) ) {
 
-					//	cout << "valid? " << valid_input << " name :" << currSeqName << ": pos " << pos << " end " << end <<  endl;
 					if (!valid_input) {
 						if  ( it == annoEntries.second ) {
 							// last seq and all bed entries for it are finished, get next seq from file
@@ -289,22 +300,16 @@ void MinHashEncoder::worker_readFiles(unsigned numWorkers, unsigned chunkSizeFac
 								throw range_error("ERROR Data::LoadData: file type not recognized: " + myData->filetype);
 							}
 
-							// log output
-							if (myData->signatureAction==INDEX){
-								//		cout << endl << " next found Seq #" <<  seq_names_seen.size() << " length " << currFullSeq.size() << ":" << currSeqName << ": " << endl;
-							}
-
 							// if we have bed entries for a seq, find them and set iterator to first bed entry
 							if (myData->dataBED && myData->dataBED->find(currSeqName) != myData->dataBED->end()){
 								annoEntries = myData->dataBED->equal_range(currSeqName);
 								it = annoEntries.first;
 							} else if (myData->dataBED){
-								//	cout << "no bed entry found! "<< seq_names_seen.size()<< endl;
 								// bed is present, but no entry for current seq found -> we take next seq
 								valid_input = false;
 								continue;
 							}
-						} // if no bed entries left for current seq get new seq
+						} // if no bed entries left for current seq -> get new seq
 
 						// check if we use the same idx-group for the whole seq, either by seq name or feature id from BED
 						// idx also defines the value under which we insert features into the index
@@ -337,51 +342,39 @@ void MinHashEncoder::worker_readFiles(unsigned numWorkers, unsigned chunkSizeFac
 							break;
 						}
 
+						// set sequence according to BED
 						// only true if we have a found a BED entry for current seq
 						// set region according to BED entry
 						if ( it != annoEntries.second ) {
-							pos = it->second->START;
-							end = it->second->END;
 							//mIndexValue2Feature.insert(make_pair(idx,it->second));
-							//cout << endl << "BED entry found for seq name " << currSeqName << " " << it->second->NAME << " MetaIdx "<< idx << " " << pos << "-"<< end << endl;
+							unsigned& start = it->second->START;
+							unsigned& end   = it->second->END;
+							// check if start/end is within bounds of found seq
+							if ( start > currFullSeq.size() || end > currFullSeq.size())
+								throw range_error(" BED entry start/end is outside current seq ("+currSeqName+" length="+to_string(currFullSeq.size())+" BED: "+to_string(pos)+"-"+to_string(end)+")");
+
+							currSeq = currFullSeq.substr(start, end - start);
 							it++;
+							//cout << endl << "BED entry found for seq name " << currSeqName << " " << it->second->NAME << " MetaIdx "<< idx << " " << pos << "-"<< end << endl;
+
 						} else {
-							// no bed is present, then we set start/end to full seq, eg. in case for clustering
-							pos=0;
-							end=currFullSeq.size();
-							//cout << "no BED data present! "<< currSeqName << " " << pos << "-" << end << endl;
+							// no bed is present, then we set start/end to full seq
+							currSeq = currFullSeq.substr(0,currFullSeq.size());
+							//cout << "no BED data present! "<< currSeqName << " " << 0 << "-" << currFullSeq.size() << endl;
 						}
 
-						// check if start/end is within bounds of found seq
-						if (pos>currSeq.size() || end > currFullSeq.size())
-							throw range_error(" BED entry start/end is outside current seq ");
-
-						// apply current seq start/end
-						currSeq = currFullSeq.substr(pos,end-pos);
+						pos = 0;
 
 					} // valid_input?
 
 					// new instance for this chunk
 					InstanceT	myInstance;
-					//					mpData->GetNextWinFromSeq(currSeq, pos, lastSeqGr, myInstance.seq);
 
-					//TODO: we need two pos variables: one for GetNextLarge.. and one for the start pos of current bed!
+					// get next seq window
 					mpData->GetNextLargeWinFromSeq(currSeq, pos, lastSeqGr, myInstance.seq, largeBuff, mpParameters->mSeqWindow, mpParameters->mSeqShift);
 
-					//					if (myInstance.seq.size() == 0 && !lastSeqGr) {
-					//						valid_input = false;
-					//					} else {
-
-					if (myInstance.seq.size() == 0 || lastSeqGr) {
-						valid_input = false;
-					} else
-						valid_input = true;
-
-					if (myInstance.seq.size() > 0) {
-						// fill current Instance with all data
-						// make graph from seq
-
-						//		valid_input = true;
+					// require here at least a seq of maximal feature span, we assume this later for feature generation
+					if (myInstance.seq.size() >= mpParameters->mRadius + mpParameters->mDistance + 1){
 
 						/*		switch (myData->groupGraphsBy){
 						case NONE:
@@ -390,10 +383,8 @@ void MinHashEncoder::worker_readFiles(unsigned numWorkers, unsigned chunkSizeFac
 							break;
 						default:
 							break;
-						}
+						} */
 
-
-						 */
 						if (myData->strandType != REV){
 
 							myInstance.seqFile = myData;
@@ -403,7 +394,6 @@ void MinHashEncoder::worker_readFiles(unsigned numWorkers, unsigned chunkSizeFac
 							myInstance.rc = false;
 
 							myChunkP->push_back(myInstance);
-							i++;
 							mInstanceCounter++;
 							currBases += myInstance.seq.size();
 						}
@@ -419,20 +409,25 @@ void MinHashEncoder::worker_readFiles(unsigned numWorkers, unsigned chunkSizeFac
 
 							myChunkP->push_back(myInstanceRC);
 							mInstanceCounter++;
-							i++;
 							currBases += myInstanceRC.seq.size();
 
 						}
-					}
-					//cout << "Gr: " << myChunkP->size() << " "<< i << " " << currBuff<< " "<< pos << " " << currSeqName<<  " " << currSeq.size() << " " << lastSeqGr << endl;
+					} else
+						valid_input = false;
+
+					if (lastSeqGr)
+						valid_input = false;
+
+					//cout << "Gr: " << myChunkP->size() << " " << currBases<< " "<< pos << " " << currSeqName<<  " " << currSeq.size() << " " << lastSeqGr << endl;
 				} // while buffer not full or eof
 
-				//cout << "Gr: " << myChunkP->size() << " "<< i << " " << currBuff<< " "<< pos << " " << currSeqName<<  " " << currSeq.size() << " " << lastSeqGr << endl;
-				if (i==0)
-					continue;
 
+				if (myChunkP->size()==0)
+					continue;
+				//cout << "Gr2: " << myChunkP->size() << " " << currBases << " "<< pos << " " << currSeqName<<  " " << currSeq.size() << " " << lastSeqGr << endl;
 				graph_queue[curr_q].push(myChunkP);
 
+				// find least filled worker queue
 				unsigned fillstatus = MAXUNSIGNED;
 				for (unsigned q=0; q < graph_queue.size(); ++q){
 					if ((uint)graph_queue[q].size() < fillstatus){
@@ -579,7 +574,7 @@ void MinHashEncoder::finisher_IndexUpdate(unsigned id, unsigned min, unsigned ma
 
 			finishUpdate(myData,min,max);
 
-		if (id==0){
+			if (id==0){
 				double elap = progress_bar.getElapsed()/1000;
 				cout.setf(ios::fixed);
 				cout << "\r" <<  std::setprecision(1) << elap << " sec elapsed  numSeqs=" << std::setprecision(0) << setw(10);
@@ -665,7 +660,7 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 	}
 
 	// create worker_readFiles thread
-	threads.push_back( std::thread(&MinHashEncoder::worker_readFiles,this,graphWorkers, 500));
+	threads.push_back( std::thread(&MinHashEncoder::worker_readFiles,this,graphWorkers, 1));
 	std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
 	// create n worker_Graph2Signature threads

@@ -20,6 +20,8 @@ void SeqClassifyManager::Exec() {
 	ProgressBar pb(1000);
 	cout << endl << SEP << endl << "INVERSE INDEX"<< endl << SEP << endl;
 
+	CheckParameters();
+
 	SeqFileT mySet;
 	mySet.filename            	= mpParameters->mIndexSeqFile;
 	mySet.filename_BED		  	= mpParameters->mIndexBedFile;
@@ -29,8 +31,8 @@ void SeqClassifyManager::Exec() {
 	mySet.groupGraphsBy		  	= SEQ_FEATURE;
 	Data::BEDdataP indexBED   	= mpData->LoadBEDfile(mpParameters->mIndexBedFile.c_str());
 	mySet.dataBED             	= indexBED;
-	mySet.lastMetaIdx			= 0;
-	mySet.strandType			= FWD;
+	mySet.lastMetaIdx			   = 0;
+	mySet.strandType			   = FWD;
 
 	mIndexDataSet = std::make_shared<SeqFileT>(mySet);
 
@@ -38,10 +40,6 @@ void SeqClassifyManager::Exec() {
 	const unsigned pos = mpParameters->mIndexBedFile.find_last_of("/");
 	if (std::string::npos != pos)
 		indexName = mpParameters->mIndexBedFile.substr(pos+1);
-
-	// error if the shift is 0 and we have a specific window size
-	if (mpParameters->mSeqWindow != 0 && mpParameters->mSeqShift==0)
-		throw range_error("\nERROR! 'seq_shift' cannot be 0 for a specific window size!");
 
 	// create/load new inverse MinHash index against that we can classify other sequences
 	if (mpParameters->mNoIndexCacheFile || !std::ifstream(mpParameters->mIndexBedFile+".bhi").good()){
@@ -101,6 +99,8 @@ void SeqClassifyManager::Exec() {
 		cout << setw(30) << std::right << " distance  " << mpParameters->mMinDistance<<".."<<mpParameters->mDistance << endl;
 		cout << setw(30) << std::right << " seq_window  " << mpParameters->mSeqWindow << endl;
 		cout << setw(30) << std::right << " index_seq_shift  " << mpParameters->mIndexSeqShift << " nt" << endl;
+
+		CheckParameters();
 	}
 
 	// update IndexValue2Feature map from provided Index BED file
@@ -256,7 +256,7 @@ void SeqClassifyManager::Classify_Signatures(SeqFilesT& myFiles){
 	for (int i=0;i<graphWorkers;i++){
 		threads.push_back( std::thread(&SeqClassifyManager::worker_Classify,this,graphWorkers,i));
 	}
-	threads.push_back( std::thread(&MinHashEncoder::worker_readFiles,this,graphWorkers,500));
+	threads.push_back( std::thread(&MinHashEncoder::worker_readFiles,this,graphWorkers,2));
 
 	{
 		join_threads joiner(threads);
@@ -335,9 +335,11 @@ void SeqClassifyManager::finishUpdate(ChunkP& myData, ResultChunkP& myResultChun
 		unsigned matchingSigsRC = 0;
 		unsigned numSigs = 0;
 		unsigned numSigsRC = 0;
+
 		do {
 			valarray<double> hist_tmp;
 			vector<unsigned> emptyBins_tmp;
+			// compute hist for all sliding windows at once
 			ComputeHistogram(k->minHashes,hist_tmp,emptyBins_tmp);
 
 			switch (k->rc){
@@ -362,6 +364,8 @@ void SeqClassifyManager::finishUpdate(ChunkP& myData, ResultChunkP& myResultChun
 		} while (k != myData->end() && k->idx == j->idx);
 
 		ResultT myResult;
+		unsigned max = hist.max();
+		unsigned maxRC = histRC.max();
 
 		switch (j->seqFile->strandType){
 		case FWD:
@@ -375,18 +379,42 @@ void SeqClassifyManager::finishUpdate(ChunkP& myData, ResultChunkP& myResultChun
 			myResultChunk->push_back(myResult);
 			break;
 		case FR:
-			myResult.numInstances = numSigs+numSigsRC;
-			getResultString(myResult.output_line,hist+histRC,emptyBins+emptyBinsRC,matchingSigs+matchingSigsRC,numSigs+numSigsRC,j->name,FR);
-			myResultChunk->push_back(myResult);
+			switch (mpParameters->mOutputTypeCode){
+			case ALL:
+			case MAX:
+				myResult.numInstances = numSigs+numSigsRC;
+				getResultString(myResult.output_line,hist+histRC,emptyBins+emptyBinsRC,matchingSigs+matchingSigsRC,numSigs+numSigsRC,j->name,FR);
+				myResultChunk->push_back(myResult);
+				break;
+			case ALL_STRAND:
+			case MAX_STRAND:
+
+				if (max > maxRC){
+					myResult.numInstances = numSigs;
+					getResultString(myResult.output_line,hist,emptyBins,matchingSigs,numSigs,j->name,FWD);
+					myResultChunk->push_back(myResult);
+				} else if (maxRC>max){
+					myResult.numInstances = numSigsRC;
+					getResultString(myResult.output_line,histRC,emptyBinsRC,matchingSigsRC,numSigsRC,j->name,REV);
+					myResultChunk->push_back(myResult);
+				} else {
+					myResult.numInstances = numSigs+numSigsRC;
+					getResultString(myResult.output_line,hist+histRC,emptyBins+emptyBinsRC,matchingSigs+matchingSigsRC,numSigs+numSigsRC,j->name,FR);
+					myResultChunk->push_back(myResult);
+				}
+				break;
+			default:
+				break;
+			}
 			break;
 		case FR_sep:
-			myResult.numInstances = numSigs;
-			getResultString(myResult.output_line,hist,emptyBins,matchingSigs,numSigs,j->name,FWD);
-			myResultChunk->push_back(myResult);
-			myResult.numInstances = numSigsRC;
-			getResultString(myResult.output_line,histRC,emptyBinsRC,matchingSigsRC,numSigsRC,j->name,REV);
-			myResultChunk->push_back(myResult);
-			break;
+				myResult.numInstances = numSigs;
+				getResultString(myResult.output_line,hist,emptyBins,matchingSigs,numSigs,j->name,FWD);
+				myResultChunk->push_back(myResult);
+				myResult.numInstances = numSigsRC;
+				getResultString(myResult.output_line,histRC,emptyBinsRC,matchingSigsRC,numSigsRC,j->name,REV);
+				myResultChunk->push_back(myResult);
+				break;
 		default:
 			break;
 		}
@@ -570,6 +598,7 @@ void SeqClassifyManager::getResultString(string& resT,histogramT hist,unsigned e
 	string values;
 
 	switch (mpParameters->mOutputTypeCode){
+	case ALL_STRAND:
 	case ALL:
 		for (unsigned i=0; i<hist.size();i++){
 			if (hist[i]>0.0) {
@@ -588,6 +617,7 @@ void SeqClassifyManager::getResultString(string& resT,histogramT hist,unsigned e
 		}
 		break;
 	case MAX:
+	case MAX_STRAND:
 		for (unsigned i=0; i<hist.size();i++){
 			if (hist[i]==max && max!=0){
 				char buf[30];

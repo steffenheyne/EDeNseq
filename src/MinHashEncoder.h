@@ -131,7 +131,7 @@ public:
 				MinHashEncoder(Parameters* apParameters, Data* apData);
 	virtual		~MinHashEncoder();
 
-	void					Init(Parameters* apParameters, Data* apData);
+	void 					CheckParameters();
 
 	void 					LoadData_Threaded(SeqFilesT& myFiles);
 	void 					worker_readFiles(unsigned numWorkers, unsigned chunkSizeFactor);
@@ -147,7 +147,7 @@ public:
 
 	vector<unsigned> 				iterated_hash(string& kmer, unsigned minRadius);
 	void								running_hash(vector<vector<unsigned>>& paired_kmer_hashes_array, string& seq, unsigned& minRadius, unsigned& maxRadius, unsigned& minDist, unsigned& maxDist);
-	void								sliding_window_minimum(vector<vector<unsigned>>& array, unsigned winsize, unsigned& maxFeatLen);
+	void								sliding_window_minimum(vector<vector<unsigned>>& array, unsigned winsize, unsigned& array_offset);
 	void								sliding_window_minhash(vector<vector<unsigned>>& res, string& seq, unsigned& minRadius, unsigned maxRadius, unsigned minDistance, unsigned maxDistance, unsigned winsize, unsigned step);
 
 	virtual void 			UpdateInverseIndex(vector<unsigned>& aSignature, unsigned& aIndex) {};
@@ -229,7 +229,9 @@ public:
 		size_t operator()(unsigned a) const {
 			return static_cast<size_t>(a);
 		}
+	};
 
+	struct cmpFunc {
 		bool operator()(unsigned a, unsigned b) const {
 			return a == b;
 		}
@@ -240,7 +242,7 @@ public:
 	//typedef std::tr1::unordered_map<unsigned, indexBinTy> indexSingleTy;
 	//typedef google::dense_hash_map<unsigned, indexBinTy, hashFunc, hashFunc> indexSingleTy;
 	//typedef google::sparse_hash_map<unsigned, indexBinTy, hashFunc, hashFunc,std::allocator<indexBinTy>> indexSingleTy;
-	typedef google::sparse_hash_map<unsigned, indexBinTy,hashFunc, hashFunc> indexSingleTy;
+	typedef google::sparse_hash_map<unsigned, indexBinTy, hashFunc, cmpFunc> indexSingleTy;
 
 	// the index
 	typedef vector<indexSingleTy> indexTy;
