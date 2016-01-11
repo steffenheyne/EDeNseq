@@ -20,6 +20,8 @@ void SeqClassifyManager::Exec() {
 	ProgressBar pb(1000);
 	cout << endl << SEP << endl << "INVERSE INDEX"<< endl << SEP << endl;
 
+	CheckParameters();
+
 	SeqFileT mySet;
 	mySet.filename            	= mpParameters->mIndexSeqFile;
 	mySet.filename_BED		  	= mpParameters->mIndexBedFile;
@@ -29,8 +31,8 @@ void SeqClassifyManager::Exec() {
 	mySet.groupGraphsBy		  	= SEQ_FEATURE;
 	Data::BEDdataP indexBED   	= mpData->LoadBEDfile(mpParameters->mIndexBedFile.c_str());
 	mySet.dataBED             	= indexBED;
-	mySet.lastMetaIdx			= 0;
-	mySet.strandType			= FWD;
+	mySet.lastMetaIdx			   = 0;
+	mySet.strandType			   = FWD;
 
 	mIndexDataSet = std::make_shared<SeqFileT>(mySet);
 
@@ -38,10 +40,6 @@ void SeqClassifyManager::Exec() {
 	const unsigned pos = mpParameters->mIndexBedFile.find_last_of("/");
 	if (std::string::npos != pos)
 		indexName = mpParameters->mIndexBedFile.substr(pos+1);
-
-	// error if the shift is 0 and we have a specific window size
-	if (mpParameters->mSeqWindow != 0 && mpParameters->mSeqShift==0)
-		throw range_error("\nERROR! 'seq_shift' cannot be 0 for a specific window size!");
 
 	// create/load new inverse MinHash index against that we can classify other sequences
 	if (mpParameters->mNoIndexCacheFile || !std::ifstream(mpParameters->mIndexBedFile+".bhi").good()){
@@ -101,6 +99,8 @@ void SeqClassifyManager::Exec() {
 		cout << setw(30) << std::right << " distance  " << mpParameters->mMinDistance<<".."<<mpParameters->mDistance << endl;
 		cout << setw(30) << std::right << " seq_window  " << mpParameters->mSeqWindow << endl;
 		cout << setw(30) << std::right << " index_seq_shift  " << mpParameters->mIndexSeqShift << " nt" << endl;
+
+		CheckParameters();
 	}
 
 	// update IndexValue2Feature map from provided Index BED file
@@ -156,12 +156,18 @@ void SeqClassifyManager::worker_Classify(int numWorkers, unsigned id){
 
 			ResultChunkP myResultChunk = std::make_shared<ResultChunkT>();
 
-			for (unsigned j = 0; j < myData->size(); j++) {
+			//			for (unsigned j = 0; j < myData->size(); j++) {
+			//
+			//				generate_feature_vector((*myData)[j].seq, (*myData)[j].svec);
+			//				ComputeHashSignature((*myData)[j].svec,(*myData)[j].sig,tmpSig);
+			//
+			//			}
 
-				generate_feature_vector((*myData)[j].seq, (*myData)[j].svec);
-				ComputeHashSignature((*myData)[j].svec,(*myData)[j].sig,tmpSig);
-
+			for (ChunkT::iterator j=myData->begin(); j!=myData->end();j++){
+				sliding_window_minhash(j->minHashes,j->seq,mpParameters->mMinRadius,mpParameters->mRadius, mpParameters->mMinDistance, mpParameters->mDistance, mpParameters->mSeqWindow, mpParameters->mSeqShift);
+				//cout << "final " << j->name << " len=" << j->seq.size() << "idx=" << j->idx << " minH_hf " << j->minHashes.size() <<  " minh_len "<< j->minHashes[0].size() << " win=" << mpParameters->mSeqWindow << " step=" << mpParameters->mSeqShift << endl;
 			}
+
 			finishUpdate(myData,myResultChunk);
 			res_queue.push(myResultChunk);
 			if (res_queue.size()>=numWorkers*25){
@@ -177,6 +183,8 @@ void SeqClassifyManager::worker_Classify(int numWorkers, unsigned id){
 
 void SeqClassifyManager::finisher_Results(ogzstream* fout_res){
 	ProgressBar progress_bar(1000);
+	unsigned sigCounter = 0;
+
 	while (!done){
 
 		ResultChunkP myResults;
@@ -186,14 +194,15 @@ void SeqClassifyManager::finisher_Results(ogzstream* fout_res){
 
 			for (unsigned i=0; i<myResults->size(); i++){
 				*fout_res << (*myResults)[i].output_line;
-				mResultCounter += (*myResults)[i].numInstances;
-
+				//mResultCounter += (*myResults)[i].numInstances;
+				sigCounter += (*myResults)[i].numInstances;
 			}
+			mResultCounter += myResults->size()*2;
 			double elap = progress_bar.getElapsed()/1000;
 			cout.setf(ios::fixed);
 			cout << "\r" <<  std::setprecision(1) << elap << " sec elapsed   Finished numSeqs=" << std::setprecision(0) << setw(10);
 			cout << mNumSequences  << "("<<mNumSequences/(elap) <<" seq/s)  signatures=" << setw(10);
-			cout << mResultCounter << "("<<(double)mResultCounter/((elap)) <<" sig/s - "<<(double)mResultCounter/elap/mpParameters->mNumThreads <<" per thread)  inst=";
+			cout << sigCounter << "("<<(double)sigCounter/((elap)) <<" sig/s - "<<(double)sigCounter/elap/mpParameters->mNumThreads <<" per thread)  inst=";
 			cout << mInstanceCounter << " resQueue=" << res_queue.size() << " graphQueue=";
 			uint avg = 0;
 			for (uint i=0; i<graph_queue.size(); ++i){
@@ -247,16 +256,16 @@ void SeqClassifyManager::Classify_Signatures(SeqFilesT& myFiles){
 	for (int i=0;i<graphWorkers;i++){
 		threads.push_back( std::thread(&SeqClassifyManager::worker_Classify,this,graphWorkers,i));
 	}
-	threads.push_back( std::thread(&MinHashEncoder::worker_readFiles,this,graphWorkers,500));
+	threads.push_back( std::thread(&MinHashEncoder::worker_readFiles,this,graphWorkers,2));
 
 	{
 		join_threads joiner(threads);
 
 		while(!done){
 			std::this_thread::sleep_for(std::chrono::milliseconds(20));
-			if ( (files_done<myFiles.size()) || (mInstanceCounter > mResultCounter))
-				done = false;
-			else done = true;
+			if ( (files_done>=myFiles.size()) && (mResultCounter >= mInstanceCounter))
+				done = true;
+			else done = false;
 			cv2.notify_all();
 			cv1.notify_all();
 		}
@@ -277,19 +286,174 @@ void SeqClassifyManager::Classify_Signatures(SeqFilesT& myFiles){
 
 void SeqClassifyManager::finishUpdate(ChunkP& myData, unsigned& min, unsigned& max) {
 
-	// as this is the overloaded virtual function from MinHashEncoder
-	//we assume signatureAction==INDEX always here
-	for (unsigned j = 0; j < myData->size(); j++) {
-		UpdateInverseIndex((*myData)[j].sig, (*myData)[j].idx, min, max);
+	// this is the overloaded virtual function from MinHashEncoder
+	// we assume signatureAction==INDEX always here
+	if (mUseSlidingWindowMinHash){
+		for (ChunkT::iterator j=myData->begin(); j!= myData->end();j++) {
+			for (uint hf=min;hf<=max;hf++){
+				unsigned last = MAXUNSIGNED;
+				for (auto i : j->minHashes[hf] ){
+					if (i != last)
+						UpdateInverseIndex(i, j->idx, hf);
+					last = i;
+					if (hf==0) {
+						mSignatureUpdateCounter++;
+					}
+				}
+			}
+		}
+	} else {
+
+		for (ChunkT::iterator j=myData->begin(); j!= myData->end();j++) {
+			UpdateInverseIndex(j->sig,j->idx,min,max);
+			if (min==0){
+				mSignatureUpdateCounter++;
+			}
+		}
 	}
 }
-
 
 inline double changeNAN(double i) {if (std::isnan(i)) return 0.0; else return i;}
 
 inline double indicator(double i) {if (i>0) return 1; else return 0;}
 
+
 void SeqClassifyManager::finishUpdate(ChunkP& myData, ResultChunkP& myResultChunk) {
+
+	ChunkT::iterator j = myData->begin();
+	unsigned hist_size = GetHistogramSize();
+
+	while (j != myData->end()) {
+		valarray<double> hist(0.0,hist_size);
+		valarray<double> histRC(0.0,hist_size);
+
+		unsigned emptyBins = 0;
+		unsigned emptyBinsRC = 0;
+
+		ChunkT::iterator k=j;
+		unsigned matchingSigs 	= 0;
+		unsigned matchingSigsRC = 0;
+		unsigned numSigs = 0;
+		unsigned numSigsRC = 0;
+
+		do {
+			valarray<double> hist_tmp;
+			vector<unsigned> emptyBins_tmp;
+			// compute hist for all sliding windows at once
+			ComputeHistogram(k->minHashes,hist_tmp,emptyBins_tmp);
+
+			switch (k->rc){
+			case true:
+				histRC += hist_tmp;
+				for (uint i = 0; i < emptyBins_tmp.size(); ++i){
+					if ( emptyBins_tmp[i] < mpParameters->mNumHashFunctions) matchingSigsRC++;
+					emptyBinsRC += emptyBins_tmp[i];
+				}
+				numSigsRC += emptyBins_tmp.size();
+				break;
+			case false:
+				hist += hist_tmp;
+				for (uint i = 0; i< emptyBins_tmp.size(); ++i){
+					if ( emptyBins_tmp[i] < mpParameters->mNumHashFunctions) matchingSigs++;
+					emptyBins += emptyBins_tmp[i];
+				}
+				numSigs += emptyBins_tmp.size();
+				break;
+			}
+			k++;
+		} while (k != myData->end() && k->idx == j->idx);
+
+		ResultT myResult;
+		unsigned max = hist.max();
+		unsigned maxRC = histRC.max();
+
+		switch (j->seqFile->strandType){
+		case FWD:
+			myResult.numInstances = numSigs;
+			getResultString(myResult.output_line,hist,emptyBins,matchingSigs,numSigs,j->name,FWD);
+			myResultChunk->push_back(myResult);
+			break;
+		case REV:
+			myResult.numInstances = numSigsRC;
+			getResultString(myResult.output_line,histRC,emptyBinsRC,matchingSigsRC,numSigsRC,j->name,REV);
+			myResultChunk->push_back(myResult);
+			break;
+		case FR:
+			switch (mpParameters->mOutputTypeCode){
+			case ALL:
+			case MAX:
+				myResult.numInstances = numSigs+numSigsRC;
+				getResultString(myResult.output_line,hist+histRC,emptyBins+emptyBinsRC,matchingSigs+matchingSigsRC,numSigs+numSigsRC,j->name,FR);
+				myResultChunk->push_back(myResult);
+				break;
+			case ALL_STRAND:
+			case MAX_STRAND:
+
+				if (max > maxRC){
+					myResult.numInstances = numSigs;
+					getResultString(myResult.output_line,hist,emptyBins,matchingSigs,numSigs,j->name,FWD);
+					myResultChunk->push_back(myResult);
+				} else if (maxRC>max){
+					myResult.numInstances = numSigsRC;
+					getResultString(myResult.output_line,histRC,emptyBinsRC,matchingSigsRC,numSigsRC,j->name,REV);
+					myResultChunk->push_back(myResult);
+				} else {
+					myResult.numInstances = numSigs+numSigsRC;
+					getResultString(myResult.output_line,hist+histRC,emptyBins+emptyBinsRC,matchingSigs+matchingSigsRC,numSigs+numSigsRC,j->name,FR);
+					myResultChunk->push_back(myResult);
+				}
+				break;
+			default:
+				break;
+			}
+			break;
+		case FR_sep:
+				myResult.numInstances = numSigs;
+				getResultString(myResult.output_line,hist,emptyBins,matchingSigs,numSigs,j->name,FWD);
+				myResultChunk->push_back(myResult);
+				myResult.numInstances = numSigsRC;
+				getResultString(myResult.output_line,histRC,emptyBinsRC,matchingSigsRC,numSigsRC,j->name,REV);
+				myResultChunk->push_back(myResult);
+				break;
+		default:
+			break;
+		}
+
+		j = k;
+		++mNumSequences;
+
+		// meta analysis, only for screen output summary
+		if (mpParameters->mVerbose){
+
+			hist += histRC;
+			unsigned sum = hist.sum();
+			unsigned max = hist.max();
+
+			if (sum>0)
+				mClassifiedInstances++;
+
+			valarray<double> hist_t = hist;
+			hist_t /= ( (numSigs+numSigsRC)*mpParameters->mNumHashFunctions);
+
+			hist_t /= sum;
+			hist_t = hist.apply(changeNAN);
+
+			for (unsigned i = 0; i<hist_size; i++){
+				if (hist[i] >= max  && max != 0) {hist[i] = 1;} else { hist[i]=0;};
+			}
+
+			{
+				std::lock_guard<std::mutex> lk(mut_meta);
+				metaHist += hist_t;
+				metaHistNum += hist;
+			}
+		}
+	}
+
+}
+
+
+/*void SeqClassifyManager::finishUpdate(ChunkP& myData, ResultChunkP& myResultChunk) {
 
 	unsigned j = 0;
 	unsigned hist_size = GetHistogramSize();
@@ -394,7 +558,7 @@ void SeqClassifyManager::finishUpdate(ChunkP& myData, ResultChunkP& myResultChun
 			break;
 		}
 	} // while
-}
+}*/
 
 
 void SeqClassifyManager::getResultString(string& resT,histogramT hist,unsigned emptyBins, unsigned matchingSigs, unsigned numSigs, string& name, strandTypeT strand){
@@ -434,6 +598,7 @@ void SeqClassifyManager::getResultString(string& resT,histogramT hist,unsigned e
 	string values;
 
 	switch (mpParameters->mOutputTypeCode){
+	case ALL_STRAND:
 	case ALL:
 		for (unsigned i=0; i<hist.size();i++){
 			if (hist[i]>0.0) {
@@ -452,6 +617,7 @@ void SeqClassifyManager::getResultString(string& resT,histogramT hist,unsigned e
 		}
 		break;
 	case MAX:
+	case MAX_STRAND:
 		for (unsigned i=0; i<hist.size();i++){
 			if (hist[i]==max && max!=0){
 				char buf[30];
@@ -484,8 +650,8 @@ void SeqClassifyManager::ClassifySeqs(){
 	SeqFileP mySet = std::make_shared<SeqFileT>();
 	mySet->filename            = mpParameters->mInputDataFileName;
 	mySet->filetype            = mpParameters->mFileTypeCode;
-	mySet->groupGraphsBy       = SEQ_WINDOW; // actually we check by InstanceT.name field for graphs from one seq
-	mySet->checkUniqueSeqNames = true;
+	mySet->groupGraphsBy       = SEQ_NUM; // actually we check by InstanceT.name field for graphs from one seq
+	mySet->checkUniqueSeqNames = false;
 	mySet->signatureAction	   = CLASSIFY;
 	mySet->strandType          = FR;
 

@@ -104,7 +104,47 @@ void Data::GetNextFastaSeq(istream& in,string& currSeq, string& header) {
 	}
 }
 
-bool Data::GetNextWinFromSeq(string& currSeq, unsigned& pos, bool& lastGr, string& seq) {
+void Data::GetNextLargeWinFromSeq(string& currSeq, unsigned& pos, bool& last, string& seq, unsigned win_size_large, unsigned win_size_small, unsigned shift){
+
+	// pos is 0 based
+
+	// estimate number of shifts that fit into win_size_large
+	unsigned num_shifts;
+	if (win_size_large != 0 && win_size_small <= win_size_large){
+		num_shifts = std::ceil( (double)( win_size_large - win_size_small) / (double)shift);
+	} else
+		throw range_error("ERROR GetNextLargeWinFromSeq :  Large window is 0 or small window size > large window (buffer)!");
+
+	// minimal shifts that should fit in the fragment after the current one
+	// if not, we take the full seq till the end
+	unsigned min_shifts_left = 50;
+
+	// we either return a large window that hold exactly num_shift small windows
+	// or the rest of the sequence
+	if (win_size_small == 0){
+		seq = currSeq;
+		pos = currSeq.size();
+		last = true;
+	}else	if (currSeq.size()-pos <= (shift * (num_shifts+min_shifts_left) + win_size_small) ){
+		seq = currSeq.substr(pos,currSeq.size()-pos);
+		pos = currSeq.size();
+		last = true;
+	} else {
+		seq = currSeq.substr(pos, (shift * num_shifts + win_size_small) );
+		pos += shift * (num_shifts+1);
+		last = false;
+	}
+	//cout << "GetNext " << seq.size()<< " pos " << pos << " last " << last << " numshifts " << num_shifts << endl;
+
+}
+
+// 1..100       0*20+1
+//  21..120     1*20+1
+//   41..140    2*20+1
+//    61..160
+//            lws =   shift*x + ws
+
+bool Data::GetNextWinFromSeq(string& currSeq, unsigned& pos, bool& lastGr, string& seq){
 
 	bool success_status = false;
 	lastGr = false;

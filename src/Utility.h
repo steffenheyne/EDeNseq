@@ -31,6 +31,7 @@
 #include <mutex>
 #include <atomic>
 #include <chrono>
+#include <deque>
 
 #ifdef USEMULTITHREAD
 #include <omp.h>
@@ -111,7 +112,7 @@ inline uint IntHashSimple(uint key, uint aModulo) {
 //}
 
 //Return an integer hash value for a given input integer in a given domain range given an additional seed to select the random hash function
-inline uint IntHash(uint key, uint aModulo, unsigned aSeed) {
+inline uint IntHash(const uint& key, uint& aModulo, unsigned aSeed) {
 	const double A = sqrt(2) - 1;
 	return IntHashSimple(key * (aSeed + 1) * A, aModulo);
 }
@@ -136,6 +137,23 @@ inline unsigned APHash(const vector<unsigned>::const_iterator& aV_begin,const ve
 
 }
 
+inline unsigned HashFunc(const vector<vector<unsigned>>& array, unsigned x1_min, unsigned x1_max, unsigned& x2, unsigned& bitmask){
+	unsigned int hash = 0xAAAAAAAA;
+
+	for (unsigned i = x1_min; i<= x1_max; i++) {
+		hash ^= (( ((i-x1_min)) & 1) == 0) ? ((hash << 7) ^ array[i][x2] * (hash >> 3)) : (~(((hash << 11) + array[i][x2]) ^ (hash >> 5)));
+	}
+	return hash & bitmask;
+}
+
+
+inline unsigned APHashSpec(unsigned aV, const unsigned& bitmask, const unsigned& seed) {
+	unsigned int hash = aV;
+	hash ^=  ((hash << 7) ^ seed * (hash >> 3));
+	//hash ^=   ~((((hash << 11) + seed) ^ (hash >> 5)));
+	return hash & bitmask;
+}
+
 
 inline unsigned APHash(const vector<unsigned>& aV) {
 	unsigned int hash = 0xAAAAAAAA;
@@ -144,6 +162,35 @@ inline unsigned APHash(const vector<unsigned>& aV) {
 	}
 	return hash;
 }
+
+inline unsigned HashFunc3(const unsigned& v1, const unsigned& v2, const unsigned& v3, unsigned aBitMask) {
+	unsigned int hash = 0xAAAAAAAA;
+	hash ^=  ((hash << 7) ^ v1 * (hash >> 3));
+	hash ^=  (~(((hash << 11) + v2) ^ (hash >> 5)));
+	hash ^= ((hash << 7) ^ v3 * (hash >> 3));
+	return hash & aBitMask;
+}
+
+inline unsigned HashFunc4(const unsigned& v1, const unsigned& v2, const unsigned& v3, const unsigned& v4, unsigned aBitMask) {
+	unsigned int hash = 0xAAAAAAAA;
+	hash ^=  ((hash << 7) ^ v1 * (hash >> 3));
+	hash ^=  (~(((hash << 11) + v2) ^ (hash >> 5)));
+	hash ^= ((hash << 7) ^ v3 * (hash >> 3));
+	hash ^=  (~(((hash << 11) + v4) ^ (hash >> 5)));
+	return hash & aBitMask;
+}
+
+inline unsigned HashFunc6(const unsigned& v1, const unsigned& v2, const unsigned& v3, const unsigned& v4,const unsigned& v5, const unsigned& v6, unsigned aBitMask) {
+	unsigned int hash = 0xAAAAAAAA;
+	hash ^=  ((hash << 7) ^ v1 * (hash >> 3));
+	hash ^=  (~(((hash << 11) + v2) ^ (hash >> 5)));
+	hash ^= ((hash << 7) ^ v3 * (hash >> 3));
+	hash ^=  (~(((hash << 11) + v4) ^ (hash >> 5)));
+	hash ^= ((hash << 7) ^ v5 * (hash >> 3));
+	hash ^=  (~(((hash << 11) + v6) ^ (hash >> 5)));
+	return hash & aBitMask;
+}
+
 inline unsigned HashFunc(const vector<unsigned>& aList, unsigned aBitMask) {
 	return APHash(aList) & aBitMask;
 }
@@ -267,12 +314,12 @@ public:
 	}
 
 	void push_unsafe(T new_value)
-		{
+	{
 		//	std::lock_guard<std::mutex> lk(mut);
-			data_queue.push(new_value);
-			data_cond.notify_one();
-			sizeA++;
-		}
+		data_queue.push(new_value);
+		data_cond.notify_one();
+		sizeA++;
+	}
 
 
 	void wait_and_pop(T& value)
@@ -284,14 +331,14 @@ public:
 		sizeA--;
 	}
 	std::shared_ptr<T> wait_and_pop()
-																																										{
+																																												{
 		std::unique_lock<std::mutex> lk(mut);
 		data_cond.wait(lk,[this]{return !data_queue.empty();});
 		std::shared_ptr<T> res(std::make_shared<T>(data_queue.front()));
 		data_queue.pop();
 		sizeA--;
 		return res;
-																																										}
+																																												}
 
 	bool try_pop(T& value)
 	{
@@ -305,7 +352,7 @@ public:
 	}
 	bool try_pop_unsafe(T& value)
 	{
-	//	std::lock_guard<std::mutex> lk(mut);
+		//	std::lock_guard<std::mutex> lk(mut);
 		if(data_queue.empty())
 			return false;
 		value=data_queue.front();
@@ -322,7 +369,7 @@ public:
 		data_queue.pop();
 		sizeA--;
 		return res;
-}
+	}
 
 	bool empty() const
 	{
@@ -332,7 +379,7 @@ public:
 
 	int size() const
 	{
-//		std::lock_guard<std::mutex> lk(mut);
+		//		std::lock_guard<std::mutex> lk(mut);
 		return sizeA;
 	}
 

@@ -835,7 +835,10 @@ void Parameters::SetupOptions() {
 		param.mTypeCode = LIST;
 		param.mValue = "ALL";
 		param.mCloseValuesList.push_back("ALL");
+		param.mCloseValuesList.push_back("ALL_STRAND");
 		param.mCloseValuesList.push_back("MAX");
+		param.mCloseValuesList.push_back("MAX_STRAND");
+
 		mOptionList.insert(make_pair(param.mLongSwitch, param));
 		{
 			vector<ParameterType*>& vec = mActionOptionList[CLASSIFY];
@@ -996,8 +999,12 @@ void Parameters::Init(int argc, const char** argv) {
 	//convert output type string to code
 	if (mOutputType == "ALL")
 		mOutputTypeCode = ALL;
+	else if (mOutputType == "ALL_STRAND")
+		mOutputTypeCode = ALL_STRAND;
 	else if (mOutputType == "MAX")
 		mOutputTypeCode = MAX;
+	else if (mOutputType == "MAX_STRAND")
+			mOutputTypeCode = MAX_STRAND;
 	else
 		throw range_error("ERROR Parameters::Init: Unrecognized output type: <" + mOutputType + ">");
 

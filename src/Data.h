@@ -47,6 +47,7 @@ public:
 	void GetNextStringSeq(istream& in,string& currSeq);
 	void LoadStringList(string aFileName, vector<string>& oList, uint numTokens);
 
+	void GetNextLargeWinFromSeq(string& currSeq, unsigned& pos, bool& lastGr, string& seq, unsigned win_size_large, unsigned win_size_small, unsigned shift);
 	//	vector<SeqDataSet> LoadIndexDataList(string filename);
 	//	void SetGraphFromFile(istream& in, GraphClass& oG);
 	//	bool SetGraphFromFASTAFile(istream& in, GraphClass& oG, string& currSeq, unsigned& pos, string& name);

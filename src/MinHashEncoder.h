@@ -28,7 +28,7 @@ public:
 	};
 
 	enum groupGraphsByE {
-		SEQ_WINDOW, SEQ_NAME, SEQ_FEATURE, NONE
+		SEQ_WINDOW, SEQ_NAME, SEQ_FEATURE, SEQ_NUM, NONE
 	};
 
 	enum strandTypeE {
@@ -73,6 +73,7 @@ public:
 		unsigned 	pos;
 		string 		seq;
 		SVector 		svec;
+		vector<vector<unsigned> > minHashes;
 		bool			rc;
 		SeqFileP 	seqFile;
 	};
@@ -93,6 +94,7 @@ public:
 
 	unsigned numKeys;
 	unsigned numFullBins;
+	bool		mUseSlidingWindowMinHash;
 
 	multimap<uint, Data::BEDentryP> mIndexValue2Feature;
 	map<string, uint> mFeature2IndexValue;
@@ -118,9 +120,9 @@ public:
 	std::atomic_uint files_done;
 	std::atomic_uint mSequenceCounter;
 	std::atomic_uint mInstanceCounter;
+	std::atomic_uint mInstanceProcCounter;
 	std::atomic_uint mSignatureCounter;
 	std::atomic_uint mSignatureUpdateCounter;
-
 
 	unsigned 			mHashBitMask;
 	unsigned 			mHashBitMask_feature;
@@ -129,11 +131,12 @@ public:
 				MinHashEncoder(Parameters* apParameters, Data* apData);
 	virtual		~MinHashEncoder();
 
-	void					Init(Parameters* apParameters, Data* apData);
+	void 					CheckParameters();
 
 	void 					LoadData_Threaded(SeqFilesT& myFiles);
 	void 					worker_readFiles(unsigned numWorkers, unsigned chunkSizeFactor);
-	void					worker_Graph2Signature(int numWorkers,unsigned id);
+	void					worker_Seq2Signature_SlidingWin(int numWorkers,unsigned id);
+	void              worker_Seq2Signature_SingleWin(int numWorkers, unsigned id);
 	void 					finisher_IndexUpdate(unsigned id, unsigned min, unsigned max);
 	virtual void			finishUpdate(ChunkP& myData, unsigned& min, unsigned& max) {};
 
@@ -142,9 +145,12 @@ public:
 	void 					generate_feature_vector(const string& seq, SVector& x);
 	void					ComputeHashSignature(const SVector& aX, Signature& signaure, Signature* tmpSig);
 
-	virtual void 			UpdateInverseIndex(vector<unsigned>& aSignature, unsigned& aIndex) {};
+	vector<unsigned> 				iterated_hash(string& kmer, unsigned minRadius);
+	void								running_hash(vector<vector<unsigned>>& paired_kmer_hashes_array, string& seq, unsigned& minRadius, unsigned& maxRadius, unsigned& minDist, unsigned& maxDist);
+	void								sliding_window_minimum(vector<vector<unsigned>>& array, unsigned winsize, unsigned& array_offset);
+	void								sliding_window_minhash(vector<vector<unsigned>>& res, string& seq, unsigned& minRadius, unsigned maxRadius, unsigned minDistance, unsigned maxDistance, unsigned winsize, unsigned step);
 
-	unsigned				GetLoadedInstances();
+	virtual void 			UpdateInverseIndex(vector<unsigned>& aSignature, unsigned& aIndex) {};
 };
 
 class NeighborhoodIndex : public MinHashEncoder
@@ -183,6 +189,7 @@ public:
 	vector<string>	idx2nameMap;
 
 	void 			  		NeighborhoodCacheReset();
+	unsigned				GetLoadedInstances();
 	vector<unsigned>& 		ComputeHashSignature(unsigned aID);
 	void 			 		UpdateInverseIndex(vector<unsigned>& aSignature, unsigned& aIndex);
 	void             		ComputeApproximateNeighborhoodCore(const vector<unsigned>& aSignature, umap_uint_int& neighborhood, unsigned& collisions);
@@ -221,7 +228,9 @@ public:
 		size_t operator()(unsigned a) const {
 			return static_cast<size_t>(a);
 		}
+	};
 
+	struct cmpFunc {
 		bool operator()(unsigned a, unsigned b) const {
 			return a == b;
 		}
@@ -232,7 +241,7 @@ public:
 	//typedef std::tr1::unordered_map<unsigned, indexBinTy> indexSingleTy;
 	//typedef google::dense_hash_map<unsigned, indexBinTy, hashFunc, hashFunc> indexSingleTy;
 	//typedef google::sparse_hash_map<unsigned, indexBinTy, hashFunc, hashFunc,std::allocator<indexBinTy>> indexSingleTy;
-	typedef google::sparse_hash_map<unsigned, indexBinTy,hashFunc, hashFunc> indexSingleTy;
+	typedef google::sparse_hash_map<unsigned, indexBinTy, hashFunc, cmpFunc> indexSingleTy;
 
 	// the index
 	typedef vector<indexSingleTy> indexTy;
@@ -287,7 +296,9 @@ public:
 	void		SetHistogramSize(binKeyTy size);
 	void		UpdateInverseIndex(const vector<unsigned>& aSignature, const unsigned& aIndex);
 	void		UpdateInverseIndex(const vector<unsigned>& aSignature, const unsigned& aIndex, unsigned& min, unsigned& max);
-	void		ComputeHistogram(const vector<unsigned>& aSignature, std::valarray<double>& hist, unsigned& emptyBins);
+	void 		UpdateInverseIndex(const unsigned& key, const unsigned& aIndex, unsigned& k);
+	//void		ComputeHistogram(const vector<unsigned>& aSignature, std::valarray<double>& hist, unsigned& emptyBins);
+	void 		ComputeHistogram(const vector<vector<unsigned>>& aSigArray, std::valarray<double>& hist, vector<unsigned>& emptyBins);
 	void		writeBinaryIndex2(ostream &out, const indexTy& index);
 	bool		readBinaryIndex2(string filename, indexTy& index);
 
