@@ -49,6 +49,30 @@ void MinHashEncoder::CheckParameters() {
 	}
 }
 
+void MinHashEncoder::HashSignatureHelper() {
+
+	// set parameters for ComputeHashSignature
+	mHashBitMask = (2 << (mpParameters->mHashBitSize - 1)) - 1;
+
+	// sub_hash_range is floor(numHashFunctionsFull / mpParameters->mNumRepeatsHashFunction)
+	numHashFunctionsFull = mpParameters->mNumHashFunctions * mpParameters->mNumHashShingles;
+	sub_hash_range = numHashFunctionsFull / mpParameters->mNumRepeatsHashFunction;
+
+	if (mpParameters->mNumHashShingles == 1){
+		mHashBitMask_feature = mHashBitMask;
+	} else {
+		mHashBitMask_feature = MAXUNSIGNED;
+		mHashBitMask_shingle = mHashBitMask;
+	}
+
+	mBounds.resize(sub_hash_range+1);
+	for (unsigned kk = 0; kk < sub_hash_range; ++kk) { //for all k values
+		mBounds[kk] = mHashBitMask_feature / sub_hash_range * kk;
+	}
+	mBounds[sub_hash_range] = mHashBitMask_feature;
+}
+
+
 inline vector<unsigned> MinHashEncoder::HashFuncNSPDK(const string& aString, unsigned& aStart, unsigned& aMinRadius, unsigned& aMaxRadius, unsigned aBitMask) {
 	unsigned int hash = 0xAAAAAAAA;
 	unsigned effective_end = min((unsigned) aString.size() - 1, aStart + aMaxRadius);
@@ -97,6 +121,53 @@ void  MinHashEncoder::generate_feature_vector(const string& seq, SVector& x) {
 				//x.insert(code);
 			}
 		}
+	}
+}
+
+
+void MinHashEncoder::ComputeHashSignature(const SVector& aX, Signature& signature, Signature* tmpSig) {
+
+	// sub_hash_range is always floor(numHashFunctionsFull / mpParameters->mNumRepeatsHashFunction)
+	// if we use shingles we need a temp signature of length numHashFunctionsFull
+	// otherwise we directly put values in the provided signature object
+	Signature *signatureP;
+	if (mpParameters->mNumHashShingles>1){
+		signatureP = tmpSig;
+	} else {
+		signature.resize(numHashFunctionsFull);
+		signatureP = &signature;
+	}
+
+	//init with MAXUNSIGNED
+	for (unsigned k = 0; k < numHashFunctionsFull; ++k)
+		(*signatureP)[k] = MAXUNSIGNED;
+	//prepare a vector containing the signature as the k min values
+	//for each element of the sparse vector
+	//for (SVector::InnerIterator it(aX); it; ++it) {
+	for (SVector::const_iterator it=aX.begin(); it!=aX.end(); ++it) {
+		//for each sub_hash
+		for (unsigned l = 1; l <= mpParameters->mNumRepeatsHashFunction; ++l) {
+			//unsigned key = IntHash(it.index(), mHashBitMask_feature, l);
+			unsigned key = IntHash(*it, mHashBitMask_feature, mpParameters->mRandomSeed+l);
+			for (unsigned kk = 0; kk < sub_hash_range; ++kk) { //for all k values
+				if (key >= mBounds[kk] && key < mBounds[kk+1]) { //if we are in the k-th slot
+					unsigned signature_feature = kk + (l - 1) * sub_hash_range;
+					if (key < (*signatureP)[signature_feature]) {//keep the min hash within the slot
+						(*signatureP)[signature_feature] = key;
+					}
+					//cout << MAXUNSIGNED << " "<< mpParameters->mNumRepeatsHashFunction << " " << sub_hash_range << " " << lower_bound <<" " << upper_bound << " " << signature_feature << " " << l << " " << kk << " " <<  key<< endl;
+				}
+			}
+		}
+	}
+
+	// compute shingles, i.e. rehash mNumHashShingles hash values into one hash value
+	if (mpParameters->mNumHashShingles > 1 ) {
+		vector<unsigned> signatureFinal(mpParameters->mNumHashFunctions);
+		for (unsigned i=0;i<mpParameters->mNumHashFunctions;i++){
+			signatureFinal[i] = HashFunc(signatureP->begin()+(i*mpParameters->mNumHashShingles),signatureP->begin()+(i*mpParameters->mNumHashShingles+mpParameters->mNumHashShingles),mHashBitMask_shingle);
+		}
+		signature.swap(signatureFinal);
 	}
 }
 
@@ -193,7 +264,8 @@ void MinHashEncoder::sliding_window_minhash(vector<vector<unsigned>>& res, strin
 
 	// we expect that winsize is at least maxRadius+maxDistance+1 (max feat span),
 	// check is currently in MinHashEncoder::worker_read_files
-	// array offset (0-based) is first position with minHash from max feature window (maxRadius+maxDistance+1)
+	// min_hash_array_offset (0-based) is first position in min_hashes with minHash value
+	//from max feature window (maxRadius+maxDistance+1)
 	unsigned min_hash_array_offset = maxRadius + maxDistance;
 
 	running_hash(min_hashes, seq, minRadius, maxRadius, minDistance, maxDistance);
@@ -202,10 +274,11 @@ void MinHashEncoder::sliding_window_minhash(vector<vector<unsigned>>& res, strin
 	res.resize(mpParameters->mNumHashFunctions);
 
 	// create final array with desired step size
+	// use shingles if requested
 	if (mpParameters->mNumHashShingles == 1 ) {
 
 		// for each hash func
-		// now slide the window over single-pos min_hashes and take value for every step
+		// now slide the window over min_hashes and take value for every step
 		for (unsigned hf=0;hf < numHashFunctionsFull;hf++){
 			for (unsigned win_right_end = winsize-1; win_right_end < seq.size();win_right_end += step){
 				res[hf].push_back(min_hashes[hf][win_right_end]);
@@ -700,79 +773,6 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 }
 
 
-unsigned MinHashEncoder::GetLoadedInstances() {
-	return mInstanceCounter;
-}
-
-void MinHashEncoder::HashSignatureHelper() {
-
-	// set parameters for ComputeHashSignature
-	mHashBitMask = (2 << (mpParameters->mHashBitSize - 1)) - 1;
-
-	// sub_hash_range is always floor(numHashFunctionsFull / mpParameters->mNumRepeatsHashFunction)
-	numHashFunctionsFull = mpParameters->mNumHashFunctions * mpParameters->mNumHashShingles;
-	sub_hash_range = numHashFunctionsFull / mpParameters->mNumRepeatsHashFunction;
-
-	if (mpParameters->mNumHashShingles == 1){
-		mHashBitMask_feature = mHashBitMask;
-	} else {
-		mHashBitMask_feature = MAXUNSIGNED;
-		mHashBitMask_shingle = mHashBitMask;
-	}
-
-	mBounds.resize(sub_hash_range+1);
-	for (unsigned kk = 0; kk < sub_hash_range; ++kk) { //for all k values
-		mBounds[kk] = mHashBitMask_feature / sub_hash_range * kk;
-	}
-	mBounds[sub_hash_range] = mHashBitMask_feature;
-}
-
-void MinHashEncoder::ComputeHashSignature(const SVector& aX, Signature& signature, Signature* tmpSig) {
-
-	// sub_hash_range is always floor(numHashFunctionsFull / mpParameters->mNumRepeatsHashFunction)
-	// if we use shingles we need a temp signature of length numHashFunctionsFull
-	// otherwise we directly put values in the provided signature object
-	Signature *signatureP;
-	if (mpParameters->mNumHashShingles>1){
-		signatureP = tmpSig;
-	} else {
-		signature.resize(numHashFunctionsFull);
-		signatureP = &signature;
-	}
-
-	//init with MAXUNSIGNED
-	for (unsigned k = 0; k < numHashFunctionsFull; ++k)
-		(*signatureP)[k] = MAXUNSIGNED;
-	//prepare a vector containing the signature as the k min values
-	//for each element of the sparse vector
-	//for (SVector::InnerIterator it(aX); it; ++it) {
-	for (SVector::const_iterator it=aX.begin(); it!=aX.end(); ++it) {
-		//for each sub_hash
-		for (unsigned l = 1; l <= mpParameters->mNumRepeatsHashFunction; ++l) {
-			//unsigned key = IntHash(it.index(), mHashBitMask_feature, l);
-			unsigned key = IntHash(*it, mHashBitMask_feature, mpParameters->mRandomSeed+l);
-			for (unsigned kk = 0; kk < sub_hash_range; ++kk) { //for all k values
-				if (key >= mBounds[kk] && key < mBounds[kk+1]) { //if we are in the k-th slot
-					unsigned signature_feature = kk + (l - 1) * sub_hash_range;
-					if (key < (*signatureP)[signature_feature]) {//keep the min hash within the slot
-						(*signatureP)[signature_feature] = key;
-					}
-					//cout << MAXUNSIGNED << " "<< mpParameters->mNumRepeatsHashFunction << " " << sub_hash_range << " " << lower_bound <<" " << upper_bound << " " << signature_feature << " " << l << " " << kk << " " <<  key<< endl;
-				}
-			}
-		}
-	}
-
-	// compute shingles, i.e. rehash mNumHashShingles hash values into one hash value
-	if (mpParameters->mNumHashShingles > 1 ) {
-		vector<unsigned> signatureFinal(mpParameters->mNumHashFunctions);
-		for (unsigned i=0;i<mpParameters->mNumHashFunctions;i++){
-			signatureFinal[i] = HashFunc(signatureP->begin()+(i*mpParameters->mNumHashShingles),signatureP->begin()+(i*mpParameters->mNumHashShingles+mpParameters->mNumHashShingles),mHashBitMask_shingle);
-		}
-		signature.swap(signatureFinal);
-	}
-}
-
 ///////////////////////////////////////////////////////////////////////////////////////////
 //
 //	CLASS NEIGHBORHOODINDEX
@@ -790,6 +790,9 @@ void NeighborhoodIndex::NeighborhoodCacheReset() {
 	mNeighborhoodCacheInfo.resize(GetLoadedInstances());
 }
 
+unsigned NeighborhoodIndex::GetLoadedInstances() {
+	return mInstanceCounter;
+}
 
 vector<unsigned>& NeighborhoodIndex::ComputeHashSignature(unsigned aID) {
 

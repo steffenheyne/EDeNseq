@@ -151,8 +151,6 @@ public:
 	void								sliding_window_minhash(vector<vector<unsigned>>& res, string& seq, unsigned& minRadius, unsigned maxRadius, unsigned minDistance, unsigned maxDistance, unsigned winsize, unsigned step);
 
 	virtual void 			UpdateInverseIndex(vector<unsigned>& aSignature, unsigned& aIndex) {};
-
-	unsigned				GetLoadedInstances();
 };
 
 class NeighborhoodIndex : public MinHashEncoder
@@ -191,6 +189,7 @@ public:
 	vector<string>	idx2nameMap;
 
 	void 			  		NeighborhoodCacheReset();
+	unsigned				GetLoadedInstances();
 	vector<unsigned>& 		ComputeHashSignature(unsigned aID);
 	void 			 		UpdateInverseIndex(vector<unsigned>& aSignature, unsigned& aIndex);
 	void             		ComputeApproximateNeighborhoodCore(const vector<unsigned>& aSignature, umap_uint_int& neighborhood, unsigned& collisions);

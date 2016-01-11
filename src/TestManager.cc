@@ -217,7 +217,7 @@ void TestManager::ClassifySeqs(){
 
 	// output just some simple results
 	// metahistogram
-	cout << endl << endl << "META histogram - classified seqs: " << setprecision(3) << (double)mClassifiedInstances/((double)GetLoadedInstances()) << " (" << mClassifiedInstances << ")" << endl;
+	cout << endl << endl << "META histogram - classified seqs: " << setprecision(3) << (double)mClassifiedInstances/((double)mSequenceCounter) << " (" << mClassifiedInstances << ")" << endl;
 	metaHist = metaHist/metaHist.sum();
 	vector<pair<double,uint> > sortedHist;
 	for (unsigned j=0; j<metaHist.size();j++){
