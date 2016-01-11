@@ -713,6 +713,9 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 	mInstanceProcCounter    = 0;
 	mSequenceCounter        = 0;
 	mSignatureUpdateCounter = 0;
+
+	// sliding win approach is faster if relative shift is small wrt. window size
+	// we can think of an automatic switch according to the relative shift
 	mUseSlidingWindowMinHash = true;
 
 	vector<std::thread> threads;
@@ -720,7 +723,7 @@ void MinHashEncoder::LoadData_Threaded(SeqFilesT& myFiles){
 
 	// create m worker_IndexUpdate threads
 	// distribute mpParameters->mNumHashFunctions as equal as possible between the
-	// requested number of mpParameters->mNumIndexThreads, adjust numIndexThreads to have maximal 1 thread per signature value
+	// requested number of mpParameters->mNumIndexThreads, adjust numIndexThreads to have minimal 1 thread per signature value
 	unsigned numIndexThreads = max((unsigned)1,mpParameters->mNumIndexThreads);
 	index_queue.resize(min(numIndexThreads,mpParameters->mNumHashFunctions));
 	unsigned hf_left = mpParameters->mNumHashFunctions;
