@@ -437,6 +437,7 @@ void MinHashEncoder::worker_readFiles(unsigned numWorkers, unsigned chunkSizeFac
 						}
 
 						pos = 0;
+						valid_input = true;
 
 					} // valid_input?
 
