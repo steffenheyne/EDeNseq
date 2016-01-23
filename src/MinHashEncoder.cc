@@ -207,7 +207,7 @@ void MinHashEncoder::running_hash(vector<vector<unsigned>>&  paired_kmer_hashes_
 				//unsigned hash = HashFunc(tmp,MAXUNSIGNED);
 				//unsigned hash = HashFunc6(r,r,kmer_hashes_array[start][r-minRadius],kmer_hashes_array[start+d][r-minRadius],d,d,MAXUNSIGNED);
 				//unsigned hash = HashFunc4(kmer_hashes_array[start][r-minRadius],kmer_hashes_array[start+d][r-minRadius],d,d,MAXUNSIGNED);
-				unsigned hash = HashFunc3(kmer_hashes_array[start][r-minRadius],kmer_hashes_array[start+d][r-minRadius],d,MAXUNSIGNED);
+				unsigned hash = HashFunc3(d,kmer_hashes_array[start][r-minRadius],kmer_hashes_array[start+d][r-minRadius],MAXUNSIGNED);
 
 				for (unsigned l = 1; l <= mpParameters->mNumRepeatsHashFunction; ++l) {
 					//unsigned key = IntHash(hash, mHashBitMask_feature, mpParameters->mRandomSeed+l);
