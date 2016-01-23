@@ -556,9 +556,9 @@ void MinHashEncoder::worker_Seq2Signature_SlidingWin(int numWorkers, unsigned id
 			uint fillstatus=0;
 			for (uint i=0; i<index_queue.size(); ++i){ fillstatus += index_queue[i].size();}
 
-			if (fillstatus>index_queue.size()*40){
+			if (fillstatus>index_queue.size()*60){
 				unique_lock<mutex> lk(mut2);
-				cv2.wait(lk,[&]{fillstatus = 0;for (uint i=0; i<index_queue.size(); ++i){ fillstatus += index_queue[i].size();} if ((done) || (fillstatus<index_queue.size()*40)) return true; else return false;});
+				cv2.wait(lk,[&]{fillstatus = 0;for (uint i=0; i<index_queue.size(); ++i){ fillstatus += index_queue[i].size();} if ((done) || (fillstatus<index_queue.size()*20)) return true; else return false;});
 				lk.unlock();
 			}
 		}
