@@ -1051,7 +1051,7 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 void HistogramIndex::UpdateInverseIndex(const unsigned& key, const unsigned& aIndex, unsigned& k) {
 	//cout << key << " " << aIndex << " " << k << endl;
 	const binKeyTy& aIndexT =(binKeyTy)aIndex;
-	if (key != MAXUNSIGNED && key != 0) { //if key is equal to markers for empty bins then skip insertion instance in data structure
+	if ( ((key >> 1) & 1) == 1 && key != MAXUNSIGNED && key != 0) { //if key is equal to markers for empty bins then skip insertion instance in data structure
 		if (mInverseIndex[k].count(key)==0) { //if this is the first time that an instance exhibits that specific value for that hash function, then store for the first time the reference to that instance
 
 			binKeyTy* foo;
