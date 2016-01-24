@@ -162,8 +162,8 @@ private:
 	//typedef vector<binKeyTy>	indexBinTy;
 	typedef binKeyTy* indexBinTy;
 	//	typedef std::tr1::unordered_map<unsigned,indexBinTy> indexSingleTy;
-	typedef google::sparse_hash_map<unsigned, indexBinTy> indexSingleTy;
-	//typedef google::dense_hash_map<unsigned, indexBinTy> indexSingleTy;
+	//typedef google::sparse_hash_map<unsigned, indexBinTy> indexSingleTy;
+	typedef google::dense_hash_map<unsigned, indexBinTy> indexSingleTy;
 	typedef vector<indexSingleTy> indexTy;
 
 	const binKeyTy MAXBINKEY = std::numeric_limits<binKeyTy>::max();
