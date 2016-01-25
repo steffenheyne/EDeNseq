@@ -334,7 +334,7 @@ void MinHashEncoder::worker_readFiles(unsigned numWorkers, unsigned chunkSizeFac
 
 				//	unsigned maxB = max((uint)1000,(uint)log2((double)mSignatureCounter)^2*chunkSizeFactor);
 				//	unsigned currBuff = maxB*3; //rand()%(maxB*4	 - maxB*2 + 1) + maxB; // curr chunk size
-				unsigned largeBuff = 100000 * chunkSizeFactor * rand()%(500000);
+				unsigned largeBuff = 100000 * chunkSizeFactor * rand()%(300000)+100000;
 				unsigned currBases = 0;
 
 				// indicates that we have the last fragment from current seq,
