@@ -646,7 +646,7 @@ void MinHashEncoder::finisher_IndexUpdate(unsigned id, unsigned min, unsigned ma
 
 		if (!done && succ && myData->size()>0) {
 
-			//finishUpdate(myData,min,max);
+			finishUpdate(myData,min,max);
 
 			if (id==0){
 				double elap = progress_bar.getElapsed()/1000;
