@@ -545,22 +545,23 @@ void MinHashEncoder::worker_Seq2Signature_SlidingWin(int numWorkers, unsigned id
 				mSignatureCounter += j->minHashes[0].size();
 				mInstanceProcCounter++;
 			}
-
+			uint fillstatus=0;
 			{
 				lock_guard<mutex> lk(mut2);
 
 				for (unsigned i=0;i<index_queue.size();i++){
 					index_queue[i].push(myData);
+					fillstatus += index_queue[i].size();
 				}
 			}
-			uint fillstatus=0;
-	/*		for (uint i=0; i<index_queue.size(); ++i){ fillstatus += index_queue[i].size();}
+			//uint fillstatus=0;
+			//for (uint i=0; i<index_queue.size(); ++i){ fillstatus += index_queue[i].size();}
 
 			if (fillstatus>index_queue.size()*60){
 				unique_lock<mutex> lk(mut2);
 				cv2.wait(lk,[&]{fillstatus = 0;for (uint i=0; i<index_queue.size(); ++i){ fillstatus += index_queue[i].size();} if ((done) || (fillstatus<index_queue.size()*60)) return true; else return false;});
 				lk.unlock();
-			}*/
+			}
 		}
 	}
 }
