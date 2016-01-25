@@ -659,14 +659,14 @@ void MinHashEncoder::finisher_IndexUpdate(unsigned id, unsigned min, unsigned ma
 				uint avg = 0;
 				for (uint i=0; i<graph_queue.size(); ++i){
 					//cout << graph_queue[i].size() << " ";
-					avg += graph_queue[i].size();
+					//avg += graph_queue[i].size();
 				};
 				cout << avg/graph_queue.size();
 				cout << " indexQueue=";
 				avg = 0;
 				for (uint i=0; i<index_queue.size(); ++i){
 					//cout << index_queue[i].size() << " ";
-					avg += index_queue[i].size();
+					//avg += index_queue[i].size();
 				}
 				cout << avg << "  ";
 			}
