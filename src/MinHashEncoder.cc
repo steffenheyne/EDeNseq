@@ -336,7 +336,7 @@ void MinHashEncoder::worker_readFiles(unsigned numWorkers, unsigned chunkSizeFac
 				//	unsigned currBuff = maxB*3; //rand()%(maxB*4	 - maxB*2 + 1) + maxB; // curr chunk size
 				unsigned largeBuff = 100000 * chunkSizeFactor * rand()%(500000);
 				unsigned currBases = 0;
-				cout << largeBuff << endl;
+
 				// indicates that we have the last fragment from current seq,
 				// used to get all fragments from current seq into the same chunk
 				// to combine signatures in finisher
