@@ -199,15 +199,20 @@ void MinHashEncoder::running_hash(vector<vector<unsigned>>&  paired_kmer_hashes_
 	// we assume paired_kmer_hashes_array initialized with:
 	//	vector<vector<unsigned>> paired_kmer_hashes_array(numHashFunctionsFull,vector<unsigned>(seq.size(),MAXUNSIGNED));
 
-	for (unsigned r = minRadius; r <= maxRadius; r++) {
-		for (unsigned d = minDist; d <= maxDist; d++) {
+	for (unsigned r = minRadius; r <= maxRadius; ++r) {
+		for (unsigned d = minDist; d <= maxDist; ++d) {
 			for (unsigned start = 0; start < seq.size()-r-d; ++start) {
 
+			for (int wD = -std::abs(wobbleDist); wD<=std::abs(wobbleDist); wD++) {
+					if (start+r+d+wD>=seq.size()){
+						continue;
+					}
+					//cout << wobbleDist << " " << start << " " << d << " "<< wD << " " << start+d+wD << endl;
 				//vector<unsigned> tmp = {d,kmer_hashes_array[start][r-minRadius],kmer_hashes_array[start+d][r-minRadius]};
 				//unsigned hash = HashFunc(tmp,MAXUNSIGNED);
 				//unsigned hash = HashFunc6(r,r,kmer_hashes_array[start][r-minRadius],kmer_hashes_array[start+d][r-minRadius],d,d,MAXUNSIGNED);
 				//unsigned hash = HashFunc4(kmer_hashes_array[start][r-minRadius],kmer_hashes_array[start+d][r-minRadius],d,d,MAXUNSIGNED);
-				unsigned hash = HashFunc3(d,kmer_hashes_array[start][r-minRadius],kmer_hashes_array[start+d][r-minRadius],MAXUNSIGNED);
+				unsigned hash = HashFunc3(kmer_hashes_array[start][r-minRadius],kmer_hashes_array[start+d+wD][r-minRadius],d,MAXUNSIGNED);
 
 				for (unsigned l = 1; l <= mpParameters->mNumRepeatsHashFunction; ++l) {
 					//unsigned key = IntHash(hash, mHashBitMask_feature, mpParameters->mRandomSeed+l);
@@ -218,7 +223,7 @@ void MinHashEncoder::running_hash(vector<vector<unsigned>>&  paired_kmer_hashes_
 						if (key >= mBounds[kk] && key < mBounds[kk+1]) { //if we are in the k-th slot
 							unsigned signature_feature = kk + (l - 1) * sub_hash_range;
 
-							for (unsigned add = start+r+d; add <=min((uint)seq.size()-1,start+maxRadius+maxDist);add++){
+							for (unsigned add = start+r+d; add <=min((uint)seq.size()-1,start+maxRadius+maxDist);++add){
 								if (key < paired_kmer_hashes_array[signature_feature][add]){
 									paired_kmer_hashes_array[signature_feature][add] = key;
 								}
@@ -226,6 +231,7 @@ void MinHashEncoder::running_hash(vector<vector<unsigned>>&  paired_kmer_hashes_
 						}
 					} // sub hashes
 				} // repeat hash func
+				}
 			} // pos
 		} // dist
 	} // radius
@@ -1016,10 +1022,11 @@ void HistogramIndex::InitInverseIndex() {
 	mMemPool_10.resize(mpParameters->mNumHashFunctions);
 
 	for (unsigned k = 0; k < mpParameters->mNumHashFunctions; ++k){
-		mInverseIndex[k].max_load_factor(0.7);
-		mInverseIndex[k].set_resizing_parameters(0.0,0.7);
-		mInverseIndex[k].rehash(268435456);
-		mInverseIndex[k].set_deleted_key(0);
+		mInverseIndex[k].max_load_factor(0.9);
+		mInverseIndex[k].set_resizing_parameters(0.0,0.9);
+		mInverseIndex[k].rehash(67108864);
+		//mInverseIndex[k].rehash(268435456); // 2^28
+		//mInverseIndex[k].set_deleted_key(0);
 		//mInverseIndex[k].set_empty_key(0);
 		mMemPool_2[k] = new MemoryPool<newIndexBin_2,mMemPool_BlockSize>();
 		mMemPool_3[k] = new MemoryPool<newIndexBin_3,mMemPool_BlockSize>();
@@ -1052,7 +1059,8 @@ void HistogramIndex::UpdateInverseIndex(const vector<unsigned>& aSignature, cons
 void HistogramIndex::UpdateInverseIndex(const unsigned& key, const unsigned& aIndex, unsigned& k) {
 	//cout << key << " " << aIndex << " " << k << endl;
 	const binKeyTy& aIndexT =(binKeyTy)aIndex;
-	if ( ((key >> 1) & 1) == 1 && key != MAXUNSIGNED && key != 0) { //if key is equal to markers for empty bins then skip insertion instance in data structure
+	//if ( ((key >> 1) & 1) == 1 && key != MAXUNSIGNED && key != 0) { //if key is equal to markers for empty bins then skip insertion instance in data structure
+	if ( key != MAXUNSIGNED && key != 0) { //if key is equal to markers for empty bins then skip insertion instance in data structure
 		if (mInverseIndex[k].count(key)==0) { //if this is the first time that an instance exhibits that specific value for that hash function, then store for the first time the reference to that instance
 
 			binKeyTy* foo;

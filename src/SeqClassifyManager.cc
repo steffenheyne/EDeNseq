@@ -55,6 +55,7 @@ void SeqClassifyManager::Exec() {
 		SeqFilesT myList;
 		myList.push_back(mIndexDataSet);
 
+		wobbleDist = 1;
 		InitInverseIndex();
 		LoadData_Threaded(myList);
 
@@ -671,6 +672,8 @@ void SeqClassifyManager::ClassifySeqs(){
 
 	mClassifiedInstances = 0;
 	mNumSequences = 0;
+
+	wobbleDist = 1;
 
 	SeqFilesT myList;
 	myList.push_back(mySet);

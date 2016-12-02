@@ -26,7 +26,7 @@ while ( $line = <RES> ) {
 		$idx2feature{ $tmp[1] } = $tmp[3];
 		$feature2idx{ $tmp[3] } = $tmp[1];
 
-		# print "RES HIST IDX\t", $tmp[1], " -> ", $tmp[3], "\n";
+		#print "RES HIST IDX\t", $tmp[1], " -> ", $tmp[3], "\n";
 	} elsif ( $line =~ /#SEQ/ ) {
 		last;
 	}
@@ -57,6 +57,10 @@ my $numNotEval = 0;
 		chomp $line;
 		my @tmp = split( "\t", $line );
 		my @id  = split( "-",  $tmp[0] );
+		if ($tmp[0] =~ /reference_seq/){
+		  @id = join("_",(split( "_",  $tmp[0] ))[0..2]);
+		  #print "test: ".$id[0]."\n";
+		}
 		my @max = split( ",",  $tmp[9] );
 		my @all = split( ",",  $tmp[7] );
 

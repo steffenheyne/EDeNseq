@@ -9,9 +9,10 @@
 #include "Utility.h"
 #include "Parameters.h"
 #include "Data.h"
-#include "sparsehash-2.0.2/sparsehash/sparse_hash_map"
-#include "sparsehash-2.0.2/sparsehash/dense_hash_map"
+//#include "sparsehash-2.0.2/sparsehash/sparse_hash_map"
+//#include "sparsehash-2.0.2/sparsehash/dense_hash_map"
 #include "eigen-eigen-3.20/Eigen/Sparse"
+#include "sparsepp.h"
 
 #include "MemoryPool.h"
 
@@ -90,7 +91,7 @@ public:
 	unsigned 			numHashFunctionsFull;
 	unsigned 			sub_hash_range;
 	vector<unsigned>  mBounds;
-
+	unsigned 			wobbleDist;
 
 	unsigned numKeys;
 	unsigned numFullBins;
@@ -162,7 +163,8 @@ private:
 	//typedef vector<binKeyTy>	indexBinTy;
 	typedef binKeyTy* indexBinTy;
 	//	typedef std::tr1::unordered_map<unsigned,indexBinTy> indexSingleTy;
-	typedef google::sparse_hash_map<unsigned, indexBinTy> indexSingleTy;
+	//typedef google::sparse_hash_map<unsigned, indexBinTy> indexSingleTy;
+	typedef spp::sparse_hash_map<unsigned, indexBinTy> indexSingleTy;
 	//typedef google::dense_hash_map<unsigned, indexBinTy> indexSingleTy;
 	typedef vector<indexSingleTy> indexTy;
 
@@ -241,8 +243,8 @@ public:
 	//typedef std::tr1::unordered_map<unsigned, indexBinTy> indexSingleTy;
 	//typedef google::dense_hash_map<unsigned, indexBinTy, hashFunc, hashFunc> indexSingleTy;
 	//typedef google::sparse_hash_map<unsigned, indexBinTy, hashFunc, hashFunc,std::allocator<indexBinTy>> indexSingleTy;
-	typedef google::sparse_hash_map<unsigned, indexBinTy, hashFunc, cmpFunc> indexSingleTy;
-
+	//typedef google::sparse_hash_map<unsigned, indexBinTy, hashFunc, cmpFunc> indexSingleTy;
+	typedef spp::sparse_hash_map<unsigned, indexBinTy, hashFunc, cmpFunc> indexSingleTy;
 	// the index
 	typedef vector<indexSingleTy> indexTy;
 
@@ -372,8 +374,8 @@ public:
 	//	typedef google::dense_hash_map<unsigned, indexBinTy, hashFunc> indexSingleTy;
 	//	typedef google::sparse_hash_map<unsigned, indexBinTy> indexSingleTy;
 
-	typedef google::sparse_hash_map<KeyTy, ValueTy> indexSingleTy;
-
+	//typedef google::sparse_hash_map<KeyTy, ValueTy> indexSingleTy;
+	typedef spp::sparse_hash_map<KeyTy, ValueTy> indexSingleTy;
 	typedef vector<indexSingleTy> indexTy;
 	const ValueTy MAXBINKEY = std::numeric_limits<ValueTy>::max();
 
