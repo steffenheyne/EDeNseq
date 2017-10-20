@@ -28,7 +28,7 @@ OPTS=-O3 -DNDEBUG -Wno-deprecated -Wno-unused-local-typedefs -DLOSS=1 -std=c++11
 #OPTS=-g -Wno-deprecated -DLOSS=1 #-DDEBUGON
 #OPTS=-g -Wno-deprecated -static -pg
 
-CXXFLAGS=${OPTS} -Wall -I eigen-eigen-3.20 -Isparsehash-2.0.2 # -fprofile-use -fprofile-correction # -fprofile-generate #-mtune=native -march=native
+CXXFLAGS=${OPTS} -Wall -I eigen-eigen-3.20 -I cereal -I ./ -Isparsehash-2.0.2 # -fprofile-use -fprofile-correction # -fprofile-generate #-mtune=native -march=native
 #CXXFLAGS=${OPTS} -Wall -I eigen-eigen-3.20 -Isparsehash-2.0.2 -fprofile-use -fprofile-correction # -fprofile-generate #-mtune=native -march=native 
 #CXXFLAGS=${OPTS} -Wall -I eigen-eigen-3.20 -Isparsehash-2.0.2 -fprofile-generate #-mtune=native -march=native
 #CXXFLAGS=${OPTS} -Wall -I eigen-eigen-3.20 -Isparsehash-2.0.2 -mtune=native -march=native # -ftree-vectorizer-verbose=1 -fopt-info-vec-missed
