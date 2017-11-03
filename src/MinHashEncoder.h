@@ -154,6 +154,41 @@ public:
 	virtual void 			UpdateInverseIndex(vector<unsigned>& aSignature, unsigned& aIndex) {};
 };
 
+
+class MappingIndex : public MinHashEncoder
+{
+public:
+
+	const unsigned INDEX_FORMAT_VERSION = 3;
+
+	typedef pair<uint32_t,uint32_t> binKeyTy;
+	typedef binKeyTy* indexBinTy;
+	const binKeyTy MAXBINKEY = std::numeric_limits<binKeyTy>::max();
+
+	struct hashFunc {
+		size_t operator()(unsigned a) const {
+			return static_cast<size_t>(a);
+		}
+	};
+
+	struct cmpFunc {
+		bool operator()(unsigned a, unsigned b) const {
+			return a == b;
+		}
+	};
+
+	// we use one of these hash maps, the interface is quite similar to each other
+	// should test space an speed
+	//typedef std::tr1::unordered_map<unsigned, indexBinTy> indexSingleTy;
+	//typedef google::dense_hash_map<unsigned, indexBinTy, hashFunc, hashFunc> indexSingleTy;
+	//typedef google::sparse_hash_map<unsigned, indexBinTy, hashFunc, hashFunc,std::allocator<indexBinTy>> indexSingleTy;
+	//typedef google::sparse_hash_map<unsigned, indexBinTy, hashFunc, cmpFunc> indexSingleTy;
+	typedef spp::sparse_hash_map<unsigned, indexBinTy, hashFunc, cmpFunc> indexSingleTy;
+	// the index
+	typedef vector<indexSingleTy> indexTy;
+
+};
+
 class NeighborhoodIndex : public MinHashEncoder
 {
 private:

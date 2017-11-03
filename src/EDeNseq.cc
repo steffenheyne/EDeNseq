@@ -9,6 +9,7 @@
 
 #include "Parameters.h"
 #include "MinHashEncoder.h"
+#include "MappingManaher.h"
 #include "SeqClusterManager.h"
 #include "SeqClassifyManager.h"
 #include "TestManager.h"
@@ -37,6 +38,11 @@ public:
 		cout << SEP << endl << PROG_NAME << endl << "Version: " << PROG_VERSION << endl << "Last Update: " << PROG_DATE << endl << PROG_CREDIT << endl << SEP << endl;
 
 		switch (mParameters.mActionCode) {
+		case MAPPING:{
+			MappingManager mapping_manager(&mParameters, &mData);
+			mapping_manager.Exec();
+		}
+		break;
 		case CLASSIFY:{
 			SeqClassifyManager seq_classify_manager(&mParameters, &mData);
 			seq_classify_manager.Exec();
